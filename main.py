@@ -33,15 +33,6 @@ async def on_guild_emojis_update(guild: discord.Guild, before: list[discord.Emoj
         state = "Removed:"
         message = f"Emoji: :{emoji.name}: removed"
 
-    # beforeにもあって、afterにもあるもの以外が変更されたもの
-    for emoji in set(before) & set(after):
-        if emoji in before and emoji in after:
-            if before[before.index(emoji)].name != after[after.index(emoji)].name:
-                state = "Renamed:"
-                before_emoji = before[before.index(emoji)]
-                after_emoji = after[after.index(emoji)]
-                message = f"Emoji: <:{before_emoji.name}:{before_emoji.id}> renamed to :{after_emoji.name}:"
-
     if message != "":
         logger.info("-" * 20)
         logger.info(f"Guild: {guild.name}")
