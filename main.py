@@ -53,18 +53,18 @@ async def on_guild_emojis_update(guild: discord.Guild, before: list[discord.Emoj
     # send event
     channel_name = os.getenv("EMOJI_LOG_CHANNEL_NAME")
 
-    if os.getenv("IS_DEBUG"):
-        thread = discord.utils.get(guild.threads, name=channel_name)
-        if thread is not None:
-            await thread.send(message)
-        else:
-            logger.error(f"{channel_name} channel not found")
-    else:
-        channel = discord.utils.get(guild.text_channels, name=channel_name)
+    def send_message(channel_list: list[discord.Thread | discord.TextChannel]):
+        channel = discord.utils.get(channel_list, name=channel_name)
         if channel is not None:
-            await channel.send(message)
+            return channel.send(message)
         else:
             logger.error(f"{channel_name} channel not found")
+            return None
+
+    if os.getenv("IS_DEBUG"):
+        await send_message(guild.threads)
+    else:
+        await send_message(guild.text_channels)
 
 if __name__ == "__main__":
     token = os.getenv("DISCORD_BOT_TOKEN")
