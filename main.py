@@ -33,11 +33,14 @@ async def on_guild_emojis_update(guild: discord.Guild, before: list[discord.Emoj
         state = "Removed:"
         message = f"Emoji: :{emoji.name}: removed"
 
-    if message != "":
-        logger.info("-" * 20)
-        logger.info(f"Guild: {guild.name}")
-        logger.info(state)
-        logger.info(message)
+    # 上記以外は無視
+    if state == "" and message == "":
+        return
+
+    logger.info("-" * 20)
+    logger.info(f"Guild: {guild.name}")
+    logger.info(state)
+    logger.info(message)
 
     # send event
     channel_name = os.getenv("EMOJI_LOG_CHANNEL_NAME")
