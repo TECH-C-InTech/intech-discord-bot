@@ -25,26 +25,22 @@ async def on_guild_emojis_update(guild: discord.Guild, before: list[discord.Emoj
     state = ""
     message = ""
 
-    # logger.info("Diff:")
-    state = "Diff:" if set(before) != set(after) else ""
     for emoji in set(after) - set(before):
-        message += f"Emoji: <:{emoji.name}:{emoji.id}> added\n"
-        logger.info(message)
+        state = "Added:"
+        message = f"Emoji: <:{emoji.name}:{emoji.id}> added"
 
     for emoji in set(before) - set(after):
-        message += f"Emoji: :{emoji.name}: removed\n"
-        logger.info(message)
+        state = "Removed:"
+        message = f"Emoji: :{emoji.name}: removed"
 
     # beforeにもあって、afterにもあるもの以外が変更されたもの
-    state = "Changed:" if set(before) & set(after) else ""
-    # logger.info("Changed:")
     for emoji in set(before) & set(after):
         if emoji in before and emoji in after:
             if before[before.index(emoji)].name != after[after.index(emoji)].name:
+                state = "Renamed:"
                 before_emoji = before[before.index(emoji)]
                 after_emoji = after[after.index(emoji)]
-                message += f"Emoji: <:{before_emoji.name}:{before_emoji.id}> renamed to :{after_emoji.name}:\n"
-                logger.info(message)
+                message = f"Emoji: <:{before_emoji.name}:{before_emoji.id}> renamed to :{after_emoji.name}:"
 
     if message != "":
         logger.info("-" * 20)
