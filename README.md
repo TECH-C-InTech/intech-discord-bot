@@ -3,5 +3,5 @@
 ## Setup
 
 ```bash
-uv install
+uv sync
 ```
