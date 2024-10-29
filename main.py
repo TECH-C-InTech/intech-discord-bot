@@ -20,7 +20,7 @@ async def on_ready():
 
 @CLIENT.event
 async def on_guild_emojis_update(guild: discord.Guild, before: list[discord.Emoji], after: list[discord.Emoji]):
-    # :{emoji.name}: にすると、サーバー内で使えるカスタム絵文字を表示できる
+    # <:{emoji.name}:{emoji_id}> にすると、サーバー内で使えるカスタム絵文字を表示できる
 
     state = ""
     message = ""
@@ -28,7 +28,7 @@ async def on_guild_emojis_update(guild: discord.Guild, before: list[discord.Emoj
     # logger.info("Diff:")
     state = "Diff:" if set(before) != set(after) else ""
     for emoji in set(after) - set(before):
-        message += f"Emoji: :{emoji.name}: added\n"
+        message += f"Emoji: <:{emoji.name}:{emoji.id}> added\n"
         logger.info(message)
 
     for emoji in set(before) - set(after):
@@ -41,7 +41,9 @@ async def on_guild_emojis_update(guild: discord.Guild, before: list[discord.Emoj
     for emoji in set(before) & set(after):
         if emoji in before and emoji in after:
             if before[before.index(emoji)].name != after[after.index(emoji)].name:
-                message += f"Emoji: :{before[before.index(emoji)].name}: changed to :{after[after.index(emoji)].name}:\n"
+                before_emoji = before[before.index(emoji)]
+                after_emoji = after[after.index(emoji)]
+                message += f"Emoji: <:{before_emoji.name}:{before_emoji.id}> renamed to :{after_emoji.name}:\n"
                 logger.info(message)
 
     if message != "":
