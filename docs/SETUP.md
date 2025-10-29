@@ -9,15 +9,11 @@
 5. [実行方法](#実行方法)
 6. [トラブルシューティング](#トラブルシューティング)
 
----
-
 ## 必要要件
 
 - **Python**: 3.11以上
 - **uv**: Pythonパッケージマネージャー
 - Discord Botトークン（管理者に問い合わせ）
-
----
 
 ## セットアップ手順
 
@@ -33,8 +29,6 @@ cd intech-discord-bot
 ```bash
 uv sync
 ```
-
----
 
 ## 環境変数の設定
 
@@ -70,8 +64,6 @@ EVENT_REQUEST_CHANNEL_NAME=event-request
 | `ARCHIVE_EVENT_CATEGORY_NAME` | アーカイブ先のカテゴリー名 | `archived-event` |
 | `EVENT_REQUEST_CHANNEL_NAME` | チャンネル作成リクエストを受け付けるチャンネル名 | `event-request` |
 
----
-
 ## Discord サーバーの設定
 
 `.env` で設定した名前に合わせて、Discordサーバーに以下を作成:
@@ -99,8 +91,6 @@ EVENT_REQUEST_CHANNEL_NAME=event-request
 └── # event-request
 ```
 
----
-
 ## 実行方法
 
 ```bash
@@ -119,8 +109,6 @@ INFO:__main__:Synced 2 command(s)
 
 Discordで `/` を入力するとコマンドが表示されます。
 
----
-
 ## トラブルシューティング
 
 ### `DISCORD_BOT_TOKEN が設定されていません`
@@ -130,8 +118,6 @@ Discordで `/` を入力するとコマンドが表示されます。
 1. `.env` ファイルが存在するか確認
 2. `DISCORD_BOT_TOKEN` が正しく設定されているか確認
 
----
-
 ### `カテゴリー 'event' が存在しません`
 
 **解決方法:**
@@ -140,15 +126,11 @@ Discordで `/` を入力するとコマンドが表示されます。
 2. カテゴリー名と `.env` の設定を一致させる
 3. Botを再起動
 
----
-
 ### `このコマンドは 'event-request' チャンネルでのみ実行できます`
 
 **解決方法:**
 
 `event-request` チャンネル（または `.env` で指定したチャンネル）で実行してください。
-
----
 
 ### `Botにチャンネルの作成する権限がありません`
 
@@ -163,8 +145,6 @@ Discordで `/` を入力するとコマンドが表示されます。
 カテゴリーを右クリック → 設定 → 権限 → Bot を追加 → 「チャンネルの管理」を許可
 ```
 
----
-
 ### コマンドが表示されない
 
 **解決方法:**
@@ -172,8 +152,6 @@ Discordで `/` を入力するとコマンドが表示されます。
 1. Botを再起動して `Synced 2 command(s)` が表示されるか確認
 2. Discordをリロード（Ctrl+R）
 3. 30秒〜1分待ってから再度 `/` を入力
-
----
 
 ## サポート
 

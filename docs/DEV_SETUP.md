@@ -51,13 +51,14 @@ Discord Developer Portalで**開発専用のBotアプリケーション**を作�
    ```
 
 5. **起動時に環境ファイルを指定**
-   ```bash
+
+    ```bash
    # 開発環境
-   python bot.py --env .env.dev
-   
+   uv run bot.py --env .env.dev
+
    # または環境変数で指定
-   ENV_FILE=.env.dev python bot.py
-   ```
+   ENV_FILE=.env.dev uv run bot.py
+    ```
 
 #### bot.pyの修正
 
@@ -75,8 +76,6 @@ env_file = os.getenv('ENV_FILE', args.env)
 load_dotenv(env_file)
 logger.info(f"Loaded environment from: {env_file}")
 ```
-
----
 
 ### 🔧 方法2: コマンドプレフィックスを使用
 
@@ -118,8 +117,6 @@ DISCORD_BOT_TOKEN="同じBotトークン"
 DEV_GUILD_ID="開発サーバーのID"
 ```
 
----
-
 ### 🌐 方法3: 開発専用サーバーを用意
 
 開発専用の別のDiscordサーバーを作成する。
@@ -131,8 +128,6 @@ DEV_GUILD_ID="開発サーバーのID"
 #### デメリット
 - ❌ 別サーバーの管理が必要
 - ❌ 本番に近い環境でのテストができない
-
----
 
 ## 📝 推奨構成
 
@@ -154,8 +149,6 @@ intech-discord-bot/
 | **ローカル開発** | `.env` | 開発用Bot | 開発サーバーID | 手元でのテスト |
 | **デプロイ（開発）** | 環境変数 | 開発用Bot | 開発サーバーID | デプロイ版開発Bot |
 | **デプロイ（本番）** | 環境変数 | 本番用Bot | (未設定) | 本番環境 |
-
----
 
 ## 🚀 実装例: 方法1（推奨）
 
@@ -282,17 +275,8 @@ PORT="8000"
 ### 3. 使い方
 
 ```bash
-# ローカル開発（開発用Bot使用）
-python bot.py
-
-# または環境ファイル指定
-python bot.py --env .env.dev
-
-# 環境変数で指定
-ENV_FILE=.env.dev python bot.py
+uv run bot.py --env .env.dev
 ```
-
----
 
 ## 📋 チェックリスト
 
@@ -309,13 +293,11 @@ ENV_FILE=.env.dev python bot.py
   - `DEV_GUILD_ID`: 開発環境のみ設定
 - [ ] デプロイ後、コマンドが正しく同期されているか確認
 
----
-
 ## 💡 ベストプラクティス
 
 1. **Bot命名規則**
-   - 本番: `InTech Bot`
-   - 開発: `InTech Bot (Dev)` または `InTech Bot [開発]`
+   - 本番: `InTech`
+   - 開発: `InTech_dev`
 
 2. **アイコンで識別**
    - 開発用Botには異なるアイコンを設定
@@ -328,8 +310,6 @@ ENV_FILE=.env.dev python bot.py
    - 開発: `DEBUG`
    - 本番: `INFO` または `WARNING`
 
----
-
 ## 🔍 トラブルシューティング
 
 ### Q: 両方のBotが同時に反応する
@@ -338,23 +318,6 @@ A: 以下を確認：
 - 開発用Botと本番用Botで異なるTokenを使用しているか
 - `DEV_GUILD_ID` が正しく設定されているか
 - デプロイ環境の環境変数が正しいか
-
-### Q: コマンドが即座に反映されない
-
-A: 
-- `DEV_GUILD_ID` を設定すると即座に反映（開発環境）
-- グローバル同期は最大1時間かかる（本番環境）
-
-### Q: 環境ファイルを切り替えるのが面倒
-
-A: シェルエイリアスを作成：
-```bash
-# .bashrc または .zshrc
-alias bot-dev="ENV_FILE=.env.dev python bot.py"
-alias bot-prod="ENV_FILE=.env.prod python bot.py"
-```
-
----
 
 ## 参考リンク
 
