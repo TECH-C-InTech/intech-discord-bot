@@ -243,6 +243,138 @@ async def restore_event_channel(
         await handle_command_error(ctx, e, "チャンネルの復元")
 
 
+async def add_event_role_member(
+    ctx: discord.Interaction,
+    members: str,
+    role_name: str = None,
+):
+    """イベントチャンネルに紐づくロールにメンバーを追加するコマンド
+
+    実行可能なロールはeventsカテゴリーのチャンネルに対応するものだけ
+    role_nameを省略した場合は、コマンド実行チャンネルと同名のロールを使用
+    """
+
+    # 環境変数を一括取得
+    config = await EventChannelConfig.load(ctx)
+    if not config:
+        return
+
+    guild = ctx.guild
+
+    # カテゴリーの存在確認
+    event_category = await validate_category_exists(
+        ctx, guild, config.event_category_name
+    )
+    if not event_category:
+        return
+
+    # role_nameが省略された場合は実行チャンネル名を使用
+    if role_name is None:
+        # コマンド実行チャンネルがeventsカテゴリーに属しているか確認
+        if not await validate_channel_in_category(
+            ctx, ctx.channel, config.event_category_name
+        ):
+            return
+        role_name = ctx.channel.name
+
+    # ロールを検索
+    role = discord.utils.get(guild.roles, name=role_name)
+    if not role:
+        await send_error_message(ctx, f"ロール `{role_name}` が見つかりません。")
+        return
+
+    # 同名のチャンネルがeventsカテゴリーに存在するか確認
+    event_channel = discord.utils.get(event_category.text_channels, name=role_name)
+    if not event_channel:
+        await send_error_message(
+            ctx,
+            f"ロール {role.mention} に対応するイベントチャンネルが見つかりません。\n"
+            f"このコマンドはeventsカテゴリー内のチャンネルに対応するロールのみ操作可能です。",
+        )
+        return
+
+    # メンバーをメンションから抽出
+    member_mentions = members.strip().split()
+    member_objects = []
+
+    for mention in member_mentions:
+        # メンションIDを抽出（<@123456789> → 123456789）
+        member_id = mention.strip("<@!>")
+        try:
+            member_id_int = int(member_id)
+            member = guild.get_member(member_id_int)
+            if member:
+                member_objects.append(member)
+            else:
+                await send_error_message(
+                    ctx, f"メンバー `{mention}` が見つかりません。"
+                )
+                return
+        except ValueError:
+            await send_error_message(
+                ctx,
+                f"`{mention}` は有効なメンバーメンションではありません。\n"
+                f"メンバーをメンション形式（@ユーザー名）で指定してください。",
+            )
+            return
+
+    if not member_objects:
+        await send_error_message(
+            ctx,
+            "メンバーが指定されていません。メンバーをメンション形式で指定してください。",
+        )
+        return
+
+    try:
+        # ロールを追加
+        added_members = []
+        already_has_role = []
+
+        for member in member_objects:
+            if role in member.roles:
+                already_has_role.append(member)
+            else:
+                await member.add_roles(role)
+                added_members.append(member)
+
+        # 成功メッセージ
+        description_parts = []
+
+        if added_members:
+            member_mentions_str = ", ".join([m.mention for m in added_members])
+            description_parts.append(
+                f"{role.mention} に以下のメンバーを追加しました:\n{member_mentions_str}"
+            )
+
+        if already_has_role:
+            member_mentions_str = ", ".join([m.mention for m in already_has_role])
+            description_parts.append(
+                f"\n以下のメンバーは既にロールを持っています:\n{member_mentions_str}"
+            )
+
+        embed = create_success_embed(
+            title="イベントロールメンバー追加完了",
+            description="\n".join(description_parts),
+            イベントチャンネル=event_channel.mention,
+            ロール=role.name,
+            追加人数=len(added_members),
+        )
+
+        await ctx.response.send_message(embed=embed)
+        logger.info(
+            f"Added {len(added_members)} members to event role {role.name} "
+            f"(channel: {event_channel.name}) by {ctx.user}"
+        )
+
+    except discord.Forbidden:
+        await send_error_message(
+            ctx, f"Botに {role.mention} を付与する権限がありません。"
+        )
+    except Exception as e:
+        logger.error(f"Error adding event role members: {e}")
+        await handle_command_error(ctx, e, "イベントロールメンバーの追加")
+
+
 def setup(tree: app_commands.CommandTree):
     """イベントチャンネル関連のコマンドを登録する"""
 
@@ -280,3 +412,16 @@ def setup(tree: app_commands.CommandTree):
         ctx: discord.Interaction, channel_name: str = None
     ):
         await restore_event_channel(ctx, channel_name)
+
+    @tree.command(
+        name="add_event_role_member",
+        description="イベントチャンネルに紐づくロールにメンバーを追加します",
+    )
+    @app_commands.describe(
+        members="追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
+        role_name="イベントチャンネルと同名のロール名（省略時は実行チャンネルのロール）",
+    )
+    async def add_event_role_member_cmd(
+        ctx: discord.Interaction, members: str, role_name: str = None
+    ):
+        await add_event_role_member(ctx, members, role_name)
