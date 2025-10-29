@@ -64,8 +64,6 @@ uv run bot.py --env .env.dev
 3. 開発用BotのTokenと開発サーバーIDを設定
 4. `uv run bot.py --env .env.dev` で起動
 
-詳細は `docs/DEV_SETUP.md` を参照してください。
-
 ### 実行
 
 ```bash
