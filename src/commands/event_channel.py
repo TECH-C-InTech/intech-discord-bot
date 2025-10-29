@@ -13,8 +13,12 @@ from ..utils.message_utils import (
     send_error_message,
 )
 from ..utils.validation_utils import (
+    get_channel_by_name,
+    parse_member_mentions,
+    parse_role_mention,
     validate_channel_in_category,
     validate_channel_restriction,
+    validate_role_safety,
 )
 
 logger = getLogger(__name__)
@@ -49,27 +53,10 @@ async def create_event_channel(
     # メンバーが指定されている場合、メンションから抽出
     member_objects = []
     if members:
-        member_mentions = members.strip().split()
-        for mention in member_mentions:
-            # メンションIDを抽出（<@123456789> → 123456789）
-            member_id = mention.strip("<@!>")
-            try:
-                member_id_int = int(member_id)
-                member = guild.get_member(member_id_int)
-                if member:
-                    member_objects.append(member)
-                else:
-                    await send_error_message(
-                        ctx, f"メンバー `{mention}` が見つかりません。"
-                    )
-                    return
-            except ValueError:
-                await send_error_message(
-                    ctx,
-                    f"`{mention}` は有効なメンバーメンションではありません。\n"
-                    f"メンバーをメンション形式（@ユーザー名）で指定してください。",
-                )
-                return
+        parsed_members = await parse_member_mentions(ctx, members, guild)
+        if parsed_members is None:
+            return
+        member_objects = parsed_members
 
     try:
         # 次のインデックス番号を取得
@@ -146,11 +133,8 @@ async def archive_event_channel(
 
     # 移動するチャンネルを特定
     if channel_name:
-        channel = discord.utils.get(guild.text_channels, name=channel_name)
+        channel = await get_channel_by_name(ctx, guild, channel_name)
         if not channel:
-            await send_error_message(
-                ctx, f"チャンネル `{channel_name}` が見つかりません。"
-            )
             return
     else:
         # channel_name省略時は、EVENT_REQUEST_CHANNEL以外で実行
@@ -205,11 +189,8 @@ async def restore_event_channel(
     # 移動するチャンネルを特定
     if channel_name:
         # channel_name指定時は任意の場所で実行可能
-        channel = discord.utils.get(guild.text_channels, name=channel_name)
+        channel = await get_channel_by_name(ctx, guild, channel_name)
         if not channel:
-            await send_error_message(
-                ctx, f"チャンネル `{channel_name}` が見つかりません。"
-            )
             return
     else:
         # channel_name省略時は、アーカイブカテゴリー内でのみ実行可能
@@ -250,7 +231,7 @@ async def add_event_role_member(
 ):
     """イベントチャンネルに紐づくロールにメンバーを追加するコマンド
 
-    実行可能なロールはeventsカテゴリーのチャンネルに対応するものだけ
+    実行可能なロールはEVENT_CATEGORY_NAMEカテゴリのチャンネルに対応するものだけ
     role_nameを省略した場合は、コマンド実行チャンネルと同名のロールを使用
     """
 
@@ -270,59 +251,41 @@ async def add_event_role_member(
 
     # role_nameが省略された場合は実行チャンネル名を使用
     if role_name is None:
-        # コマンド実行チャンネルがeventsカテゴリーに属しているか確認
+        # コマンド実行チャンネルがEVENT_CATEGORY_NAMEカテゴリーに属しているか確認
         if not await validate_channel_in_category(
             ctx, ctx.channel, config.event_category_name
         ):
             return
         role_name = ctx.channel.name
+        # ロールを名前で検索
+        role = discord.utils.get(guild.roles, name=role_name)
+        if not role:
+            await send_error_message(ctx, f"ロール `{role_name}` が見つかりません。")
+            return
+    else:
+        # role_nameが指定された場合、パース関数でロールを取得
+        role = await parse_role_mention(ctx, role_name, guild)
+        if not role:
+            return
+        role_name = role.name
 
-    # ロールを検索
-    role = discord.utils.get(guild.roles, name=role_name)
-    if not role:
-        await send_error_message(ctx, f"ロール `{role_name}` が見つかりません。")
+    # ロールの安全性チェック
+    if not await validate_role_safety(ctx, role):
         return
 
-    # 同名のチャンネルがeventsカテゴリーに存在するか確認
+    # 同名のチャンネルがEVENT_CATEGORY_NAMEカテゴリーに存在するか確認
     event_channel = discord.utils.get(event_category.text_channels, name=role_name)
     if not event_channel:
         await send_error_message(
             ctx,
             f"ロール {role.mention} に対応するイベントチャンネルが見つかりません。\n"
-            f"このコマンドはeventsカテゴリー内のチャンネルに対応するロールのみ操作可能です。",
+            f"このコマンドは{config.event_category_name}カテゴリー内のチャンネルに対応するロールのみ操作可能です。",
         )
         return
 
     # メンバーをメンションから抽出
-    member_mentions = members.strip().split()
-    member_objects = []
-
-    for mention in member_mentions:
-        # メンションIDを抽出（<@123456789> → 123456789）
-        member_id = mention.strip("<@!>")
-        try:
-            member_id_int = int(member_id)
-            member = guild.get_member(member_id_int)
-            if member:
-                member_objects.append(member)
-            else:
-                await send_error_message(
-                    ctx, f"メンバー `{mention}` が見つかりません。"
-                )
-                return
-        except ValueError:
-            await send_error_message(
-                ctx,
-                f"`{mention}` は有効なメンバーメンションではありません。\n"
-                f"メンバーをメンション形式（@ユーザー名）で指定してください。",
-            )
-            return
-
-    if not member_objects:
-        await send_error_message(
-            ctx,
-            "メンバーが指定されていません。メンバーをメンション形式で指定してください。",
-        )
+    member_objects = await parse_member_mentions(ctx, members, guild)
+    if member_objects is None:
         return
 
     try:
@@ -419,7 +382,7 @@ def setup(tree: app_commands.CommandTree):
     )
     @app_commands.describe(
         members="追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
-        role_name="イベントチャンネルと同名のロール名（省略時は実行チャンネルのロール）",
+        role_name="対象のロール（@ロール形式で指定。例: @1-event. 省略時は実行チャンネルのロール）",
     )
     async def add_event_role_member_cmd(
         ctx: discord.Interaction, members: str, role_name: str = None
