@@ -40,16 +40,12 @@ async def show_role_members(
         return
 
     # ロールを持っているメンバーを取得
-    members_with_role = [
-        member for member in guild.members if role in member.roles
-    ]
+    members_with_role = [member for member in guild.members if role in member.roles]
 
     # Embedを作成
     embed = discord.Embed(
         title=f"🎭 {role.name} のメンバー一覧",
-        color=role.color
-        if role.color != discord.Color.default()
-        else discord.Color.blue(),
+        color=role.color if role.color != discord.Color.default() else discord.Color.blue(),
         timestamp=discord.utils.utcnow(),
     )
 
@@ -64,15 +60,9 @@ async def show_role_members(
         chunk_size = 50
         for i in range(0, len(members_with_role), chunk_size):
             chunk = members_with_role[i : i + chunk_size]
-            member_list = "\n".join(
-                [f"• {member.mention} ({member.name})" for member in chunk]
-            )
+            member_list = "\n".join([f"• {member.mention} ({member.name})" for member in chunk])
 
-            field_name = (
-                "👥 メンバー"
-                if i == 0
-                else f"👥 メンバー (続き {i // chunk_size + 1})"
-            )
+            field_name = "👥 メンバー" if i == 0 else f"👥 メンバー (続き {i // chunk_size + 1})"
             embed.add_field(
                 name=field_name,
                 value=member_list,

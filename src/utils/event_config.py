@@ -1,8 +1,8 @@
 """イベントチャンネル設定を管理するクラス"""
 
-import os
 from dataclasses import dataclass
 from logging import getLogger
+import os
 from typing import Optional
 
 import discord
@@ -43,9 +43,7 @@ class EventChannelConfig:
         """
         if cls._instance is None:
             event_category_name = os.getenv("EVENT_CATEGORY_NAME")
-            archive_event_category_name = os.getenv(
-                "ARCHIVE_EVENT_CATEGORY_NAME"
-            )
+            archive_event_category_name = os.getenv("ARCHIVE_EVENT_CATEGORY_NAME")
             event_request_channel_name = os.getenv("EVENT_REQUEST_CHANNEL_NAME")
 
             # 環境変数のバリデーション
@@ -58,12 +56,8 @@ class EventChannelConfig:
                 missing_vars.append("EVENT_REQUEST_CHANNEL_NAME")
 
             if missing_vars:
-                logger.error(
-                    f"Missing required environment variables: {', '.join(missing_vars)}"
-                )
-                logger.error(
-                    "Please set the following environment variables in .env file:"
-                )
+                logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
+                logger.error("Please set the following environment variables in .env file:")
                 for var in missing_vars:
                     logger.error(f"  - {var}")
                 return None
@@ -85,9 +79,7 @@ class EventChannelConfig:
         return cls._instance
 
     @classmethod
-    async def load(
-        cls, ctx: discord.Interaction
-    ) -> Optional["EventChannelConfig"]:
+    async def load(cls, ctx: discord.Interaction) -> Optional["EventChannelConfig"]:
         """環境変数を読み込んでEventChannelConfigを取得する
 
         キャッシュされたインスタンスを返すため、複数回呼び出しても
@@ -103,9 +95,7 @@ class EventChannelConfig:
         config = cls.get_instance()
 
         if config is None:
-            logger.warning(
-                f"Failed to load EventChannelConfig for user {ctx.user}"
-            )
+            logger.warning(f"Failed to load EventChannelConfig for user {ctx.user}")
             await ctx.response.send_message(
                 "❌ 必要な環境変数が設定されていません。\n"
                 "サーバー管理者に以下の環境変数の設定を依頼してください:\n"

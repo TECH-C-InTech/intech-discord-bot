@@ -1,7 +1,7 @@
 """チャンネル実行場所のバリデーション"""
 
-import re
 from logging import getLogger
+import re
 
 import discord
 
@@ -39,18 +39,12 @@ async def validate_channel_restriction(
     # エラーメッセージ用にチャンネルを取得
     guild = ctx.guild
     if guild is not None:
-        allowed_channel = discord.utils.get(
-            guild.text_channels, name=allowed_channel_name
-        )
+        allowed_channel = discord.utils.get(guild.text_channels, name=allowed_channel_name)
     else:
         allowed_channel = None
 
     # チャンネルが見つかった場合はメンション、見つからない場合は名前のみ
-    channel_display = (
-        allowed_channel.mention
-        if allowed_channel
-        else f"`{allowed_channel_name}`"
-    )
+    channel_display = allowed_channel.mention if allowed_channel else f"`{allowed_channel_name}`"
 
     # エラーメッセージ
     if must_be_in:
@@ -99,7 +93,8 @@ async def validate_channel_in_category(
             help_text=f"`{category_name}` カテゴリー配下のチャンネルでコマンドを実行してください。",
         )
         logger.info(
-            f"Category validation failed: {channel.name} has no category (required: {category_name})"
+            f"Category validation failed: "
+            f"{channel.name} has no category (required: {category_name})"
         )
         return False
 
@@ -112,13 +107,12 @@ async def validate_channel_in_category(
             f"チャンネル名を指定してください。",
         )
         logger.info(
-            f"Category validation failed: {channel.name} is in '{channel.category.name}' (required: '{category_name}')"
+            f"Category validation failed: "
+            f"{channel.name} is in '{channel.category.name}' (required: '{category_name}')"
         )
         return False
 
-    logger.debug(
-        f"Category validation passed: {channel.name} is in '{category_name}'"
-    )
+    logger.debug(f"Category validation passed: {channel.name} is in '{category_name}'")
     return True
 
 
@@ -158,9 +152,7 @@ async def parse_member_mentions(
         member = guild.get_member(member_id_int)
         if member:
             member_objects.append(member)
-            logger.debug(
-                f"Parsed member mention: {member.name} ({member_id_int})"
-            )
+            logger.debug(f"Parsed member mention: {member.name} ({member_id_int})")
         else:
             await send_error_message(
                 ctx,
@@ -264,9 +256,7 @@ async def validate_role_safety(
             f"{role.mention} は管理者権限を持つため、このコマンドでは操作できません。",
             help_text="セキュリティ上の理由から、管理者ロールは操作できません。",
         )
-        logger.warning(
-            f"Role safety check failed: {role.name} has administrator permission"
-        )
+        logger.warning(f"Role safety check failed: {role.name} has administrator permission")
         return False
 
     # 2. Bot専用ロール（managed）はNG
@@ -276,9 +266,7 @@ async def validate_role_safety(
             f"{role.mention} はBot専用ロールまたはインテグレーションロールのため、操作できません。",
             help_text="このロールはシステムによって管理されています。",
         )
-        logger.warning(
-            f"Role safety check failed: {role.name} is a managed role"
-        )
+        logger.warning(f"Role safety check failed: {role.name} is a managed role")
         return False
 
     # 3. @everyone ロールはNG
@@ -288,9 +276,7 @@ async def validate_role_safety(
             "@everyone ロールは操作できません。",
             help_text="特定のロールを指定してください。",
         )
-        logger.warning(
-            "Role safety check failed: attempted to use @everyone role"
-        )
+        logger.warning("Role safety check failed: attempted to use @everyone role")
         return False
 
     logger.debug(f"Role safety check passed: {role.name}")

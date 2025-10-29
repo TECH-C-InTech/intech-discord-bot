@@ -2,8 +2,8 @@
 
 import argparse
 import asyncio
-import os
 from logging import basicConfig, getLogger
+import os
 
 import discord
 from discord import app_commands
@@ -17,9 +17,7 @@ basicConfig(level="INFO")
 
 # 環境ファイルの読み込み（コマンドライン引数または環境変数で指定可能）
 parser = argparse.ArgumentParser(description="Discord Bot")
-parser.add_argument(
-    "--env", default=".env", help="環境ファイルのパス（デフォルト: .env）"
-)
+parser.add_argument("--env", default=".env", help="環境ファイルのパス（デフォルト: .env）")
 args, unknown = parser.parse_known_args()
 
 env_file = os.getenv("ENV_FILE", args.env)
@@ -56,14 +54,13 @@ async def on_ready():
             tree.copy_global_to(guild=guild)
             synced = await tree.sync(guild=guild)
             logger.info(
-                f"✅ [DEV MODE] Synced {len(synced)} command(s) to development guild (ID: {dev_guild_id})"
+                f"✅ [DEV MODE] Synced {len(synced)} command(s)"
+                f" to development guild (ID: {dev_guild_id})"
             )
         else:
             # 全サーバーに同期（反映に最大1時間かかる）
             synced = await tree.sync()
-            logger.info(
-                f"✅ [PRODUCTION] Synced {len(synced)} command(s) globally"
-            )
+            logger.info(f"✅ [PRODUCTION] Synced {len(synced)} command(s) globally")
 
     except Exception as e:
         logger.error(f"❌ Failed to sync commands: {e}")

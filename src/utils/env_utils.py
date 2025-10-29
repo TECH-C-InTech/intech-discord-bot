@@ -19,9 +19,7 @@ def get_required_env(key: str) -> Optional[str]:
     return os.getenv(key)
 
 
-async def validate_env_and_respond(
-    ctx: discord.Interaction, key: str
-) -> Optional[str]:
+async def validate_env_and_respond(ctx: discord.Interaction, key: str) -> Optional[str]:
     """
     環境変数を取得し、存在しない場合はエラーメッセージを返す
 

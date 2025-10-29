@@ -9,8 +9,8 @@ from logging import getLogger
 import discord
 from discord import app_commands
 
-from ..utils.env_utils import get_required_env  # noqa
 from ..utils.command_metadata import command_meta
+from ..utils.env_utils import get_required_env  # noqa
 
 logger = getLogger(__name__)
 
@@ -57,9 +57,7 @@ def setup(tree: app_commands.CommandTree):
         ],
         notes="引数の説明は @app_commands.describe() で定義します。",
     )
-    @tree.command(
-        name="sample_with_args", description="引数付きサンプルコマンド"
-    )
+    @tree.command(name="sample_with_args", description="引数付きサンプルコマンド")
     @app_commands.describe(message="表示するメッセージ")
     async def sample_with_args_cmd(ctx: discord.Interaction, message: str):
         await sample_command_with_args(ctx, message)
