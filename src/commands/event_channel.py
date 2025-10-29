@@ -87,12 +87,6 @@ async def archive_event_channel(
     if not config:
         return
 
-    # コマンド実行チャンネルの確認
-    if not await validate_channel_restriction(
-        ctx, config.event_request_channel_name, must_be_in=False
-    ):
-        return
-
     guild = ctx.guild
 
     # アーカイブ先カテゴリーの存在確認
@@ -111,6 +105,11 @@ async def archive_event_channel(
             )
             return
     else:
+        # channel_name省略時は、EVENT_REQUEST_CHANNEL以外で実行
+        if not await validate_channel_restriction(
+            ctx, config.event_request_channel_name, must_be_in=False
+        ):
+            return
         channel = ctx.channel
 
     # チャンネルがイベントカテゴリーに属しているか確認
@@ -157,6 +156,7 @@ async def restore_event_channel(
 
     # 移動するチャンネルを特定
     if channel_name:
+        # channel_name指定時は任意の場所で実行可能
         channel = discord.utils.get(guild.text_channels, name=channel_name)
         if not channel:
             await send_error_message(
@@ -164,10 +164,15 @@ async def restore_event_channel(
             )
             return
     else:
+        # channel_name省略時は、アーカイブカテゴリー内でのみ実行可能
         channel = ctx.channel
+        if not await validate_channel_in_category(
+            ctx, channel, config.archive_event_category_name
+        ):
+            return
 
-    # チャンネルがアーカイブカテゴリーに属しているか確認
-    if not await validate_channel_in_category(
+    # チャンネルがアーカイブカテゴリーに属しているか確認（channel_name指定時）
+    if channel_name and not await validate_channel_in_category(
         ctx, channel, config.archive_event_category_name
     ):
         return
