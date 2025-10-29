@@ -9,6 +9,7 @@ from logging import getLogger
 import discord
 from discord import app_commands
 
+from ..utils.env_utils import get_required_env  # noqa
 from ..utils.command_metadata import command_meta
 
 logger = getLogger(__name__)
