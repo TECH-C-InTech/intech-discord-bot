@@ -297,7 +297,8 @@ async def add_event_role_member(
         return
 
     # 同名のチャンネルがEVENT_CATEGORY_NAMEカテゴリーに存在するか確認
-    event_channel = discord.utils.get(event_category.text_channels, name=role_name)
+    channel_dict = {ch.name: ch for ch in event_category.text_channels}
+    event_channel = channel_dict.get(role_name)
     if not event_channel:
         await send_error_message(
             ctx,
