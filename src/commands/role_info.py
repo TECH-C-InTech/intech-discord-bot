@@ -91,7 +91,7 @@ def setup(tree: app_commands.CommandTree):
         category="ロール管理",
         icon="👥",
         short_description="ロールに所属するメンバー一覧を表示",
-        restrictions="• 安全なロール（管理者権限なし、Bot管理なし、@everyoneでない）のみ表示可能",
+        restrictions="• 一部ロール以外のみ表示可能",
         examples=[
             "`/show_role_members role_name:@1-event`",
             "`/show_role_members role_name:@1-event visibility:全員に公開`",

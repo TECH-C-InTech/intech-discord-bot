@@ -411,7 +411,7 @@ def setup(tree: app_commands.CommandTree):
         category="ロール管理",
         icon="👥",
         short_description="イベントロールにメンバーを追加",
-        restrictions="• 安全なロール(管理者権限なし、Bot管理なし、@everyoneでない)のみ対象",
+        restrictions="• 一部ロール以外のみ対象",
         examples=[
             "`/add_event_role_member members:@user1 @user2`",
             "`/add_event_role_member members:@user1 role_name:@1-event`",
