@@ -110,9 +110,7 @@ async def send_error_message(
     logger.info(f"Error message sent to {ctx.user}: {message}")
 
 
-async def handle_command_error(
-    ctx: discord.Interaction, error: Exception, action: str
-) -> None:
+async def handle_command_error(ctx: discord.Interaction, error: Exception, action: str) -> None:
     """コマンド実行時のエラーをハンドリングする
 
     一般的なDiscordエラーを適切にハンドリングし、ユーザーにわかりやすいメッセージを表示する。

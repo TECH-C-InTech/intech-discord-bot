@@ -1,7 +1,7 @@
 """チャンネル実行場所のバリデーション"""
 
-import re
 from logging import getLogger
+import re
 
 import discord
 
@@ -26,6 +26,14 @@ async def validate_channel_restriction(
     Returns:
         バリデーションが成功した場合True、失敗した場合False
     """
+    # ctx.channel が None または name 属性がない場合のチェック
+    if ctx.channel is None or not hasattr(ctx.channel, "name"):
+        await send_error_message(
+            ctx,
+            "このコマンドはテキストチャンネルでのみ実行できます。",
+        )
+        return False
+
     is_in_channel = ctx.channel.name == allowed_channel_name
 
     # 早期リターンでシンプルに
@@ -38,15 +46,20 @@ async def validate_channel_restriction(
 
     # エラーメッセージ用にチャンネルを取得
     guild = ctx.guild
+    allowed_channel = None
     if guild is not None:
         allowed_channel = discord.utils.get(guild.text_channels, name=allowed_channel_name)
-    else:
-        allowed_channel = None
 
     # チャンネルが見つかった場合はメンション、見つからない場合は名前のみ
-    channel_display = (
-        allowed_channel.mention if allowed_channel else f"`{allowed_channel_name}`"
-    )
+    channel_display = allowed_channel.mention if allowed_channel else f"`{allowed_channel_name}`"
+
+    # ctx.channel が None でないことを確認
+    if ctx.channel is None or not hasattr(ctx.channel, "name"):
+        await send_error_message(
+            ctx,
+            "このコマンドはテキストチャンネルでのみ実行できます。",
+        )
+        return False
 
     # エラーメッセージ
     if must_be_in:
@@ -95,8 +108,8 @@ async def validate_channel_in_category(
             help_text=f"`{category_name}` カテゴリー配下のチャンネルでコマンドを実行してください。",
         )
         logger.info(
-            f"Category validation failed: {channel.name} has no category "
-            f"(required: {category_name})"
+            f"Category validation failed: "
+            f"{channel.name} has no category (required: {category_name})"
         )
         return False
 
@@ -109,8 +122,8 @@ async def validate_channel_in_category(
             f"チャンネル名を指定してください。",
         )
         logger.info(
-            f"Category validation failed: {channel.name} is in '{channel.category.name}' "
-            f"(required: '{category_name}')"
+            f"Category validation failed: "
+            f"{channel.name} is in '{channel.category.name}' (required: '{category_name}')"
         )
         return False
 
@@ -139,7 +152,7 @@ async def parse_member_mentions(
     for mention in member_mentions:
         # メンションIDを抽出（<@123456789> または <@!123456789> → 123456789）
         # 正規表現で正確にパースする（strip()は不正確なため使用しない）
-        match = re.match(r'^<@!?(\d+)>$', mention)
+        match = re.match(r"^<@!?(\d+)>$", mention)
         if not match:
             await send_error_message(
                 ctx,
@@ -148,7 +161,7 @@ async def parse_member_mentions(
             )
             logger.warning(f"Invalid member mention format: {mention}")
             return None
-        
+
         member_id = match.group(1)
         member_id_int = int(member_id)  # Safe: regex ensures digits only
         member = guild.get_member(member_id_int)
@@ -258,9 +271,7 @@ async def validate_role_safety(
             f"{role.mention} は管理者権限を持つため、このコマンドでは操作できません。",
             help_text="セキュリティ上の理由から、管理者ロールは操作できません。",
         )
-        logger.warning(
-            f"Role safety check failed: {role.name} has administrator permission"
-        )
+        logger.warning(f"Role safety check failed: {role.name} has administrator permission")
         return False
 
     # 2. Bot専用ロール（managed）はNG

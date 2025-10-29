@@ -35,6 +35,4 @@ def setup_all_commands(tree: app_commands.CommandTree):
         if hasattr(module, "setup"):
             module.setup(tree)
         else:
-            raise AttributeError(
-                f"Module {module.__name__} does not have a setup function"
-            )
+            raise AttributeError(f"Module {module.__name__} does not have a setup function")

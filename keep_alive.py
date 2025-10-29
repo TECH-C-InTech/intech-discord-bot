@@ -3,9 +3,9 @@
 from datetime import datetime
 from logging import getLogger
 
-import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+import uvicorn
 
 logger = getLogger(__name__)
 
