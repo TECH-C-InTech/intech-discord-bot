@@ -4,20 +4,11 @@
 
 ```
 intech-discord-bot/
-├── main.py                      # 旧エントリーポイント（レガシー）
-├── bot.py                       # 新エントリーポイント（リファクタリング版）
+├── bot.py                       # エントリーポイント
 ├── src/
 │   ├── __init__.py
 │   ├── commands/                # コマンド定義
-│   │   ├── __init__.py
-│   │   ├── event_channel.py    # イベントチャンネル管理コマンド
-│   │   ├── role_info.py        # ロール情報表示コマンド
-│   │   └── help.py             # ヘルプコマンド
 │   └── utils/                   # ユーティリティ関数
-│       ├── __init__.py
-│       ├── channel_utils.py    # チャンネル関連のユーティリティ
-│       ├── env_utils.py        # 環境変数関連のユーティリティ
-│       └── validation_utils.py # バリデーション関連のユーティリティ
 ├── .env                         # 環境変数（gitignore対象）
 ├── .env.sample                  # 環境変数のサンプル
 ├── pyproject.toml               # プロジェクト設定
@@ -27,7 +18,7 @@ intech-discord-bot/
 ## Setup
 
 ```bash
-uv sync
+uv sync --dev
 ```
 
 .env.sampleをコピーして.envを作成し、環境変数を設定する。
@@ -113,6 +104,30 @@ python bot.py
 
 ### コードスタイル
 
-- フォーマッター: ruff (または black)
+- フォーマッター: ruff
 - 型ヒントを推奨
 - docstringを記述
+
+## Deployment
+
+Fly.ioにデプロイしています。
+
+```bash
+fly deploy
+
+# logs
+flyctl logs
+
+# status
+flyctl status
+```
+
+※ 初回オンリー
+
+```bash
+fly auth login
+flyctl launch --region nrt
+fly deploy
+fly secrets set { .env.sampleの内容をここにコピー }
+fly deploy
+```
