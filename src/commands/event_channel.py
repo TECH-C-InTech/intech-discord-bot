@@ -155,7 +155,7 @@ async def archive_event_channel(
         return
 
     # 移動するチャンネルを特定
-    channel: discord.TextChannel | None = None
+    channel: discord.TextChannel | discord.CategoryChannel | None = None
     if channel_name:
         channel = await get_channel_by_name(ctx, guild, channel_name)
         if not channel:
@@ -166,11 +166,11 @@ async def archive_event_channel(
             ctx, config.event_request_channel_name, must_be_in=False
         ):
             return
-        # ctx.channel が TextChannel であることを確認
-        if not isinstance(ctx.channel, discord.TextChannel):
+        # ctx.channel が TextChannel または CategoryChannel であることを確認
+        if not isinstance(ctx.channel, (discord.TextChannel, discord.CategoryChannel)):
             await send_error_message(
                 ctx,
-                "このコマンドはテキストチャンネルでのみ実行できます。",
+                "このコマンドはテキストチャンネルまたはカテゴリーチャンネルでのみ実行できます。",
             )
             return
         channel = ctx.channel
@@ -223,7 +223,7 @@ async def restore_event_channel(
         return
 
     # 移動するチャンネルを特定
-    channel: discord.TextChannel | None = None
+    channel: discord.TextChannel | discord.CategoryChannel | None = None
     if channel_name:
         # channel_name指定時は任意の場所で実行可能
         channel = await get_channel_by_name(ctx, guild, channel_name)
@@ -231,7 +231,7 @@ async def restore_event_channel(
             return
     else:
         # channel_name省略時は、アーカイブカテゴリー内でのみ実行可能
-        if not isinstance(ctx.channel, discord.TextChannel):
+        if not isinstance(ctx.channel, (discord.TextChannel, discord.CategoryChannel)):
             await send_error_message(ctx, "このコマンドはテキストチャンネルでのみ実行できます。")
             return
         channel = ctx.channel
