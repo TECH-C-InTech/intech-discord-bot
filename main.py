@@ -1,7 +1,8 @@
-from logging import getLogger, basicConfig
 import os
+from logging import basicConfig, getLogger
 
 import discord
+from discord import app_commands
 from dotenv import load_dotenv
 
 logger = getLogger(__name__)
@@ -9,58 +10,48 @@ basicConfig(level="INFO")
 
 load_dotenv()
 
+# Discord Bot の設定
 intents = discord.Intents.default()
-intents.emojis_and_stickers = True  # Required to receive on_guild_emojis_update
+intents.message_content = True
 
-CLIENT = discord.Client(intents=intents)
+client = discord.Client(intents=intents)
+tree = app_commands.CommandTree(client)
 
-@CLIENT.event
+
+# デコレーターが続く場合、関数名を拾えないので、nameで明示的に指定してやる
+@tree.command(name='hello', description="挨拶をします")
+@app_commands.describe(user="挨拶するユーザー")
+async def hello(ctx: discord.Interaction):
+    """シンプルな挨拶コマンド"""
+    await ctx.response.send_message(
+        f"こんにちは、{ctx.user.mention}さん！"
+    )
+
+
+@client.event
 async def on_ready():
-    print(f'We have logged in as {CLIENT.user}')
+    """Botが起動したときの処理"""
+    logger.info(f"Logged in as {client.user} (ID: {client.user.id})")
+    logger.info("------")
 
-@CLIENT.event
-async def on_guild_emojis_update(guild: discord.Guild, before: list[discord.Emoji], after: list[discord.Emoji]):
-    # <:{emoji.name}:{emoji_id}> にすると、サーバー内で使えるカスタム絵文字を表示できる
+    # スラッシュコマンドを同期 (必須)
+    try:
+        synced = await tree.sync()
+        logger.info(f"Synced {len(synced)} command(s)")
+    except Exception as e:
+        logger.error(f"Failed to sync commands: {e}")
 
-    state = ""
-    message = ""
 
-    for emoji in set(after) - set(before):
-        state = "Added:"
-        message = f"Emoji: <:{emoji.name}:{emoji.id}> added"
+def main():
+    """メイン関数"""
+    token = os.getenv("DISCORD_BOT_TOKEN")
 
-    for emoji in set(before) - set(after):
-        state = "Removed:"
-        message = f"Emoji: :{emoji.name}: removed"
-
-    # 上記以外は無視
-    if state == "" and message == "":
+    if not token:
+        logger.error("DISCORD_BOT_TOKEN が設定されていません")
         return
 
-    logger.info("-" * 20)
-    logger.info(f"Guild: {guild.name}")
-    logger.info(state)
-    logger.info(message)
+    client.run(token)
 
-    # send event
-    channel_name = os.getenv("EMOJI_LOG_CHANNEL_NAME")
-
-    def send_message(channel_list: list[discord.Thread | discord.TextChannel]):
-        channel = discord.utils.get(channel_list, name=channel_name)
-        if channel is not None:
-            return channel.send(message)
-        else:
-            logger.error(f"{channel_name} channel not found")
-            return None
-
-    if os.getenv("IS_DEBUG"):
-        await send_message(guild.threads)
-    else:
-        await send_message(guild.text_channels)
 
 if __name__ == "__main__":
-    token = os.getenv("DISCORD_BOT_TOKEN")
-    if token is None:
-        raise EnvironmentError("DISCORD_BOT_TOKEN is not set")
-
-    CLIENT.run(token)
+    main()
