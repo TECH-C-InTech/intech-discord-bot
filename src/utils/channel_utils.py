@@ -16,7 +16,9 @@ logger = getLogger(__name__)
 
 
 def get_next_event_index(
-    guild: discord.Guild, event_category_name: str, archive_event_category_name: str
+    guild: discord.Guild,
+    event_category_name: str,
+    archive_event_category_name: str,
 ) -> int:
     """イベントカテゴリーとアーカイブカテゴリーから次のインデックス番号を取得する
 
@@ -38,14 +40,18 @@ def get_next_event_index(
     pattern = re.compile(r"^(\d+)-")
 
     # イベントカテゴリーのチャンネルをチェック
-    event_category = discord.utils.get(guild.categories, name=event_category_name)
+    event_category = discord.utils.get(
+        guild.categories, name=event_category_name
+    )
     if event_category:
         for channel in event_category.channels:
             match = pattern.match(channel.name)
             if match:
                 index = int(match.group(1))
                 max_index = max(max_index, index)
-                logger.debug(f"Found event channel: {channel.name} with index {index}")
+                logger.debug(
+                    f"Found event channel: {channel.name} with index {index}"
+                )
 
     # アーカイブカテゴリーのチャンネルをチェック
     archive_category = discord.utils.get(
@@ -63,8 +69,7 @@ def get_next_event_index(
 
     next_index = max_index + 1
     logger.info(
-        f"Next event index: {next_index} (max found: {max_index}) "
-        f"in guild '{guild.name}'"
+        f"Next event index: {next_index} (max found: {max_index}) in guild '{guild.name}'"
     )
     return next_index
 
@@ -89,8 +94,7 @@ async def validate_category_exists(
 
     if not category_channel:
         logger.warning(
-            f"Category '{category_name}' not found in guild '{guild.name}' "
-            f"(requested by {ctx.user})"
+            f"Category '{category_name}' not found in guild '{guild.name}' (requested by {ctx.user})"
         )
         logger.warning(
             f"Available categories: {[cat.name for cat in guild.categories]}"
@@ -102,7 +106,9 @@ async def validate_category_exists(
         )
         return None
 
-    logger.debug(f"Category '{category_name}' found with ID: {category_channel.id}")
+    logger.debug(
+        f"Category '{category_name}' found with ID: {category_channel.id}"
+    )
     return category_channel
 
 
@@ -126,12 +132,10 @@ async def get_channel_by_name(
     if not channel:
         await send_error_message(
             ctx,
-            f"チャンネル `{channel_name}` が見つかりません。\n"
-            f"チャンネル名を確認してください。",
+            f"チャンネル `{channel_name}` が見つかりません。\nチャンネル名を確認してください。",
         )
         logger.warning(
-            f"Channel '{channel_name}' not found in guild '{guild.name}' "
-            f"(requested by {ctx.user})"
+            f"Channel '{channel_name}' not found in guild '{guild.name}' (requested by {ctx.user})"
         )
         return None
 

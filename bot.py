@@ -61,7 +61,9 @@ async def on_ready():
         else:
             # 全サーバーに同期（反映に最大1時間かかる）
             synced = await tree.sync()
-            logger.info(f"✅ [PRODUCTION] Synced {len(synced)} command(s) globally")
+            logger.info(
+                f"✅ [PRODUCTION] Synced {len(synced)} command(s) globally"
+            )
 
     except Exception as e:
         logger.error(f"❌ Failed to sync commands: {e}")

@@ -88,7 +88,10 @@ async def show_docs(
         metadata_commands = list(get_all_metadata().keys())
         if metadata_commands:
             available_commands = "\n".join(
-                [f"• `/docs command:{cmd}`" for cmd in sorted(metadata_commands)]
+                [
+                    f"• `/docs command:{cmd}`"
+                    for cmd in sorted(metadata_commands)
+                ]
             )
             embed.add_field(
                 name="利用可能なコマンド",
@@ -119,7 +122,9 @@ async def show_docs(
             if metadata_commands:
                 embed.add_field(
                     name="利用可能なコマンド",
-                    value=", ".join([f"`{cmd}`" for cmd in sorted(metadata_commands)]),
+                    value=", ".join(
+                        [f"`{cmd}`" for cmd in sorted(metadata_commands)]
+                    ),
                     inline=False,
                 )
         else:
@@ -138,7 +143,9 @@ async def show_docs(
                     param_name = param.name
                     param_desc = param.description or "説明なし"
                     required = "必須" if param.required else "任意"
-                    params_text.append(f"**{param_name}** ({required}): {param_desc}")
+                    params_text.append(
+                        f"**{param_name}** ({required}): {param_desc}"
+                    )
 
                 embed.add_field(
                     name="⚙️ パラメータ",
@@ -149,7 +156,9 @@ async def show_docs(
             # メタデータからの追加情報
             if metadata.restrictions:
                 embed.add_field(
-                    name="🚫 実行制限", value=metadata.restrictions, inline=False
+                    name="🚫 実行制限",
+                    value=metadata.restrictions,
+                    inline=False,
                 )
 
             if metadata.examples:
@@ -160,11 +169,14 @@ async def show_docs(
                 )
 
             if metadata.notes:
-                embed.add_field(name="📝 注意事項", value=metadata.notes, inline=False)
+                embed.add_field(
+                    name="📝 注意事項", value=metadata.notes, inline=False
+                )
 
     await ctx.response.send_message(embed=embed, ephemeral=True)
     logger.info(
-        f"Docs command executed by {ctx.user}" + (f" for {command}" if command else "")
+        f"Docs command executed by {ctx.user}"
+        + (f" for {command}" if command else "")
     )
 
 
@@ -203,6 +215,8 @@ def setup(tree: app_commands.CommandTree):
         name="docs",
         description="コマンドの詳細ドキュメントを表示します",
     )
-    @app_commands.describe(command="詳細を確認したいコマンド名（省略時は一覧を表示）")
+    @app_commands.describe(
+        command="詳細を確認したいコマンド名（省略時は一覧を表示）"
+    )
     async def docs_cmd(ctx: discord.Interaction, command: str = None):
         await show_docs(tree, ctx, command)

@@ -8,7 +8,9 @@ import discord
 logger = getLogger(__name__)
 
 
-def create_success_embed(title: str, description: str, **fields) -> discord.Embed:
+def create_success_embed(
+    title: str, description: str, **fields
+) -> discord.Embed:
     """成功メッセージのEmbedを作成する
 
     Args:
@@ -103,7 +105,9 @@ async def send_error_message(
     else:
         # シンプルなエラーメッセージ
         if not ctx.response.is_done():
-            await ctx.response.send_message(f"❌ {message}", ephemeral=ephemeral)
+            await ctx.response.send_message(
+                f"❌ {message}", ephemeral=ephemeral
+            )
         else:
             await ctx.followup.send(f"❌ {message}", ephemeral=ephemeral)
 

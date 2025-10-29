@@ -73,7 +73,9 @@ async def create_event_channel(
     try:
         # 次のインデックス番号を取得
         next_index = get_next_event_index(
-            guild, config.event_category_name, config.archive_event_category_name
+            guild,
+            config.event_category_name,
+            config.archive_event_category_name,
         )
 
         # チャンネル名を {index}-{name} の形式で構築
@@ -96,7 +98,9 @@ async def create_event_channel(
                 await member.add_roles(role)
 
         # 成功メッセージ
-        description_parts = [f"{channel.mention} と {role.mention} を作成しました"]
+        description_parts = [
+            f"{channel.mention} と {role.mention} を作成しました"
+        ]
 
         if member_objects:
             member_mentions_str = ", ".join([m.mention for m in member_objects])
@@ -161,7 +165,9 @@ async def archive_event_channel(
         channel = ctx.channel
 
     # チャンネルがイベントカテゴリーに属しているか確認
-    if not await validate_channel_in_category(ctx, channel, config.event_category_name):
+    if not await validate_channel_in_category(
+        ctx, channel, config.event_category_name
+    ):
         return
 
     try:
@@ -283,7 +289,9 @@ async def add_event_role_member(
         # ロールを名前で検索
         role = discord.utils.get(guild.roles, name=role_name)
         if not role:
-            await send_error_message(ctx, f"ロール `{role_name}` が見つかりません。")
+            await send_error_message(
+                ctx, f"ロール `{role_name}` が見つかりません。"
+            )
             return
     else:
         # role_nameが指定された場合、パース関数でロールを取得
@@ -334,7 +342,9 @@ async def add_event_role_member(
             )
 
         if already_has_role:
-            member_mentions_str = ", ".join([m.mention for m in already_has_role])
+            member_mentions_str = ", ".join(
+                [m.mention for m in already_has_role]
+            )
             description_parts.append(
                 f"\n以下のメンバーは既にロールを持っています:\n{member_mentions_str}"
             )

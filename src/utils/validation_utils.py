@@ -39,13 +39,17 @@ async def validate_channel_restriction(
     # エラーメッセージ用にチャンネルを取得
     guild = ctx.guild
     if guild is not None:
-        allowed_channel = discord.utils.get(guild.text_channels, name=allowed_channel_name)
+        allowed_channel = discord.utils.get(
+            guild.text_channels, name=allowed_channel_name
+        )
     else:
         allowed_channel = None
 
     # チャンネルが見つかった場合はメンション、見つからない場合は名前のみ
     channel_display = (
-        allowed_channel.mention if allowed_channel else f"`{allowed_channel_name}`"
+        allowed_channel.mention
+        if allowed_channel
+        else f"`{allowed_channel_name}`"
     )
 
     # エラーメッセージ
@@ -95,8 +99,7 @@ async def validate_channel_in_category(
             help_text=f"`{category_name}` カテゴリー配下のチャンネルでコマンドを実行してください。",
         )
         logger.info(
-            f"Category validation failed: {channel.name} has no category "
-            f"(required: {category_name})"
+            f"Category validation failed: {channel.name} has no category (required: {category_name})"
         )
         return False
 
@@ -109,12 +112,13 @@ async def validate_channel_in_category(
             f"チャンネル名を指定してください。",
         )
         logger.info(
-            f"Category validation failed: {channel.name} is in '{channel.category.name}' "
-            f"(required: '{category_name}')"
+            f"Category validation failed: {channel.name} is in '{channel.category.name}' (required: '{category_name}')"
         )
         return False
 
-    logger.debug(f"Category validation passed: {channel.name} is in '{category_name}'")
+    logger.debug(
+        f"Category validation passed: {channel.name} is in '{category_name}'"
+    )
     return True
 
 
@@ -139,7 +143,7 @@ async def parse_member_mentions(
     for mention in member_mentions:
         # メンションIDを抽出（<@123456789> または <@!123456789> → 123456789）
         # 正規表現で正確にパースする（strip()は不正確なため使用しない）
-        match = re.match(r'^<@!?(\d+)>$', mention)
+        match = re.match(r"^<@!?(\d+)>$", mention)
         if not match:
             await send_error_message(
                 ctx,
@@ -148,13 +152,15 @@ async def parse_member_mentions(
             )
             logger.warning(f"Invalid member mention format: {mention}")
             return None
-        
+
         member_id = match.group(1)
         member_id_int = int(member_id)  # Safe: regex ensures digits only
         member = guild.get_member(member_id_int)
         if member:
             member_objects.append(member)
-            logger.debug(f"Parsed member mention: {member.name} ({member_id_int})")
+            logger.debug(
+                f"Parsed member mention: {member.name} ({member_id_int})"
+            )
         else:
             await send_error_message(
                 ctx,
@@ -270,7 +276,9 @@ async def validate_role_safety(
             f"{role.mention} はBot専用ロールまたはインテグレーションロールのため、操作できません。",
             help_text="このロールはシステムによって管理されています。",
         )
-        logger.warning(f"Role safety check failed: {role.name} is a managed role")
+        logger.warning(
+            f"Role safety check failed: {role.name} is a managed role"
+        )
         return False
 
     # 3. @everyone ロールはNG
@@ -280,7 +288,9 @@ async def validate_role_safety(
             "@everyone ロールは操作できません。",
             help_text="特定のロールを指定してください。",
         )
-        logger.warning("Role safety check failed: attempted to use @everyone role")
+        logger.warning(
+            "Role safety check failed: attempted to use @everyone role"
+        )
         return False
 
     logger.debug(f"Role safety check passed: {role.name}")

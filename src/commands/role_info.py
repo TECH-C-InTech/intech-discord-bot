@@ -40,7 +40,9 @@ async def show_role_members(
         return
 
     # ロールを持っているメンバーを取得
-    members_with_role = [member for member in guild.members if role in member.roles]
+    members_with_role = [
+        member for member in guild.members if role in member.roles
+    ]
 
     # Embedを作成
     embed = discord.Embed(
@@ -67,7 +69,9 @@ async def show_role_members(
             )
 
             field_name = (
-                "👥 メンバー" if i == 0 else f"👥 メンバー (続き {i // chunk_size + 1})"
+                "👥 メンバー"
+                if i == 0
+                else f"👥 メンバー (続き {i // chunk_size + 1})"
             )
             embed.add_field(
                 name=field_name,
