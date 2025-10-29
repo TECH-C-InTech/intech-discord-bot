@@ -107,7 +107,7 @@ async def archive_event_channel(
         channel = discord.utils.get(guild.text_channels, name=channel_name)
         if not channel:
             await send_error_message(
-                ctx, f"チャンネル '{channel_name}' が見つかりません。"
+                ctx, f"チャンネル `{channel_name}` が見つかりません。"
             )
             return
     else:
@@ -160,7 +160,7 @@ async def restore_event_channel(
         channel = discord.utils.get(guild.text_channels, name=channel_name)
         if not channel:
             await send_error_message(
-                ctx, f"チャンネル '{channel_name}' が見つかりません。"
+                ctx, f"チャンネル `{channel_name}` が見つかりません。"
             )
             return
     else:

@@ -27,16 +27,25 @@ async def validate_channel_restriction(
     if is_in_channel == must_be_in:
         return True
 
+    # エラーメッセージ用にチャンネルを取得
+    guild = ctx.guild
+    allowed_channel = discord.utils.get(guild.text_channels, name=allowed_channel_name)
+
+    # チャンネルが見つかった場合はメンション、見つからない場合は名前のみ
+    channel_display = (
+        allowed_channel.mention if allowed_channel else f"'{allowed_channel_name}'"
+    )
+
     # エラーメッセージ
     if must_be_in:
         await send_error_message(
             ctx,
-            f"このコマンドは '{allowed_channel_name}' チャンネルでのみ実行できます。",
+            f"このコマンドは {channel_display} チャンネルでのみ実行できます。",
         )
     else:
         await send_error_message(
             ctx,
-            f"このコマンドは '{allowed_channel_name}' チャンネルでは実行できません。",
+            f"このコマンドは {channel_display} チャンネルでは実行できません。",
         )
 
     return False
@@ -61,7 +70,7 @@ async def validate_channel_in_category(
     if channel.category is None or channel.category.name != category_name:
         await send_error_message(
             ctx,
-            f"チャンネル '{channel.name}' はイベントカテゴリー '{category_name}' に属していません。\n"
+            f"チャンネル {channel.mention} はイベントカテゴリー '{category_name}' に属していません。\n"
             f"{category_name}配下のアーカイブしたいチャンネルでコマンドを実行するか、チャンネル名を指定してください。",
         )
         return False
