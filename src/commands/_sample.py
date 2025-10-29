@@ -10,6 +10,7 @@ import discord
 from discord import app_commands
 
 from ..utils.env_utils import get_required_env
+from ..utils.command_metadata import command_meta
 
 logger = getLogger(__name__)
 
@@ -27,15 +28,29 @@ async def sample_command_with_args(ctx: discord.Interaction, message: str):
 def setup(tree: app_commands.CommandTree):
     """
     サンプルコマンドを登録する
-
-    このsetup関数は、src/commands/__init__.pyのCOMMAND_MODULESリストに
-    このモジュールを追加することで自動的に呼び出されます。
     """
 
+    @command_meta(
+        category="サンプル",
+        icon="📝",
+        short_description="サンプルコマンド",
+        examples=[
+            "`/sample`",
+            "`/sample_with_args message:Hello`",
+        ],
+    )
     @tree.command(name="sample", description="サンプルコマンド")
     async def sample_cmd(ctx: discord.Interaction):
         await sample_command(ctx)
 
+    @command_meta(
+        category="サンプル",
+        icon="📝",
+        short_description="引数付きサンプルコマンド",
+        examples=[
+            "`/sample_with_args message:Hello`",
+        ],
+    )
     @tree.command(name="sample_with_args", description="引数付きサンプルコマンド")
     @app_commands.describe(message="表示するメッセージ")
     async def sample_with_args_cmd(ctx: discord.Interaction, message: str):

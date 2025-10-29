@@ -87,10 +87,6 @@ async def show_role_members(
 def setup(tree: app_commands.CommandTree):
     """ロール情報関連のコマンドを登録する"""
 
-    @tree.command(
-        name="show_role_members",
-        description="指定したロールのメンバー一覧を表示します",
-    )
     @command_meta(
         category="ロール管理",
         icon="👥",
@@ -101,6 +97,10 @@ def setup(tree: app_commands.CommandTree):
             "`/show_role_members role_name:@1-event visibility:全員に公開`",
         ],
         notes="メンバーが50人を超える場合は自動的に分割して表示されます",
+    )
+    @tree.command(
+        name="show_role_members",
+        description="指定したロールのメンバー一覧を表示します",
     )
     @app_commands.describe(
         role_name="対象のロール（@ロール形式で指定。例: @ロール名）",
