@@ -1,0 +1,54 @@
+# Git関連
+.git/
+.gitignore
+
+# Python関連
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# 仮想環境
+.venv/
+venv/
+env/
+ENV/
+
+# 環境変数ファイル（.env.sampleは含める）
+.env
+
+# IDE設定
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS固有ファイル
+.DS_Store
+Thumbs.db
+
+# ビルド関連
+build/
+dist/
+*.egg-info/
+
+# テスト・カバレッジ
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# ドキュメント（必要に応じて）
+docs/
+
+# ログファイル
+*.log
+
+# その他の不要なファイル
+README.md
+Dockerfile
+.dockerignore
+docker-compose.yml

@@ -37,16 +37,10 @@ discord bot tokenは @KorRyu3 or @nka21 に聞いてください。
 
 ## Usage
 
-### リファクタリング版（推奨）
+### 実行
 
 ```bash
 python bot.py
-```
-
-### レガシー版
-
-```bash
-python main.py
 ```
 
 ## 実装されているコマンド
