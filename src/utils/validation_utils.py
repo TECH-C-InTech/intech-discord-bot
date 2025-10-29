@@ -59,7 +59,7 @@ async def validate_channel_restriction(
         await send_error_message(
             ctx,
             f"このコマンドは {channel_display} チャンネルでは実行できません。",
-            help_text=f"別のチャンネルで実行してください。",
+            help_text="別のチャンネルで実行してください。",
         )
         logger.info(
             f"Channel restriction failed: {ctx.user} tried to run command in "
