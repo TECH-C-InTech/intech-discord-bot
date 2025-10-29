@@ -168,7 +168,10 @@ async def archive_event_channel(
             return
         # ctx.channel が TextChannel または CategoryChannel であることを確認
         if not isinstance(ctx.channel, (discord.TextChannel, discord.CategoryChannel)):
-            await send_error_message(ctx, "このコマンドはテキストチャンネルまたはカテゴリーチャンネルでのみ実行できます。")
+            await send_error_message(
+                ctx,
+                "このコマンドはテキストチャンネルまたはカテゴリーチャンネルでのみ実行できます。",
+            )
             return
         channel = ctx.channel
 
