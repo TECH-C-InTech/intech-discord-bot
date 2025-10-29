@@ -6,6 +6,7 @@ import discord
 from discord import app_commands
 
 from ..utils.command_metadata import command_meta
+from ..utils.message_utils import send_error_message
 from ..utils.validation_utils import parse_role_mention, validate_role_safety
 
 logger = getLogger(__name__)
@@ -29,6 +30,9 @@ async def show_role_members(
         visibility: 表示範囲（private/public）
     """
     guild = ctx.guild
+    if guild is None:
+        await send_error_message(ctx, "このコマンドはサーバー内でのみ実行できます。")
+        return
 
     # ロールをパース
     role = await parse_role_mention(ctx, role_name, guild)

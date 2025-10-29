@@ -28,13 +28,15 @@ async def show_help(ctx: discord.Interaction):
 
     # メタデータを取得してカテゴリー別にグループ化
     all_metadata = get_all_metadata()
-    categories = {}
+    categories: dict[tuple[str, str], list[tuple[str, str]]] = {}
 
     for cmd_name, metadata in all_metadata.items():
         category_key = (metadata.category, metadata.icon)
         if category_key not in categories:
             categories[category_key] = []
-        categories[category_key].append((cmd_name, metadata.short_description))
+        # short_description が None の場合は空文字列を使用
+        short_desc = metadata.short_description or ""
+        categories[category_key].append((cmd_name, short_desc))
 
     # カテゴリー別に表示
     for (category_name, icon), commands in sorted(categories.items()):
@@ -52,10 +54,13 @@ async def show_help(ctx: discord.Interaction):
         )
 
     # フッター
-    embed.set_footer(
-        text="💡 詳細は /docs コマンドで確認できます",
-        icon_url=ctx.client.user.display_avatar.url,
-    )
+    if ctx.client.user:
+        embed.set_footer(
+            text="💡 詳細は /docs コマンドで確認できます",
+            icon_url=ctx.client.user.display_avatar.url,
+        )
+    else:
+        embed.set_footer(text="💡 詳細は /docs コマンドで確認できます")
 
     await ctx.response.send_message(embed=embed, ephemeral=True)
     logger.info(f"Help command executed by {ctx.user}")
@@ -64,7 +69,7 @@ async def show_help(ctx: discord.Interaction):
 async def show_docs(
     tree: discord.app_commands.CommandTree,
     ctx: discord.Interaction,
-    command: str = None,
+    command: str | None = None,
 ):
     """コマンドの詳細ドキュメントを表示する
 
@@ -124,15 +129,18 @@ async def show_docs(
                 )
         else:
             # Discord APIから取得した情報とメタデータを組み合わせて表示
+            description_text = (
+                cmd_obj.description if hasattr(cmd_obj, "description") else "説明なし"
+            )
             embed = discord.Embed(
                 title=f"{metadata.icon} /{command}",
-                description=cmd_obj.description,
+                description=description_text,
                 color=discord.Color.green(),
                 timestamp=discord.utils.utcnow(),
             )
 
             # パラメータ情報を動的に生成
-            if cmd_obj.parameters:
+            if hasattr(cmd_obj, "parameters") and cmd_obj.parameters:
                 params_text = []
                 for param in cmd_obj.parameters:
                     param_name = param.name
@@ -204,5 +212,5 @@ def setup(tree: app_commands.CommandTree):
         description="コマンドの詳細ドキュメントを表示します",
     )
     @app_commands.describe(command="詳細を確認したいコマンド名（省略時は一覧を表示）")
-    async def docs_cmd(ctx: discord.Interaction, command: str = None):
+    async def docs_cmd(ctx: discord.Interaction, command: str | None = None):
         await show_docs(tree, ctx, command)

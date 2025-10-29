@@ -26,6 +26,14 @@ async def validate_channel_restriction(
     Returns:
         バリデーションが成功した場合True、失敗した場合False
     """
+    # ctx.channel が None または name 属性がない場合のチェック
+    if ctx.channel is None or not hasattr(ctx.channel, "name"):
+        await send_error_message(
+            ctx,
+            "このコマンドはテキストチャンネルでのみ実行できます。",
+        )
+        return False
+
     is_in_channel = ctx.channel.name == allowed_channel_name
 
     # 早期リターンでシンプルに
@@ -38,13 +46,20 @@ async def validate_channel_restriction(
 
     # エラーメッセージ用にチャンネルを取得
     guild = ctx.guild
+    allowed_channel = None
     if guild is not None:
         allowed_channel = discord.utils.get(guild.text_channels, name=allowed_channel_name)
-    else:
-        allowed_channel = None
 
     # チャンネルが見つかった場合はメンション、見つからない場合は名前のみ
     channel_display = allowed_channel.mention if allowed_channel else f"`{allowed_channel_name}`"
+
+    # ctx.channel が None でないことを確認
+    if ctx.channel is None or not hasattr(ctx.channel, "name"):
+        await send_error_message(
+            ctx,
+            "このコマンドはテキストチャンネルでのみ実行できます。",
+        )
+        return False
 
     # エラーメッセージ
     if must_be_in:
@@ -73,7 +88,7 @@ async def validate_channel_restriction(
 
 async def validate_channel_in_category(
     ctx: discord.Interaction,
-    channel: discord.TextChannel,
+    channel: discord.TextChannel | discord.CategoryChannel,
     category_name: str,
 ) -> bool:
     """チャンネルが特定のカテゴリーに属しているかを確認する

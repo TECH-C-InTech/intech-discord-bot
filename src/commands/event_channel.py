@@ -34,7 +34,7 @@ logger = getLogger(__name__)
 async def create_event_channel(
     ctx: discord.Interaction,
     channel_name: str,
-    members: str = None,
+    members: str | None = None,
 ):
     """イベントチャンネルを作成する
 
@@ -56,6 +56,10 @@ async def create_event_channel(
 
     # カテゴリーの存在確認
     guild = ctx.guild
+    if guild is None:
+        await send_error_message(ctx, "このコマンドはサーバー内でのみ実行できます。")
+        return
+
     category_channel = await validate_category_exists(ctx, guild, config.event_category_name)
     if not category_channel:
         return
@@ -125,7 +129,7 @@ async def create_event_channel(
 
 async def archive_event_channel(
     ctx: discord.Interaction,
-    channel_name: str = None,
+    channel_name: str | None = None,
 ):
     """イベントチャンネルをアーカイブする
 
@@ -139,6 +143,9 @@ async def archive_event_channel(
         return
 
     guild = ctx.guild
+    if guild is None:
+        await send_error_message(ctx, "このコマンドはサーバー内でのみ実行できます。")
+        return
 
     # アーカイブ先カテゴリーの存在確認
     archive_category_channel = await validate_category_exists(
@@ -148,6 +155,7 @@ async def archive_event_channel(
         return
 
     # 移動するチャンネルを特定
+    channel: discord.TextChannel | discord.CategoryChannel | None = None
     if channel_name:
         channel = await get_channel_by_name(ctx, guild, channel_name)
         if not channel:
@@ -157,6 +165,10 @@ async def archive_event_channel(
         if not await validate_channel_restriction(
             ctx, config.event_request_channel_name, must_be_in=False
         ):
+            return
+        # ctx.channel が TextChannel または CategoryChannel であることを確認
+        if not isinstance(ctx.channel, (discord.TextChannel, discord.CategoryChannel)):
+            await send_error_message(ctx, "このコマンドはテキストチャンネルまたはカテゴリーチャンネルでのみ実行できます。")
             return
         channel = ctx.channel
 
@@ -184,7 +196,7 @@ async def archive_event_channel(
 
 async def restore_event_channel(
     ctx: discord.Interaction,
-    channel_name: str = None,
+    channel_name: str | None = None,
 ):
     """アーカイブされたイベントチャンネルを復元する
 
@@ -198,6 +210,9 @@ async def restore_event_channel(
         return
 
     guild = ctx.guild
+    if guild is None:
+        await send_error_message(ctx, "このコマンドはサーバー内でのみ実行できます。")
+        return
 
     # イベントカテゴリーの存在確認
     event_category_channel = await validate_category_exists(ctx, guild, config.event_category_name)
@@ -205,6 +220,7 @@ async def restore_event_channel(
         return
 
     # 移動するチャンネルを特定
+    channel: discord.TextChannel | discord.CategoryChannel | None = None
     if channel_name:
         # channel_name指定時は任意の場所で実行可能
         channel = await get_channel_by_name(ctx, guild, channel_name)
@@ -212,6 +228,9 @@ async def restore_event_channel(
             return
     else:
         # channel_name省略時は、アーカイブカテゴリー内でのみ実行可能
+        if not isinstance(ctx.channel, (discord.TextChannel, discord.CategoryChannel)):
+            await send_error_message(ctx, "このコマンドはテキストチャンネルでのみ実行できます。")
+            return
         channel = ctx.channel
         if not await validate_channel_in_category(ctx, channel, config.archive_event_category_name):
             return
@@ -243,7 +262,7 @@ async def restore_event_channel(
 async def add_event_role_member(
     ctx: discord.Interaction,
     members: str,
-    role_name: str = None,
+    role_name: str | None = None,
 ):
     """イベントロールにメンバーを追加する
 
@@ -260,6 +279,9 @@ async def add_event_role_member(
         return
 
     guild = ctx.guild
+    if guild is None:
+        await send_error_message(ctx, "このコマンドはサーバー内でのみ実行できます。")
+        return
 
     # カテゴリーの存在確認
     event_category = await validate_category_exists(ctx, guild, config.event_category_name)
@@ -269,6 +291,9 @@ async def add_event_role_member(
     # role_nameが省略された場合は実行チャンネル名を使用
     if role_name is None:
         # コマンド実行チャンネルがEVENT_CATEGORY_NAMEカテゴリーに属しているか確認
+        if not isinstance(ctx.channel, discord.TextChannel):
+            await send_error_message(ctx, "このコマンドはテキストチャンネルでのみ実行できます。")
+            return
         if not await validate_channel_in_category(ctx, ctx.channel, config.event_category_name):
             return
         role_name = ctx.channel.name
@@ -383,7 +408,7 @@ def setup(tree: app_commands.CommandTree):
         members="ロールに追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
     )
     async def create_event_channel_cmd(
-        ctx: discord.Interaction, channel_name: str, members: str = None
+        ctx: discord.Interaction, channel_name: str, members: str | None = None
     ):
         await create_event_channel(ctx, channel_name, members)
 
@@ -404,7 +429,7 @@ def setup(tree: app_commands.CommandTree):
     @app_commands.describe(
         channel_name="アーカイブするイベントチャンネル名(デフォルトはコマンド実行チャンネル)"
     )
-    async def archive_event_channel_cmd(ctx: discord.Interaction, channel_name: str = None):
+    async def archive_event_channel_cmd(ctx: discord.Interaction, channel_name: str | None = None):
         await archive_event_channel(ctx, channel_name)
 
     @command_meta(
@@ -424,7 +449,7 @@ def setup(tree: app_commands.CommandTree):
     @app_commands.describe(
         channel_name="復元するイベントチャンネル名(デフォルトはコマンド実行チャンネル)"
     )
-    async def restore_event_channel_cmd(ctx: discord.Interaction, channel_name: str = None):
+    async def restore_event_channel_cmd(ctx: discord.Interaction, channel_name: str | None = None):
         await restore_event_channel(ctx, channel_name)
 
     @command_meta(
@@ -446,6 +471,6 @@ def setup(tree: app_commands.CommandTree):
         role_name="対象のロール（@ロール形式で指定。例: @1-event. 省略時は実行チャンネルのロール）",
     )
     async def add_event_role_member_cmd(
-        ctx: discord.Interaction, members: str, role_name: str = None
+        ctx: discord.Interaction, members: str, role_name: str | None = None
     ):
         await add_event_role_member(ctx, members, role_name)
