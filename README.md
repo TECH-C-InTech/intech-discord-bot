@@ -52,12 +52,15 @@ python bot.py
 
 | コマンド | 説明 |
 |---------|------|
-| `/help` | Botの使い方とコマンド一覧を表示 |
-| `/create_event_channel <name> [members]` | イベントチャンネルとロールを作成。メンバーを指定すると同時にロールに追加 |
+| `/help` | コマンド一覧を表示 |
+| `/docs [command]` | コマンドの詳細ドキュメントを表示 |
+| `/create_event_channel <name> [members]` | イベントチャンネルとロールを作成 |
 | `/archive_event_channel [name]` | イベントチャンネルをアーカイブ |
 | `/restore_event_channel [name]` | アーカイブされたチャンネルを復元 |
-| `/add_event_role_member <members> [role_name]` | イベントチャンネルに紐づくロールにメンバーを追加（省略時は実行チャンネルのロール） |
-| `/show_role_members <role_name> [visibility]` | 指定したロールのメンバー一覧を表示（デフォルト: 自分のみ、セーフなロールのみ） |
+| `/add_event_role_member <members> [role_name]` | イベントロールにメンバーを追加 |
+| `/show_role_members <role_name> [visibility]` | ロールのメンバー一覧を表示 |
+
+> 💡 各コマンドの詳細は `/docs command:コマンド名` で確認できます
 
 ## 環境変数
 
