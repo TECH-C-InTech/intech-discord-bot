@@ -1,5 +1,6 @@
 """Discord Bot エントリーポイント (リファクタリング版)"""
 
+import asyncio
 import os
 from logging import basicConfig, getLogger
 
@@ -7,6 +8,7 @@ import discord
 from discord import app_commands
 from dotenv import load_dotenv
 
+from keep_alive import run_server_async
 from src.commands import setup_all_commands
 
 logger = getLogger(__name__)
@@ -38,8 +40,8 @@ async def on_ready():
         logger.error(f"Failed to sync commands: {e}")
 
 
-def main():
-    """メイン関数"""
+async def run_bot():
+    """Botを非同期で実行"""
     # 全てのコマンドを一括セットアップ
     setup_all_commands(tree)
 
@@ -50,8 +52,20 @@ def main():
         logger.error("DISCORD_BOT_TOKEN が設定されていません")
         return
 
-    client.run(token)
+    await client.start(token)
+
+
+async def main():
+    """メイン関数"""
+    # Keep-aliveサーバーのポート（環境変数から取得、デフォルトは8000）
+    port = int(os.getenv("PORT", "8000"))
+
+    # Keep-aliveサーバーとBotを並行して実行
+    await asyncio.gather(
+        run_server_async(host="0.0.0.0", port=port),
+        run_bot(),
+    )
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
