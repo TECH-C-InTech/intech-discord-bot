@@ -1,4 +1,5 @@
 import os
+import re
 from logging import basicConfig, getLogger
 
 import discord
@@ -19,6 +20,41 @@ client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
 
+def get_next_event_index(
+    guild: discord.Guild, event_category_name: str, archive_event_category_name: str
+) -> int:
+    """
+    eventカテゴリーとarchivedカテゴリーのチャンネルから、
+    最大のインデックス番号を見つけて+1した値を返す
+
+    チャンネル名のパターン: {index}-{name}
+    例: 1-新歓イベント, 2-ハッカソン
+    """
+    max_index = 0
+
+    # eventカテゴリーのチャンネルをチェック
+    event_category = discord.utils.get(guild.categories, name=event_category_name)
+    if event_category:
+        for channel in event_category.channels:
+            match = re.match(r"^(\d+)-", channel.name)
+            if match:
+                index = int(match.group(1))
+                max_index = max(max_index, index)
+
+    # archivedカテゴリーのチャンネルをチェック
+    archive_category = discord.utils.get(
+        guild.categories, name=archive_event_category_name
+    )
+    if archive_category:
+        for channel in archive_category.channels:
+            match = re.match(r"^(\d+)-", channel.name)
+            if match:
+                index = int(match.group(1))
+                max_index = max(max_index, index)
+
+    return max_index + 1
+
+
 @tree.command(description="新しいイベントチャンネルを作成します")
 @app_commands.describe(
     channel_name="作成するイベントチャンネル名",
@@ -36,11 +72,20 @@ async def create_event_channel(
         )
         return
 
+    archive_event_category_name = os.getenv("ARCHIVE_EVENT_CATEGORY_NAME")
+    if not archive_event_category_name:
+        await ctx.response.send_message(
+            "❌ 環境変数 'ARCHIVE_EVENT_CATEGORY_NAME' が設定されていません。",
+            ephemeral=True,
+        )
+        return
+
     # コマンド実行チャンネルがEVENT_REQUEST_CHANNEL_NAMEか確認
     event_request_channel_name = os.getenv("EVENT_REQUEST_CHANNEL_NAME")
     if ctx.channel.name != event_request_channel_name:
         await ctx.response.send_message(
-            f"❌ このコマンドは '{event_request_channel_name}' チャンネルでのみ実行できます。", ephemeral=True
+            f"❌ このコマンドは '{event_request_channel_name}' チャンネルでのみ実行できます。",
+            ephemeral=True,
         )
         return
 
@@ -48,18 +93,30 @@ async def create_event_channel(
     guild = ctx.guild
     category_channel = discord.utils.get(guild.categories, name=event_category_name)
     if not category_channel:
-        logger.error(f"Event category '{event_category_name}' does not exist in guild '{guild.name}'")
-        logger.error("Please update the EVENT_CATEGORY_NAME environment variable. now:", event_category_name)
+        logger.error(
+            f"Event category '{event_category_name}' does not exist in guild '{guild.name}'"
+        )
+        logger.error(
+            "Please update the EVENT_CATEGORY_NAME environment variable. now:",
+            event_category_name,
+        )
         await ctx.response.send_message(
-            f"❌ イベントカテゴリー '{event_category_name}' が存在しません。サーバー設定を更新する必要があるため、管理者に連絡してください。", ephemeral=True
+            f"❌ イベントカテゴリー '{event_category_name}' が存在しません。サーバー設定を更新する必要があるため、管理者に連絡してください。",
+            ephemeral=True,
         )
         return
 
     try:
-        guild = ctx.guild
+        # 次のインデックス番号を取得
+        next_index = get_next_event_index(
+            guild, event_category_name, archive_event_category_name
+        )
+
+        # チャンネル名を {index}-{name} の形式で構築
+        formatted_channel_name = f"{next_index}-{channel_name}"
 
         channel = await guild.create_text_channel(
-            name=channel_name, category=category_channel
+            name=formatted_channel_name, category=category_channel
         )
 
         # 成功メッセージ
@@ -68,10 +125,13 @@ async def create_event_channel(
             description=f"{channel.mention} を作成しました",
             color=discord.Color.green(),
         )
-        embed.add_field(name="チャンネル名", value=channel_name, inline=True)
+        embed.add_field(name="チャンネル名", value=formatted_channel_name, inline=True)
+        embed.add_field(name="インデックス", value=str(next_index), inline=True)
 
         await ctx.response.send_message(embed=embed)
-        logger.info(f"Created channel: {channel_name} by {ctx.user}")
+        logger.info(
+            f"Created channel: {formatted_channel_name} (index: {next_index}) by {ctx.user}"
+        )
 
     except discord.Forbidden:
         await ctx.response.send_message(
@@ -98,7 +158,8 @@ async def archive_event_channel(
     archive_event_category_name = os.getenv("ARCHIVE_EVENT_CATEGORY_NAME")
     if not archive_event_category_name:
         await ctx.response.send_message(
-            "❌ 環境変数 'ARCHIVE_EVENT_CATEGORY_NAME' が設定されていません。", ephemeral=True
+            "❌ 環境変数 'ARCHIVE_EVENT_CATEGORY_NAME' が設定されていません。",
+            ephemeral=True,
         )
         return
 
@@ -113,10 +174,10 @@ async def archive_event_channel(
     event_request_channel_name = os.getenv("EVENT_REQUEST_CHANNEL_NAME")
     if ctx.channel.name == event_request_channel_name:
         await ctx.response.send_message(
-            f"❌ このコマンドは '{event_request_channel_name}' チャンネルでは実行できません。", ephemeral=True
+            f"❌ このコマンドは '{event_request_channel_name}' チャンネルでは実行できません。",
+            ephemeral=True,
         )
         return
-
 
     guild = ctx.guild
 
@@ -125,10 +186,16 @@ async def archive_event_channel(
         guild.categories, name=archive_event_category_name
     )
     if not archive_category_channel:
-        logger.error(f"Archive category '{archive_event_category_name}' does not exist in guild '{guild.name}'")
-        logger.error("Please update the ARCHIVE_EVENT_CATEGORY_NAME environment variable. now:", archive_event_category_name)
+        logger.error(
+            f"Archive category '{archive_event_category_name}' does not exist in guild '{guild.name}'"
+        )
+        logger.error(
+            "Please update the ARCHIVE_EVENT_CATEGORY_NAME environment variable. now:",
+            archive_event_category_name,
+        )
         await ctx.response.send_message(
-            f"❌ アーカイブカテゴリー '{archive_event_category_name}' が存在しません。サーバー設定を更新する必要があるため、管理者に連絡してください。", ephemeral=True
+            f"❌ アーカイブカテゴリー '{archive_event_category_name}' が存在しません。サーバー設定を更新する必要があるため、管理者に連絡してください。",
+            ephemeral=True,
         )
         return
 
@@ -149,7 +216,7 @@ async def archive_event_channel(
         await ctx.response.send_message(
             f"❌ チャンネル '{channel.name}' はイベントカテゴリー '{event_category_name}' に属していません。\n"
             f"{event_category_name}配下のアーカイブしたいチャンネルでコマンドを実行するか、チャンネル名を指定してください。",
-            ephemeral=True
+            ephemeral=True,
         )
         return
 
@@ -174,7 +241,8 @@ async def archive_event_channel(
     except Exception as e:
         logger.error(f"Error archiving channel: {e}")
         await ctx.response.send_message(
-            f"❌ チャンネルのアーカイブ中にエラーが発生しました: {str(e)}", ephemeral=True
+            f"❌ チャンネルのアーカイブ中にエラーが発生しました: {str(e)}",
+            ephemeral=True,
         )
 
 
