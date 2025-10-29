@@ -99,9 +99,7 @@ class EventChannelConfig:
         config = cls.get_instance()
 
         if config is None:
-            logger.warning(
-                f"Failed to load EventChannelConfig for user {ctx.user}"
-            )
+            logger.warning(f"Failed to load EventChannelConfig for user {ctx.user}")
             await ctx.response.send_message(
                 "❌ 必要な環境変数が設定されていません。\n"
                 "サーバー管理者に以下の環境変数の設定を依頼してください:\n"

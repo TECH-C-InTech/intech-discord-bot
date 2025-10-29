@@ -45,9 +45,7 @@ def get_next_event_index(
             if match:
                 index = int(match.group(1))
                 max_index = max(max_index, index)
-                logger.debug(
-                    f"Found event channel: {channel.name} with index {index}"
-                )
+                logger.debug(f"Found event channel: {channel.name} with index {index}")
 
     # アーカイブカテゴリーのチャンネルをチェック
     archive_category = discord.utils.get(

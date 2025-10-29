@@ -110,9 +110,7 @@ async def validate_channel_in_category(
         )
         return False
 
-    logger.debug(
-        f"Category validation passed: {channel.name} is in '{category_name}'"
-    )
+    logger.debug(f"Category validation passed: {channel.name} is in '{category_name}'")
     return True
 
 

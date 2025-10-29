@@ -16,11 +16,13 @@ logger = getLogger(__name__)
 basicConfig(level="INFO")
 
 # 環境ファイルの読み込み（コマンドライン引数または環境変数で指定可能）
-parser = argparse.ArgumentParser(description='Discord Bot')
-parser.add_argument('--env', default='.env', help='環境ファイルのパス（デフォルト: .env）')
+parser = argparse.ArgumentParser(description="Discord Bot")
+parser.add_argument(
+    "--env", default=".env", help="環境ファイルのパス（デフォルト: .env）"
+)
 args, unknown = parser.parse_known_args()
 
-env_file = os.getenv('ENV_FILE', args.env)
+env_file = os.getenv("ENV_FILE", args.env)
 load_dotenv(env_file)
 logger.info(f"📝 Loaded environment from: {env_file}")
 

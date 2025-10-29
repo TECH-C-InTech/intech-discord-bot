@@ -5,7 +5,11 @@ from logging import getLogger
 import discord
 from discord import app_commands
 
-from ..utils.command_metadata import command_meta, get_all_metadata, get_command_metadata
+from ..utils.command_metadata import (
+    command_meta,
+    get_all_metadata,
+    get_command_metadata,
+)
 
 logger = getLogger(__name__)
 
@@ -58,7 +62,9 @@ async def show_help(ctx: discord.Interaction):
 
 
 async def show_docs(
-    tree: discord.app_commands.CommandTree, ctx: discord.Interaction, command: str = None
+    tree: discord.app_commands.CommandTree,
+    ctx: discord.Interaction,
+    command: str = None,
 ):
     """コマンドの詳細ドキュメントを表示する
 

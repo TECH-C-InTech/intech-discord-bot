@@ -8,9 +8,7 @@ import discord
 logger = getLogger(__name__)
 
 
-def create_success_embed(
-    title: str, description: str, **fields
-) -> discord.Embed:
+def create_success_embed(title: str, description: str, **fields) -> discord.Embed:
     """成功メッセージのEmbedを作成する
 
     Args:

@@ -5,7 +5,11 @@ from logging import getLogger
 import discord
 from discord import app_commands
 
-from ..utils.channel_utils import get_next_event_index, validate_category_exists, get_channel_by_name
+from ..utils.channel_utils import (
+    get_next_event_index,
+    validate_category_exists,
+    get_channel_by_name,
+)
 from ..utils.command_metadata import command_meta
 from ..utils.event_config import EventChannelConfig
 from ..utils.message_utils import (

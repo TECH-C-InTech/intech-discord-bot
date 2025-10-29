@@ -28,7 +28,7 @@ async def sample_command_with_args(ctx: discord.Interaction, message: str):
 def setup(tree: app_commands.CommandTree):
     """
     サンプルコマンドを登録する
-    
+
     デコレーターの順序:
     1. @command_meta() - メタデータの登録（最上位）
     2. @tree.command() - コマンドの登録
