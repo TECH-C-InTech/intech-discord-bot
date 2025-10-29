@@ -1,5 +1,6 @@
 """チャンネル実行場所のバリデーション"""
 
+import re
 from logging import getLogger
 
 import discord
@@ -137,28 +138,30 @@ async def parse_member_mentions(
 
     for mention in member_mentions:
         # メンションIDを抽出（<@123456789> または <@!123456789> → 123456789）
-        member_id = mention.strip("<@!>")
-        try:
-            member_id_int = int(member_id)
-            member = guild.get_member(member_id_int)
-            if member:
-                member_objects.append(member)
-                logger.debug(f"Parsed member mention: {member.name} ({member_id_int})")
-            else:
-                await send_error_message(
-                    ctx,
-                    f"メンバー {mention} が見つかりません。",
-                    help_text="メンバーがサーバーに存在するか確認してください。",
-                )
-                logger.warning(f"Member ID {member_id_int} not found in guild")
-                return None
-        except ValueError:
+        # 正規表現で正確にパースする（strip()は不正確なため使用しない）
+        match = re.match(r'^<@!?(\d+)>$', mention)
+        if not match:
             await send_error_message(
                 ctx,
                 f"`{mention}` は有効なメンバーメンションではありません。",
                 help_text="メンバーをメンション形式（@ユーザー名）で指定してください。",
             )
             logger.warning(f"Invalid member mention format: {mention}")
+            return None
+        
+        member_id = match.group(1)
+        member_id_int = int(member_id)  # Safe: regex ensures digits only
+        member = guild.get_member(member_id_int)
+        if member:
+            member_objects.append(member)
+            logger.debug(f"Parsed member mention: {member.name} ({member_id_int})")
+        else:
+            await send_error_message(
+                ctx,
+                f"メンバー {mention} が見つかりません。",
+                help_text="メンバーがサーバーに存在するか確認してください。",
+            )
+            logger.warning(f"Member ID {member_id_int} not found in guild")
             return None
 
     if not member_objects:
