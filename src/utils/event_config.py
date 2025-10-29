@@ -63,10 +63,6 @@ class EventChannelConfig:
                 return None
 
             # すべての環境変数が存在する場合のみインスタンスを作成
-            # mypy: None チェックは上で行われているのでここでは安全
-            assert event_category_name is not None
-            assert archive_event_category_name is not None
-            assert event_request_channel_name is not None
             cls._instance = cls(
                 event_category_name=event_category_name,
                 archive_event_category_name=archive_event_category_name,
