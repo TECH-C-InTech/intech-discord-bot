@@ -135,6 +135,61 @@ async def archive_event_channel(
         await handle_command_error(ctx, e, "チャンネルのアーカイブ")
 
 
+async def restore_event_channel(
+    ctx: discord.Interaction,
+    channel_name: str = None,
+):
+    """アーカイブされたイベントチャンネルをイベントカテゴリーに戻すコマンド"""
+
+    # 環境変数を一括取得
+    config = await EventChannelConfig.load(ctx)
+    if not config:
+        return
+
+    guild = ctx.guild
+
+    # イベントカテゴリーの存在確認
+    event_category_channel = await validate_category_exists(
+        ctx, guild, config.event_category_name
+    )
+    if not event_category_channel:
+        return
+
+    # 移動するチャンネルを特定
+    if channel_name:
+        channel = discord.utils.get(guild.text_channels, name=channel_name)
+        if not channel:
+            await send_error_message(
+                ctx, f"チャンネル '{channel_name}' が見つかりません。"
+            )
+            return
+    else:
+        channel = ctx.channel
+
+    # チャンネルがアーカイブカテゴリーに属しているか確認
+    if not await validate_channel_in_category(
+        ctx, channel, config.archive_event_category_name
+    ):
+        return
+
+    try:
+        await channel.edit(category=event_category_channel)
+
+        # 成功メッセージ
+        embed = create_success_embed(
+            title="イベントチャンネル復元完了",
+            description=f"{channel.mention} をイベントカテゴリーに戻しました",
+            チャンネル名=channel.name,
+        )
+
+        await ctx.response.send_message(embed=embed)
+        logger.info(f"Restored channel: {channel.name} by {ctx.user}")
+
+    except Exception as e:
+        logger.error(f"Error restoring channel: {e}")
+        await handle_command_error(ctx, e, "チャンネルの復元")
+
+
 def setup(tree: app_commands.CommandTree):
     """イベントチャンネル関連のコマンドを登録する"""
 
@@ -155,3 +210,15 @@ def setup(tree: app_commands.CommandTree):
         ctx: discord.Interaction, channel_name: str = None
     ):
         await archive_event_channel(ctx, channel_name)
+
+    @tree.command(
+        name="restore_event_channel",
+        description="アーカイブされたイベントチャンネルをイベントカテゴリーに戻します",
+    )
+    @app_commands.describe(
+        channel_name="復元するイベントチャンネル名(デフォルトはコマンド実行チャンネル)"
+    )
+    async def restore_event_channel_cmd(
+        ctx: discord.Interaction, channel_name: str = None
+    ):
+        await restore_event_channel(ctx, channel_name)
