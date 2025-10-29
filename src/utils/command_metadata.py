@@ -62,6 +62,8 @@ def command_meta(
     """
     コマンド関数にメタデータを付与するデコレーター
 
+    重要: このデコレーターは@tree.commandの前か関数定義の直前に配置してください。
+
     使用例:
         @command_meta(
             category="イベントチャンネル管理",
@@ -74,6 +76,7 @@ def command_meta(
             ]
         )
         @tree.command(name="create_event_channel", ...)
+        @app_commands.describe(...)
         async def create_event_channel_cmd(ctx, ...):
             ...
     """
