@@ -11,7 +11,8 @@ intech-discord-bot/
 │   ├── commands/                # コマンド定義
 │   │   ├── __init__.py
 │   │   ├── event_channel.py    # イベントチャンネル管理コマンド
-│   │   └── role_info.py        # ロール情報表示コマンド
+│   │   ├── role_info.py        # ロール情報表示コマンド
+│   │   └── help.py             # ヘルプコマンド
 │   └── utils/                   # ユーティリティ関数
 │       ├── __init__.py
 │       ├── channel_utils.py    # チャンネル関連のユーティリティ
@@ -51,11 +52,12 @@ python bot.py
 
 | コマンド | 説明 |
 |---------|------|
+| `/help` | Botの使い方とコマンド一覧を表示 |
 | `/create_event_channel <name> [members]` | イベントチャンネルとロールを作成。メンバーを指定すると同時にロールに追加 |
 | `/archive_event_channel [name]` | イベントチャンネルをアーカイブ |
 | `/restore_event_channel [name]` | アーカイブされたチャンネルを復元 |
 | `/add_event_role_member <members> [role_name]` | イベントチャンネルに紐づくロールにメンバーを追加（省略時は実行チャンネルのロール） |
-| `/show_role_members <role_name>` | 指定したロールのメンバー一覧を表示（実行者にのみ表示、セーフなロールのみ） |
+| `/show_role_members <role_name> [visibility]` | 指定したロールのメンバー一覧を表示（デフォルト: 自分のみ、セーフなロールのみ） |
 
 ## 環境変数
 

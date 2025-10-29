@@ -13,11 +13,11 @@ logger = getLogger(__name__)
 async def show_role_members(
     ctx: discord.Interaction,
     role_name: str,
+    visibility: str = "private",
 ):
     """指定したロールのメンバー一覧を表示するコマンド
 
     安全なロール（管理者権限なし、Bot管理なし、@everyoneでない）のみ表示可能
-    実行者にのみ表示される（ephemeral）
     """
 
     guild = ctx.guild
@@ -73,11 +73,13 @@ async def show_role_members(
             inline=False,
         )
 
-    # ephemeral=Trueで実行者にのみ表示
-    await ctx.response.send_message(embed=embed, ephemeral=True)
+    # visibilityの値に応じて表示を切り替え（デフォルトは実行者のみ）
+    is_private = visibility == "private"
+
+    await ctx.response.send_message(embed=embed, ephemeral=is_private)
     logger.info(
         f"Listed {len(members_with_role)} members for role {role.name} "
-        f"(requested by {ctx.user})"
+        f"(requested by {ctx.user}, visibility: {visibility})"
     )
 
 
@@ -86,10 +88,19 @@ def setup(tree: app_commands.CommandTree):
 
     @tree.command(
         name="show_role_members",
-        description="指定したロールのメンバー一覧を表示します（実行者にのみ表示）",
+        description="指定したロールのメンバー一覧を表示します",
     )
     @app_commands.describe(
         role_name="対象のロール（@ロール形式で指定。例: @ロール名）",
+        visibility="表示範囲を選択",
     )
-    async def show_role_members_cmd(ctx: discord.Interaction, role_name: str):
-        await show_role_members(ctx, role_name)
+    @app_commands.choices(
+        visibility=[
+            app_commands.Choice(name="自分のみ", value="private"),
+            app_commands.Choice(name="全員に公開", value="public"),
+        ]
+    )
+    async def show_role_members_cmd(
+        ctx: discord.Interaction, role_name: str, visibility: str = "private"
+    ):
+        await show_role_members(ctx, role_name, visibility)
