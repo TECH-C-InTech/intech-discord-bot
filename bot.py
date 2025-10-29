@@ -1,5 +1,6 @@
 """Discord Bot エントリーポイント"""
 
+import argparse
 import asyncio
 import os
 from logging import basicConfig, getLogger
@@ -14,7 +15,14 @@ from src.commands import setup_all_commands
 logger = getLogger(__name__)
 basicConfig(level="INFO")
 
-load_dotenv()
+# 環境ファイルの読み込み（コマンドライン引数または環境変数で指定可能）
+parser = argparse.ArgumentParser(description='Discord Bot')
+parser.add_argument('--env', default='.env', help='環境ファイルのパス（デフォルト: .env）')
+args, unknown = parser.parse_known_args()
+
+env_file = os.getenv('ENV_FILE', args.env)
+load_dotenv(env_file)
+logger.info(f"📝 Loaded environment from: {env_file}")
 
 # Discord Bot の設定
 intents = discord.Intents.default()
@@ -29,7 +37,10 @@ tree = app_commands.CommandTree(client)
 @client.event
 async def on_ready():
     """Botが起動したときの処理"""
-    logger.info(f"Logged in as {client.user} (ID: {client.user.id})")
+    # Bot情報を表示
+    bot_mode = "DEVELOPMENT" if os.getenv("DEV_GUILD_ID") else "PRODUCTION"
+    logger.info(f"🤖 Bot Name: {client.user} (ID: {client.user.id})")
+    logger.info(f"🔧 Mode: {bot_mode}")
     logger.info("------")
 
     # スラッシュコマンドを同期 (必須)
@@ -43,15 +54,15 @@ async def on_ready():
             tree.copy_global_to(guild=guild)
             synced = await tree.sync(guild=guild)
             logger.info(
-                f"[DEV MODE] Synced {len(synced)} command(s) to development guild (ID: {dev_guild_id})"
+                f"✅ [DEV MODE] Synced {len(synced)} command(s) to development guild (ID: {dev_guild_id})"
             )
         else:
             # 全サーバーに同期（反映に最大1時間かかる）
             synced = await tree.sync()
-            logger.info(f"[PRODUCTION] Synced {len(synced)} command(s) globally")
+            logger.info(f"✅ [PRODUCTION] Synced {len(synced)} command(s) globally")
 
     except Exception as e:
-        logger.error(f"Failed to sync commands: {e}")
+        logger.error(f"❌ Failed to sync commands: {e}")
 
 
 async def run_bot():
@@ -63,7 +74,7 @@ async def run_bot():
     token = os.getenv("DISCORD_BOT_TOKEN")
 
     if not token:
-        logger.error("DISCORD_BOT_TOKEN が設定されていません")
+        logger.error("❌ DISCORD_BOT_TOKEN が設定されていません")
         return
 
     await client.start(token)

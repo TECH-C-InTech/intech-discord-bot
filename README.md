@@ -9,8 +9,8 @@ intech-discord-bot/
 │   ├── __init__.py
 │   ├── commands/                # コマンド定義
 │   └── utils/                   # ユーティリティ関数
-├── .env                         # 環境変数（gitignore対象）
 ├── .env.sample                  # 環境変数のサンプル
+├── .env.dev.sample              # 開発環境用環境変数のサンプル
 ├── pyproject.toml               # プロジェクト設定
 └── README.md
 ```
@@ -27,14 +27,49 @@ uv sync --dev
 cp .env.sample .env
 ```
 
-discord bot tokenは @KorRyu3 or @nka21 に聞いてください。
+開発用には.env.dev.sampleをコピーして.env.devを作成する。
+
+```bash
+cp .env.dev.sample .env.dev
+```
+
+discord bot tokenは @KorRyu3 に聞いてください。
 
 ## Usage
+
+### 🚀 クイックスタート
+
+#### ローカル開発
+
+```bash
+# 開発用環境ファイルを指定
+uv run bot.py --env .env.dev
+```
+
+#### 開発環境と本番環境の分離
+
+開発とテストをスムーズに行うため、**開発用Botと本番用Botを分けること**を推奨します。
+
+**推奨構成:**
+
+| 環境 | Bot | Token | DEV_GUILD_ID | 用途 |
+|------|-----|-------|--------------|------|
+| ローカル開発 | InTech_dev | 開発用 | 開発サーバーID | 手元でのテスト |
+| デプロイ（本番） | InTech | 本番用 | (空) | 本番運用 |
+
+**セットアップ手順:**
+
+1. Discord Developer Portalで開発用Botアプリケーションを作成
+2. `.env.dev.sample` をコピーして `.env.dev` を作成
+3. 開発用BotのTokenと開発サーバーIDを設定
+4. `uv run bot.py --env .env.dev` で起動
+
+詳細は `docs/DEV_SETUP.md` を参照してください。
 
 ### 実行
 
 ```bash
-python bot.py
+uv run bot.py
 ```
 
 ## 実装されているコマンド
@@ -80,7 +115,7 @@ python bot.py
 1. Discordで開発者モードを有効化
    - 設定 → 詳細設定 → 開発者モード をON
 2. 開発用サーバーを右クリック → 「サーバーIDをコピー」
-3. `.env` ファイルに `DEV_GUILD_ID="コピーしたID"` を追加
+3. `.env.dev` ファイルに `DEV_GUILD_ID="コピーしたID"` を追加
 
 **開発時のメリット:**
 
