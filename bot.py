@@ -34,8 +34,22 @@ async def on_ready():
 
     # スラッシュコマンドを同期 (必須)
     try:
-        synced = await tree.sync()
-        logger.info(f"Synced {len(synced)} command(s)")
+        # 開発用サーバーIDが設定されている場合、そのサーバーのみに同期
+        dev_guild_id = os.getenv("DEV_GUILD_ID")
+
+        if dev_guild_id:
+            # 開発サーバーのみに同期（即座に反映）
+            guild = discord.Object(id=int(dev_guild_id))
+            tree.copy_global_to(guild=guild)
+            synced = await tree.sync(guild=guild)
+            logger.info(
+                f"[DEV MODE] Synced {len(synced)} command(s) to development guild (ID: {dev_guild_id})"
+            )
+        else:
+            # 全サーバーに同期（反映に最大1時間かかる）
+            synced = await tree.sync()
+            logger.info(f"[PRODUCTION] Synced {len(synced)} command(s) globally")
+
     except Exception as e:
         logger.error(f"Failed to sync commands: {e}")
 

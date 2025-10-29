@@ -6,6 +6,7 @@ import discord
 from discord import app_commands
 
 from ..utils.channel_utils import get_next_event_index, validate_category_exists
+from ..utils.command_metadata import command_meta
 from ..utils.event_config import EventChannelConfig
 from ..utils.message_utils import (
     create_success_embed,
@@ -341,6 +342,16 @@ async def add_event_role_member(
 def setup(tree: app_commands.CommandTree):
     """イベントチャンネル関連のコマンドを登録する"""
 
+    @command_meta(
+        category="イベントチャンネル管理",
+        icon="📅",
+        short_description="イベント用のチャンネルとロールを作成",
+        restrictions="• イベントリクエストチャンネルでのみ実行可能",
+        examples=[
+            "`/create_event_channel channel_name:ハッカソン`",
+            "`/create_event_channel channel_name:勉強会 members:@user1 @user2`",
+        ],
+    )
     @tree.command(
         name="create_event_channel", description="新しいイベントチャンネルを作成します"
     )
@@ -353,6 +364,16 @@ def setup(tree: app_commands.CommandTree):
     ):
         await create_event_channel(ctx, channel_name, members)
 
+    @command_meta(
+        category="イベントチャンネル管理",
+        icon="📅",
+        short_description="イベントチャンネルをアーカイブに移動",
+        restrictions="• イベントカテゴリー内のチャンネルでのみ実行可能",
+        examples=[
+            "`/archive_event_channel` (実行チャンネルをアーカイブ)",
+            "`/archive_event_channel channel_name:1-ハッカソン`",
+        ],
+    )
     @tree.command(
         name="archive_event_channel", description="イベントチャンネルをアーカイブします"
     )
@@ -364,6 +385,16 @@ def setup(tree: app_commands.CommandTree):
     ):
         await archive_event_channel(ctx, channel_name)
 
+    @command_meta(
+        category="イベントチャンネル管理",
+        icon="📅",
+        short_description="アーカイブからイベントチャンネルを復元",
+        restrictions="• アーカイブカテゴリー内のチャンネルでのみ実行可能",
+        examples=[
+            "`/restore_event_channel` (実行チャンネルを復元)",
+            "`/restore_event_channel channel_name:1-ハッカソン`",
+        ],
+    )
     @tree.command(
         name="restore_event_channel",
         description="アーカイブされたイベントチャンネルをイベントカテゴリーに戻します",
@@ -376,6 +407,16 @@ def setup(tree: app_commands.CommandTree):
     ):
         await restore_event_channel(ctx, channel_name)
 
+    @command_meta(
+        category="ロール管理",
+        icon="👥",
+        short_description="イベントロールにメンバーを追加",
+        restrictions="• 安全なロール(管理者権限なし、Bot管理なし、@everyoneでない)のみ対象",
+        examples=[
+            "`/add_event_role_member members:@user1 @user2`",
+            "`/add_event_role_member members:@user1 role_name:@1-event`",
+        ],
+    )
     @tree.command(
         name="add_event_role_member",
         description="イベントチャンネルに紐づくロールにメンバーを追加します",

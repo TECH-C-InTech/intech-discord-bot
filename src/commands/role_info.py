@@ -5,6 +5,7 @@ from logging import getLogger
 import discord
 from discord import app_commands
 
+from ..utils.command_metadata import command_meta
 from ..utils.validation_utils import parse_role_mention, validate_role_safety
 
 logger = getLogger(__name__)
@@ -89,6 +90,17 @@ def setup(tree: app_commands.CommandTree):
     @tree.command(
         name="show_role_members",
         description="指定したロールのメンバー一覧を表示します",
+    )
+    @command_meta(
+        category="ロール管理",
+        icon="👥",
+        short_description="ロールに所属するメンバー一覧を表示",
+        restrictions="• 安全なロール（管理者権限なし、Bot管理なし、@everyoneでない）のみ表示可能",
+        examples=[
+            "`/show_role_members role_name:@1-event`",
+            "`/show_role_members role_name:@1-event visibility:全員に公開`",
+        ],
+        notes="メンバーが50人を超える場合は自動的に分割して表示されます",
     )
     @app_commands.describe(
         role_name="対象のロール（@ロール形式で指定。例: @ロール名）",
