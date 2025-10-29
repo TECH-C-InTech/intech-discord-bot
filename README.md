@@ -10,11 +10,13 @@ intech-discord-bot/
 │   ├── __init__.py
 │   ├── commands/                # コマンド定義
 │   │   ├── __init__.py
-│   │   └── event_channel.py    # イベントチャンネル管理コマンド
+│   │   ├── event_channel.py    # イベントチャンネル管理コマンド
+│   │   └── role_info.py        # ロール情報表示コマンド
 │   └── utils/                   # ユーティリティ関数
 │       ├── __init__.py
 │       ├── channel_utils.py    # チャンネル関連のユーティリティ
-│       └── env_utils.py        # 環境変数関連のユーティリティ
+│       ├── env_utils.py        # 環境変数関連のユーティリティ
+│       └── validation_utils.py # バリデーション関連のユーティリティ
 ├── .env                         # 環境変数（gitignore対象）
 ├── .env.sample                  # 環境変数のサンプル
 ├── pyproject.toml               # プロジェクト設定
@@ -53,6 +55,7 @@ python bot.py
 | `/archive_event_channel [name]` | イベントチャンネルをアーカイブ |
 | `/restore_event_channel [name]` | アーカイブされたチャンネルを復元 |
 | `/add_event_role_member <members> [role_name]` | イベントチャンネルに紐づくロールにメンバーを追加（省略時は実行チャンネルのロール） |
+| `/show_role_members <role_name>` | 指定したロールのメンバー一覧を表示（実行者にのみ表示、セーフなロールのみ） |
 
 ## 環境変数
 
