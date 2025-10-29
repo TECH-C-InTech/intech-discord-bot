@@ -96,10 +96,16 @@ async def send_error_message(
             description=message,
             help_text=help_text,
         )
-        await ctx.response.send_message(embed=embed, ephemeral=ephemeral)
+        if not ctx.response.is_done():
+            await ctx.response.send_message(embed=embed, ephemeral=ephemeral)
+        else:
+            await ctx.followup.send(embed=embed, ephemeral=ephemeral)
     else:
         # シンプルなエラーメッセージ
-        await ctx.response.send_message(f"❌ {message}", ephemeral=ephemeral)
+        if not ctx.response.is_done():
+            await ctx.response.send_message(f"❌ {message}", ephemeral=ephemeral)
+        else:
+            await ctx.followup.send(f"❌ {message}", ephemeral=ephemeral)
 
     logger.info(f"Error message sent to {ctx.user}: {message}")
 
