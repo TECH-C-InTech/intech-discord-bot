@@ -59,7 +59,7 @@ EVENT_REQUEST_CHANNEL_NAME=event-request
 
 | 変数名 | 説明 | デフォルト例 |
 |--------|------|--------------|
-| `DISCORD_BOT_TOKEN` | Discord BotのトークンBot起動に必須） | - |
+| `DISCORD_BOT_TOKEN` | Discord Botのトークン(Bot起動に必須) | - |
 | `EVENT_CATEGORY_NAME` | イベントチャンネルを作成するカテゴリー名 | `event` |
 | `ARCHIVE_EVENT_CATEGORY_NAME` | アーカイブ先のカテゴリー名 | `archived-event` |
 | `EVENT_REQUEST_CHANNEL_NAME` | チャンネル作成リクエストを受け付けるチャンネル名 | `event-request` |
