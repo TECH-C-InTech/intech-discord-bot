@@ -88,7 +88,7 @@ async def validate_channel_restriction(
 
 async def validate_channel_in_category(
     ctx: discord.Interaction,
-    channel: discord.TextChannel | discord.CategoryChannel,
+    channel: discord.TextChannel,
     category_name: str,
 ) -> bool:
     """チャンネルが特定のカテゴリーに属しているかを確認する
