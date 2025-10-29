@@ -11,16 +11,23 @@ from ..utils.validation_utils import parse_role_mention, validate_role_safety
 logger = getLogger(__name__)
 
 
+# ==================== コマンド実装関数 ====================
+
+
 async def show_role_members(
     ctx: discord.Interaction,
     role_name: str,
     visibility: str = "private",
 ):
-    """指定したロールのメンバー一覧を表示するコマンド
+    """指定したロールのメンバー一覧を表示する
 
     安全なロール（管理者権限なし、Bot管理なし、@everyoneでない）のみ表示可能
-    """
 
+    Args:
+        ctx: Discord Interaction
+        role_name: 対象のロール名（メンション形式可）
+        visibility: 表示範囲（private/public）
+    """
     guild = ctx.guild
 
     # ロールをパース
@@ -84,8 +91,18 @@ async def show_role_members(
     )
 
 
+# ==================== コマンド登録 ====================
+
+
 def setup(tree: app_commands.CommandTree):
-    """ロール情報関連のコマンドを登録する"""
+    """ロール情報関連のコマンドを登録する
+
+    デコレーターの順序（重要）:
+    1. @command_meta() - メタデータの登録
+    2. @tree.command() - コマンドの登録
+    3. @app_commands.describe() - パラメータの説明
+    4. @app_commands.choices() - 選択肢
+    """
 
     @command_meta(
         category="ロール管理",

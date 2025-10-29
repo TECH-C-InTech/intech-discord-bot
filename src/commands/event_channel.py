@@ -5,7 +5,7 @@ from logging import getLogger
 import discord
 from discord import app_commands
 
-from ..utils.channel_utils import get_next_event_index, validate_category_exists
+from ..utils.channel_utils import get_next_event_index, validate_category_exists, get_channel_by_name
 from ..utils.command_metadata import command_meta
 from ..utils.event_config import EventChannelConfig
 from ..utils.message_utils import (
@@ -14,7 +14,6 @@ from ..utils.message_utils import (
     send_error_message,
 )
 from ..utils.validation_utils import (
-    get_channel_by_name,
     parse_member_mentions,
     parse_role_mention,
     validate_channel_in_category,
@@ -25,13 +24,21 @@ from ..utils.validation_utils import (
 logger = getLogger(__name__)
 
 
+# ==================== コマンド実装関数 ====================
+
+
 async def create_event_channel(
     ctx: discord.Interaction,
     channel_name: str,
     members: str = None,
 ):
-    """イベントチャンネルを作成するコマンド"""
+    """イベントチャンネルを作成する
 
+    Args:
+        ctx: Discord Interaction
+        channel_name: 作成するイベントチャンネル名
+        members: ロールに追加するメンバー（メンション形式）
+    """
     # 環境変数を一括取得
     config = await EventChannelConfig.load(ctx)
     if not config:
@@ -108,7 +115,7 @@ async def create_event_channel(
         )
 
     except Exception as e:
-        logger.error(f"Error creating channel: {e}")
+        logger.error(f"Error creating channel: {e}", exc_info=True)
         await handle_command_error(ctx, e, "チャンネルの作成")
 
 
@@ -116,8 +123,12 @@ async def archive_event_channel(
     ctx: discord.Interaction,
     channel_name: str = None,
 ):
-    """イベントチャンネルをアーカイブするコマンド"""
+    """イベントチャンネルをアーカイブする
 
+    Args:
+        ctx: Discord Interaction
+        channel_name: アーカイブするチャンネル名（省略時は実行チャンネル）
+    """
     # 環境変数を一括取得
     config = await EventChannelConfig.load(ctx)
     if not config:
@@ -163,7 +174,7 @@ async def archive_event_channel(
         logger.info(f"Archived channel: {channel.name} by {ctx.user}")
 
     except Exception as e:
-        logger.error(f"Error archiving channel: {e}")
+        logger.error(f"Error archiving channel: {e}", exc_info=True)
         await handle_command_error(ctx, e, "チャンネルのアーカイブ")
 
 
@@ -171,8 +182,12 @@ async def restore_event_channel(
     ctx: discord.Interaction,
     channel_name: str = None,
 ):
-    """アーカイブされたイベントチャンネルをイベントカテゴリーに戻すコマンド"""
+    """アーカイブされたイベントチャンネルを復元する
 
+    Args:
+        ctx: Discord Interaction
+        channel_name: 復元するチャンネル名（省略時は実行チャンネル）
+    """
     # 環境変数を一括取得
     config = await EventChannelConfig.load(ctx)
     if not config:
@@ -221,7 +236,7 @@ async def restore_event_channel(
         logger.info(f"Restored channel: {channel.name} by {ctx.user}")
 
     except Exception as e:
-        logger.error(f"Error restoring channel: {e}")
+        logger.error(f"Error restoring channel: {e}", exc_info=True)
         await handle_command_error(ctx, e, "チャンネルの復元")
 
 
@@ -230,12 +245,15 @@ async def add_event_role_member(
     members: str,
     role_name: str = None,
 ):
-    """イベントチャンネルに紐づくロールにメンバーを追加するコマンド
+    """イベントロールにメンバーを追加する
 
     実行可能なロールはEVENT_CATEGORY_NAMEカテゴリのチャンネルに対応するものだけ
-    role_nameを省略した場合は、コマンド実行チャンネルと同名のロールを使用
-    """
 
+    Args:
+        ctx: Discord Interaction
+        members: 追加するメンバー（メンション形式）
+        role_name: 対象のロール名（省略時は実行チャンネル名）
+    """
     # 環境変数を一括取得
     config = await EventChannelConfig.load(ctx)
     if not config:
@@ -335,12 +353,21 @@ async def add_event_role_member(
             ctx, f"Botに {role.mention} を付与する権限がありません。"
         )
     except Exception as e:
-        logger.error(f"Error adding event role members: {e}")
+        logger.error(f"Error adding event role members: {e}", exc_info=True)
         await handle_command_error(ctx, e, "イベントロールメンバーの追加")
 
 
+# ==================== コマンド登録 ====================
+
+
 def setup(tree: app_commands.CommandTree):
-    """イベントチャンネル関連のコマンドを登録する"""
+    """イベントチャンネル関連のコマンドを登録する
+
+    デコレーターの順序（重要）:
+    1. @command_meta() - メタデータの登録
+    2. @tree.command() - コマンドの登録
+    3. @app_commands.describe() - パラメータの説明
+    """
 
     @command_meta(
         category="イベントチャンネル管理",
@@ -353,7 +380,8 @@ def setup(tree: app_commands.CommandTree):
         ],
     )
     @tree.command(
-        name="create_event_channel", description="新しいイベントチャンネルを作成します"
+        name="create_event_channel",
+        description="新しいイベントチャンネルを作成します",
     )
     @app_commands.describe(
         channel_name="作成するイベントチャンネル名",
@@ -375,7 +403,8 @@ def setup(tree: app_commands.CommandTree):
         ],
     )
     @tree.command(
-        name="archive_event_channel", description="イベントチャンネルをアーカイブします"
+        name="archive_event_channel",
+        description="イベントチャンネルをアーカイブします",
     )
     @app_commands.describe(
         channel_name="アーカイブするイベントチャンネル名(デフォルトはコマンド実行チャンネル)"

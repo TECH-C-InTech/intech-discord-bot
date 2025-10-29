@@ -1,4 +1,4 @@
-"""Discord Bot エントリーポイント (リファクタリング版)"""
+"""Discord Bot エントリーポイント"""
 
 import asyncio
 import os

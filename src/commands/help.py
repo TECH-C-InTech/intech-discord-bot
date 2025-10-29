@@ -5,14 +5,16 @@ from logging import getLogger
 import discord
 from discord import app_commands
 
-from ..utils.command_metadata import get_all_metadata, get_command_metadata, command_meta
+from ..utils.command_metadata import command_meta, get_all_metadata, get_command_metadata
 
 logger = getLogger(__name__)
 
 
-async def show_help(ctx: discord.Interaction):
-    """Botの全コマンドを簡潔に表示するコマンド"""
+# ==================== コマンド実装関数 ====================
 
+
+async def show_help(ctx: discord.Interaction):
+    """Botの全コマンドを簡潔に表示する"""
     embed = discord.Embed(
         title="🤖 InTech Discord Bot",
         description="利用可能なコマンド一覧",
@@ -38,19 +40,12 @@ async def show_help(ctx: discord.Interaction):
                 command_list.append(f"`/{cmd_name}` - {short_desc}")
             else:
                 command_list.append(f"`/{cmd_name}`")
-        
+
         embed.add_field(
             name=f"{icon} {category_name}",
             value="\n".join(command_list),
             inline=False,
         )
-
-    # ヘルプ・ドキュメント（メタデータ未登録のコマンド用）
-    embed.add_field(
-        name="ℹ️ ヘルプ",
-        value=("`/help` - このメッセージを表示\n" "`/docs [command]` - コマンドの詳細を表示"),
-        inline=False,
-    )
 
     # フッター
     embed.set_footer(
@@ -62,9 +57,16 @@ async def show_help(ctx: discord.Interaction):
     logger.info(f"Help command executed by {ctx.user}")
 
 
-async def show_docs(tree: discord.app_commands.CommandTree, ctx: discord.Interaction, command: str = None):
-    """コマンドの詳細ドキュメントを表示する"""
+async def show_docs(
+    tree: discord.app_commands.CommandTree, ctx: discord.Interaction, command: str = None
+):
+    """コマンドの詳細ドキュメントを表示する
 
+    Args:
+        tree: コマンドツリー
+        ctx: Discord Interaction
+        command: コマンド名（省略時は一覧を表示）
+    """
     all_commands = {cmd.name: cmd for cmd in tree.get_commands()}
 
     if command is None:
@@ -160,8 +162,17 @@ async def show_docs(tree: discord.app_commands.CommandTree, ctx: discord.Interac
     )
 
 
+# ==================== コマンド登録 ====================
+
+
 def setup(tree: app_commands.CommandTree):
-    """ヘルプコマンドを登録する"""
+    """ヘルプコマンドを登録する
+
+    デコレーターの順序（重要）:
+    1. @command_meta() - メタデータの登録
+    2. @tree.command() - コマンドの登録
+    3. @app_commands.describe() - パラメータの説明
+    """
 
     @command_meta(
         category="ヘルプ",
@@ -179,7 +190,7 @@ def setup(tree: app_commands.CommandTree):
     @command_meta(
         category="ヘルプ",
         icon="ℹ️",
-        short_description="利用可能なコマンド一覧を表示",
+        short_description="コマンドの詳細ドキュメントを表示",
         examples=["`/docs`", "`/docs command:create_event_channel`"],
     )
     @tree.command(
