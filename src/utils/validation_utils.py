@@ -37,7 +37,10 @@ async def validate_channel_restriction(
 
     # エラーメッセージ用にチャンネルを取得
     guild = ctx.guild
-    allowed_channel = discord.utils.get(guild.text_channels, name=allowed_channel_name)
+    if guild is not None:
+        allowed_channel = discord.utils.get(guild.text_channels, name=allowed_channel_name)
+    else:
+        allowed_channel = None
 
     # チャンネルが見つかった場合はメンション、見つからない場合は名前のみ
     channel_display = (
