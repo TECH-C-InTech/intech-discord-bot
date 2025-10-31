@@ -43,6 +43,53 @@ def create_approval_request_embed(
     return embed
 
 
+def create_request_details_embed(
+    command_name: str,
+    args: tuple,
+    kwargs: dict,
+    description: str | None = None,
+) -> discord.Embed:
+    """リクエスト詳細Embed を作成する（スレッド内に投稿）.
+
+    Args:
+        command_name: コマンド名
+        args: コマンドの位置引数
+        kwargs: コマンドのキーワード引数
+        description: コマンドの説明（オプション）
+
+    Returns:
+        リクエスト詳細用のEmbed
+    """
+    embed = discord.Embed(
+        title="📝 リクエスト詳細",
+        description=f"コマンド: `{command_name}`",
+        color=discord.Color.blue(),
+        timestamp=datetime.now(timezone.utc),
+    )
+
+    if description:
+        embed.add_field(name="説明", value=description, inline=False)
+
+    # 引数を整形して表示
+    if kwargs:
+        args_text = []
+        for key, value in kwargs.items():
+            # 値が長い場合は省略
+            value_str = str(value)
+            if len(value_str) > 100:
+                value_str = value_str[:97] + "..."
+            args_text.append(f"• **{key}**: {value_str}")
+
+        if args_text:
+            embed.add_field(
+                name="引数",
+                value="\n".join(args_text),
+                inline=False,
+            )
+
+    return embed
+
+
 def create_approval_result_embed(
     command_name: str,
     approver: discord.User | discord.Member,

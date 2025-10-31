@@ -29,6 +29,7 @@ class ApprovalView(discord.ui.View):
         kwargs: コマンド関数のキーワード引数
         timeout_hours: タイムアウト時間（時間単位）
         message: 承認リクエストメッセージ（後から設定）
+        thread: 承認フロー用のスレッド（後から設定）
     """
 
     def __init__(
@@ -60,6 +61,7 @@ class ApprovalView(discord.ui.View):
         self.kwargs = kwargs
         self.timeout_hours = timeout_hours
         self.message: discord.Message | None = None
+        self.thread: discord.Thread | None = None
 
     @discord.ui.button(label="承認", style=discord.ButtonStyle.green, emoji="✅")
     async def approve_button(
@@ -115,6 +117,16 @@ class ApprovalView(discord.ui.View):
                 await self.message.edit(embed=approval_embed, view=self)
             except discord.HTTPException as e:
                 logger.error(f"Failed to edit approval message: {e}")
+
+        # スレッド内に承認通知を投稿
+        if self.thread:
+            try:
+                notification_embed = create_approval_result_embed(
+                    self.command_name, interaction.user, self.original_interaction.user
+                )
+                await self.thread.send(embed=notification_embed)
+            except discord.HTTPException as e:
+                logger.error(f"Failed to send approval notification to thread: {e}")
 
         # 元のコマンドを実行（新しいInteractionコンテキストで）
         try:
@@ -188,14 +200,24 @@ class ApprovalView(discord.ui.View):
             except discord.HTTPException as e:
                 logger.error(f"Failed to edit rejection message: {e}")
 
-        # リクエスト者に通知
-        try:
-            await interaction.followup.send(
-                f"{self.original_interaction.user.mention} コマンド `{self.command_name}` は拒否されました。",
-                ephemeral=False,
-            )
-        except discord.HTTPException as e:
-            logger.error(f"Failed to send rejection notification: {e}")
+        # スレッド内に拒否通知を投稿
+        if self.thread:
+            try:
+                notification_embed = create_rejection_result_embed(
+                    self.command_name, interaction.user, self.original_interaction.user
+                )
+                await self.thread.send(embed=notification_embed)
+            except discord.HTTPException as e:
+                logger.error(f"Failed to send rejection notification to thread: {e}")
+
+        # リクエスト者に通知（スレッド内に投稿）
+        if self.thread:
+            try:
+                await self.thread.send(
+                    f"{self.original_interaction.user.mention} コマンド `{self.command_name}` は拒否されました。"
+                )
+            except discord.HTTPException as e:
+                logger.error(f"Failed to send rejection notification: {e}")
 
         # Viewを停止
         self.stop()

@@ -10,6 +10,7 @@ import discord
 from src.utils.approval_config import ApprovalConfig
 from src.utils.approval_utils import (
     create_approval_request_embed,
+    create_request_details_embed,
     has_approver_role,
 )
 from src.views.approval_view import ApprovalView
@@ -139,6 +140,31 @@ def require_approval(
             # 送信したメッセージをViewに保存（編集用）
             message = await interaction.original_response()
             approval_view.message = message
+
+            # スレッドを作成
+            try:
+                thread = await message.create_thread(
+                    name=f"承認: {command_name}",
+                    auto_archive_duration=1440,  # 24時間
+                )
+                approval_view.thread = thread
+
+                # リクエスト詳細をスレッド内に投稿
+                details_embed = create_request_details_embed(
+                    command_name=command_name,
+                    args=args,
+                    kwargs=kwargs,
+                    description=description,
+                )
+                await thread.send(embed=details_embed)
+
+                logger.info(
+                    f"Created approval thread '{thread.name}' (ID: {thread.id}) "
+                    f"for command '{command_name}'"
+                )
+            except discord.HTTPException as e:
+                logger.error(f"Failed to create approval thread: {e}")
+                # スレッド作成に失敗しても承認フローは継続
 
         return wrapper
 
