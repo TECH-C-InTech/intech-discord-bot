@@ -15,7 +15,7 @@ logger = getLogger(__name__)
 # ==================== コマンド実装関数 ====================
 
 
-async def show_role_members(
+async def show_role_members_impl(
     ctx: discord.Interaction,
     role_name: str,
     visibility: str = "private",
@@ -127,7 +127,7 @@ def setup(tree: app_commands.CommandTree):
             app_commands.Choice(name="全員に公開", value="public"),
         ]
     )
-    async def show_role_members_cmd(
+    async def show_role_members(
         ctx: discord.Interaction, role_name: str, visibility: str = "private"
     ):
-        await show_role_members(ctx, role_name, visibility)
+        await show_role_members_impl(ctx, role_name, visibility)

@@ -17,7 +17,7 @@ logger = getLogger(__name__)
 # ==================== コマンド実装関数 ====================
 
 
-async def show_help(ctx: discord.Interaction):
+async def help_impl(ctx: discord.Interaction):
     """Botの全コマンドを簡潔に表示する"""
     embed = discord.Embed(
         title="🤖 InTech Discord Bot",
@@ -66,7 +66,7 @@ async def show_help(ctx: discord.Interaction):
     logger.info(f"Help command executed by {ctx.user}")
 
 
-async def show_docs(
+async def docs_impl(
     tree: discord.app_commands.CommandTree,
     ctx: discord.Interaction,
     command: str | None = None,
@@ -198,8 +198,8 @@ def setup(tree: app_commands.CommandTree):
         name="help",
         description="Botのコマンド一覧を表示します",
     )
-    async def help_cmd(ctx: discord.Interaction):
-        await show_help(ctx)
+    async def help(ctx: discord.Interaction):
+        await help_impl(ctx)
 
     @command_meta(
         category="ヘルプ",
@@ -212,5 +212,5 @@ def setup(tree: app_commands.CommandTree):
         description="コマンドの詳細ドキュメントを表示します",
     )
     @app_commands.describe(command="詳細を確認したいコマンド名（省略時は一覧を表示）")
-    async def docs_cmd(ctx: discord.Interaction, command: str | None = None):
-        await show_docs(tree, ctx, command)
+    async def docs(ctx: discord.Interaction, command: str | None = None):
+        await docs_impl(tree, ctx, command)

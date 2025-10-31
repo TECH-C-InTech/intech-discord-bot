@@ -32,7 +32,7 @@ logger = getLogger(__name__)
 # ==================== コマンド実装関数 ====================
 
 
-async def create_event_channel(
+async def create_event_channel_impl(
     ctx: discord.Interaction,
     channel_name: str,
     members: str | None = None,
@@ -128,7 +128,7 @@ async def create_event_channel(
         await handle_command_error(ctx, e, "チャンネルの作成")
 
 
-async def archive_event_channel(
+async def archive_event_channel_impl(
     ctx: discord.Interaction,
     channel_name: str | None = None,
 ):
@@ -198,7 +198,7 @@ async def archive_event_channel(
         await handle_command_error(ctx, e, "チャンネルのアーカイブ")
 
 
-async def restore_event_channel(
+async def restore_event_channel_impl(
     ctx: discord.Interaction,
     channel_name: str | None = None,
 ):
@@ -263,7 +263,7 @@ async def restore_event_channel(
         await handle_command_error(ctx, e, "チャンネルの復元")
 
 
-async def add_event_role_member(
+async def add_event_role_member_impl(
     ctx: discord.Interaction,
     members: str,
     role_name: str | None = None,
@@ -412,10 +412,10 @@ def setup(tree: app_commands.CommandTree):
         channel_name="作成するイベントチャンネル名",
         members="ロールに追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
     )
-    async def create_event_channel_cmd(
+    async def create_event_channel(
         ctx: discord.Interaction, channel_name: str, members: str | None = None
     ):
-        await create_event_channel(ctx, channel_name, members)
+        await create_event_channel_impl(ctx, channel_name, members)
 
     @command_meta(
         category="イベントチャンネル管理",
@@ -434,8 +434,8 @@ def setup(tree: app_commands.CommandTree):
     @app_commands.describe(
         channel_name="アーカイブするイベントチャンネル名(デフォルトはコマンド実行チャンネル)"
     )
-    async def archive_event_channel_cmd(ctx: discord.Interaction, channel_name: str | None = None):
-        await archive_event_channel(ctx, channel_name)
+    async def archive_event_channel(ctx: discord.Interaction, channel_name: str | None = None):
+        await archive_event_channel_impl(ctx, channel_name)
 
     @command_meta(
         category="イベントチャンネル管理",
@@ -454,8 +454,8 @@ def setup(tree: app_commands.CommandTree):
     @app_commands.describe(
         channel_name="復元するイベントチャンネル名(デフォルトはコマンド実行チャンネル)"
     )
-    async def restore_event_channel_cmd(ctx: discord.Interaction, channel_name: str | None = None):
-        await restore_event_channel(ctx, channel_name)
+    async def restore_event_channel(ctx: discord.Interaction, channel_name: str | None = None):
+        await restore_event_channel_impl(ctx, channel_name)
 
     @command_meta(
         category="ロール管理",
@@ -475,7 +475,7 @@ def setup(tree: app_commands.CommandTree):
         members="追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
         role_name="対象のロール（@ロール形式で指定。例: @1-event. 省略時は実行チャンネルのロール）",
     )
-    async def add_event_role_member_cmd(
+    async def add_event_role_member(
         ctx: discord.Interaction, members: str, role_name: str | None = None
     ):
-        await add_event_role_member(ctx, members, role_name)
+        await add_event_role_member_impl(ctx, members, role_name)

@@ -15,12 +15,12 @@ from ..utils.env_utils import get_required_env  # noqa
 logger = getLogger(__name__)
 
 
-async def sample_command(ctx: discord.Interaction):
+async def sample_impl(ctx: discord.Interaction):
     """サンプルコマンドの実装"""
     await ctx.response.send_message("これはサンプルコマンドです！")
 
 
-async def sample_command_with_args(ctx: discord.Interaction, message: str):
+async def sample_with_args_impl(ctx: discord.Interaction, message: str):
     """引数付きサンプルコマンドの実装"""
     await ctx.response.send_message(f"メッセージ: {message}")
 
@@ -44,8 +44,8 @@ def setup(tree: app_commands.CommandTree):
         notes="これはテンプレートです。実際のコマンドを実装する際の参考にしてください。",
     )
     @tree.command(name="sample", description="サンプルコマンド")
-    async def sample_cmd(ctx: discord.Interaction):
-        await sample_command(ctx)
+    async def sample(ctx: discord.Interaction):
+        await sample_impl(ctx)
 
     @command_meta(
         category="サンプル",
@@ -59,5 +59,5 @@ def setup(tree: app_commands.CommandTree):
     )
     @tree.command(name="sample_with_args", description="引数付きサンプルコマンド")
     @app_commands.describe(message="表示するメッセージ")
-    async def sample_with_args_cmd(ctx: discord.Interaction, message: str):
-        await sample_command_with_args(ctx, message)
+    async def sample_with_args(ctx: discord.Interaction, message: str):
+        await sample_with_args_impl(ctx, message)
