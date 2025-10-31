@@ -107,7 +107,7 @@ class ApprovalView(discord.ui.View):
 
         # 承認メッセージを編集
         approval_embed = create_approval_result_embed(
-            self.command_name, interaction.user
+            self.command_name, interaction.user, self.original_interaction.user
         )
 
         if self.message:
@@ -179,7 +179,7 @@ class ApprovalView(discord.ui.View):
 
         # 拒否メッセージを編集
         rejection_embed = create_rejection_result_embed(
-            self.command_name, interaction.user
+            self.command_name, interaction.user, self.original_interaction.user
         )
 
         if self.message:

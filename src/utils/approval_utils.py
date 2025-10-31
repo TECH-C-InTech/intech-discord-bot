@@ -46,12 +46,14 @@ def create_approval_request_embed(
 def create_approval_result_embed(
     command_name: str,
     approver: discord.User | discord.Member,
+    requester: discord.User | discord.Member,
 ) -> discord.Embed:
     """承認成功用のEmbedを作成する.
 
     Args:
         command_name: コマンド名
         approver: 承認したユーザー
+        requester: リクエストしたユーザー
 
     Returns:
         承認成功用のEmbed
@@ -63,6 +65,7 @@ def create_approval_result_embed(
         timestamp=datetime.now(timezone.utc),
     )
 
+    embed.add_field(name="リクエスト者", value=requester.mention, inline=True)
     embed.add_field(name="承認者", value=approver.mention, inline=True)
 
     return embed
@@ -71,12 +74,14 @@ def create_approval_result_embed(
 def create_rejection_result_embed(
     command_name: str,
     rejector: discord.User | discord.Member,
+    requester: discord.User | discord.Member,
 ) -> discord.Embed:
     """拒否用のEmbedを作成する.
 
     Args:
         command_name: コマンド名
         rejector: 拒否したユーザー
+        requester: リクエストしたユーザー
 
     Returns:
         拒否用のEmbed
@@ -88,6 +93,7 @@ def create_rejection_result_embed(
         timestamp=datetime.now(timezone.utc),
     )
 
+    embed.add_field(name="リクエスト者", value=requester.mention, inline=True)
     embed.add_field(name="拒否者", value=rejector.mention, inline=True)
 
     return embed
