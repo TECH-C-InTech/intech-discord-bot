@@ -62,7 +62,10 @@ async def help_impl(ctx: discord.Interaction):
     else:
         embed.set_footer(text="💡 詳細は /docs コマンドで確認できます")
 
-    await ctx.response.send_message(embed=embed, ephemeral=True)
+    if ctx.response.is_done():
+        await ctx.followup.send(embed=embed, ephemeral=True)
+    else:
+        await ctx.response.send_message(embed=embed, ephemeral=True)
     logger.info(f"Help command executed by {ctx.user}")
 
 
@@ -172,7 +175,10 @@ async def docs_impl(
             if metadata.notes:
                 embed.add_field(name="📝 注意事項", value=metadata.notes, inline=False)
 
-    await ctx.response.send_message(embed=embed, ephemeral=True)
+    if ctx.response.is_done():
+        await ctx.followup.send(embed=embed, ephemeral=True)
+    else:
+        await ctx.response.send_message(embed=embed, ephemeral=True)
     logger.info(f"Docs command executed by {ctx.user}" + (f" for {command}" if command else ""))
 
 

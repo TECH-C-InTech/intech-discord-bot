@@ -17,12 +17,18 @@ logger = getLogger(__name__)
 
 async def sample_impl(ctx: discord.Interaction):
     """サンプルコマンドの実装"""
-    await ctx.response.send_message("これはサンプルコマンドです！")
+    if ctx.response.is_done():
+        await ctx.followup.send("これはサンプルコマンドです！")
+    else:
+        await ctx.response.send_message("これはサンプルコマンドです！")
 
 
 async def sample_with_args_impl(ctx: discord.Interaction, message: str):
     """引数付きサンプルコマンドの実装"""
-    await ctx.response.send_message(f"メッセージ: {message}")
+    if ctx.response.is_done():
+        await ctx.followup.send(f"メッセージ: {message}")
+    else:
+        await ctx.response.send_message(f"メッセージ: {message}")
 
 
 def setup(tree: app_commands.CommandTree):

@@ -58,10 +58,16 @@ def require_approval(
             if not interaction.guild or not isinstance(
                 interaction.user, discord.Member
             ):
-                await interaction.response.send_message(
-                    "このコマンドはサーバー内でのみ使用できます。",
-                    ephemeral=True,
-                )
+                if interaction.response.is_done():
+                    await interaction.followup.send(
+                        "このコマンドはサーバー内でのみ使用できます。",
+                        ephemeral=True,
+                    )
+                else:
+                    await interaction.response.send_message(
+                        "このコマンドはサーバー内でのみ使用できます。",
+                        ephemeral=True,
+                    )
                 return
 
             # 実行者が承認ロールを持っている場合は即座に実行
@@ -112,11 +118,22 @@ def require_approval(
                 mentions = f"**「{config.approver_role_name}」ロールを持つユーザー**"
 
             # 承認リクエストメッセージを送信
-            await interaction.response.send_message(
-                content=mentions,
-                embed=approval_embed,
-                view=approval_view,
-                allowed_mentions=discord.AllowedMentions(roles=True),  # ロールメンションを有効化
+            if interaction.response.is_done():
+                await interaction.followup.send(
+                    content=mentions,
+                    embed=approval_embed,
+                    view=approval_view,
+                    allowed_mentions=discord.AllowedMentions(roles=True),  # ロールメンションを有効化
+                )
+            else:
+                await interaction.response.send_message(
+                    content=mentions,
+                    embed=approval_embed,
+                    view=approval_view,
+                    allowed_mentions=discord.AllowedMentions(roles=True),  # ロールメンションを有効化
+                )
+            logger.info(
+                f"Sent approval request for command '{command_name}' by {interaction.user}"
             )
 
             # 送信したメッセージをViewに保存（編集用）

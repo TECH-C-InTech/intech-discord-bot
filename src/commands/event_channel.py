@@ -117,7 +117,11 @@ async def create_event_channel_impl(
             ロール付与人数=len(member_objects) if member_objects else 0,
         )
 
-        await ctx.response.send_message(embed=embed)
+        # Interactionが既に応答済みの場合はfollowupを使用
+        if ctx.response.is_done():
+            await ctx.followup.send(embed=embed)
+        else:
+            await ctx.response.send_message(embed=embed)
         logger.info(
             f"Created channel: {formatted_channel_name} (index: {next_index}) and role "
             f"with {len(member_objects)} members by {ctx.user}"
@@ -190,7 +194,11 @@ async def archive_event_channel_impl(
             チャンネル名=channel.name,
         )
 
-        await ctx.response.send_message(embed=embed)
+        # Interactionが既に応答済みの場合はfollowupを使用
+        if ctx.response.is_done():
+            await ctx.followup.send(embed=embed)
+        else:
+            await ctx.response.send_message(embed=embed)
         logger.info(f"Archived channel: {channel.name} by {ctx.user}")
 
     except Exception as e:
@@ -255,7 +263,11 @@ async def restore_event_channel_impl(
             チャンネル名=channel.name,
         )
 
-        await ctx.response.send_message(embed=embed)
+        # Interactionが既に応答済みの場合はfollowupを使用
+        if ctx.response.is_done():
+            await ctx.followup.send(embed=embed)
+        else:
+            await ctx.response.send_message(embed=embed)
         logger.info(f"Restored channel: {channel.name} by {ctx.user}")
 
     except Exception as e:
@@ -368,7 +380,11 @@ async def add_event_role_member_impl(
             追加人数=len(added_members),
         )
 
-        await ctx.response.send_message(embed=embed)
+        # Interactionが既に応答済みの場合はfollowupを使用
+        if ctx.response.is_done():
+            await ctx.followup.send(embed=embed)
+        else:
+            await ctx.response.send_message(embed=embed)
         logger.info(
             f"Added {len(added_members)} members to event role {role.name} "
             f"(channel: {event_channel.name}) by {ctx.user}"

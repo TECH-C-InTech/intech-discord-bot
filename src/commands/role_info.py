@@ -82,7 +82,10 @@ async def show_role_members_impl(
     # visibilityの値に応じて表示を切り替え（デフォルトは実行者のみ）
     is_private = visibility == "private"
 
-    await ctx.response.send_message(embed=embed, ephemeral=is_private)
+    if ctx.response.is_done():
+        await ctx.followup.send(embed=embed, ephemeral=is_private)
+    else:
+        await ctx.response.send_message(embed=embed, ephemeral=is_private)
     logger.info(
         f"Listed {len(members_with_role)} members for role {role.name} "
         f"(requested by {ctx.user}, visibility: {visibility})"
