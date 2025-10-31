@@ -8,7 +8,8 @@
 2. [メッセージユーティリティ](#メッセージユーティリティ)
 3. [チャンネルユーティリティ](#チャンネルユーティリティ)
 4. [コマンドメタデータ](#コマンドメタデータ)
-5. [設定管理](#設定管理)
+5. [承認ミドルウェア](#承認ミドルウェア)
+6. [設定管理](#設定管理)
 
 ## バリデーションユーティリティ
 
@@ -304,6 +305,144 @@ async def create_event_channel_cmd(ctx: discord.Interaction, name: str, members:
 ```
 
 **重要**: `@command_meta` は必ず最上位のデコレーターとして配置してください。詳細は [ADD_COMMAND.md](./ADD_COMMAND.md#デコレーターの順序重要) を参照。
+
+## 承認ミドルウェア
+
+**場所**:
+- [src/utils/approval_decorator.py](../src/utils/approval_decorator.py) - デコレーター
+- [src/utils/approval_utils.py](../src/utils/approval_utils.py) - ユーティリティ関数
+- [src/views/approval_view.py](../src/views/approval_view.py) - UI コンポーネント
+
+### `@require_approval` デコレーター
+
+特定のコマンドに承認フローを追加するデコレーター。Administrator権限を持つユーザーは承認不要で即座に実行され、それ以外のユーザーは承認リクエストを送信します。
+
+**パラメータ**:
+- `timeout_hours: int` - タイムアウト時間（時間単位）。デフォルトは24時間
+- `description: str | None` - 承認リクエストに表示するコマンドの説明（任意）
+
+**使用例**:
+```python
+from src.utils.approval_decorator import require_approval
+
+@command_meta(
+    category="イベント管理",
+    icon="📅",
+    short_description="新しいイベントチャンネルを作成",
+)
+@tree.command(name="create_event_channel", description="イベントチャンネルを作成")
+@require_approval(timeout_hours=24, description="新しいイベントチャンネルを作成します")
+@app_commands.describe(name="チャンネル名")
+async def create_event_channel_cmd(ctx: discord.Interaction, name: str):
+    # この関数は承認後に実行される
+    await ctx.response.send_message(f"チャンネル {name} を作成しました")
+```
+
+**デコレーターの順序**:
+```python
+@command_meta(...)         # 最上位（必須）
+@tree.command(...)         # Discord登録
+@require_approval(...)     # 承認ミドルウェア（ここに配置）
+@app_commands.describe(...) # パラメータ説明
+async def command(...):
+```
+
+### 承認フロー
+
+1. **Administrator が実行した場合**:
+   - 承認不要で即座にコマンドが実行される
+   - ログに「Administrator」として記録
+
+2. **一般ユーザーが実行した場合**:
+   - 承認リクエストメッセージが送信される（Embed + ボタン）
+   - Administratorが承認ボタンをクリックするとコマンド実行
+   - Administratorが拒否ボタンをクリックすると拒否メッセージ表示
+   - タイムアウト（デフォルト24時間）で自動的に拒否
+
+### 承認ユーティリティ関数
+
+承認リクエストや結果表示用のEmbed作成関数。
+
+**使用可能な関数**:
+```python
+from src.utils.approval_utils import (
+    create_approval_request_embed,
+    create_approval_result_embed,
+    create_rejection_result_embed,
+    create_timeout_result_embed,
+    has_administrator_permission,
+)
+
+# 承認リクエストEmbed
+embed = create_approval_request_embed(
+    command_name="/create_channel",
+    requester=ctx.user,
+    timeout_hours=24,
+    description="新しいチャンネルを作成します"
+)
+
+# 承認成功Embed
+embed = create_approval_result_embed("/create_channel", approver)
+
+# 拒否Embed
+embed = create_rejection_result_embed("/create_channel", rejector)
+
+# タイムアウトEmbed
+embed = create_timeout_result_embed("/create_channel", 24)
+
+# Administrator権限チェック
+if has_administrator_permission(member):
+    # 即座に実行
+```
+
+### ApprovalView クラス
+
+承認/拒否ボタンを持つUIコンポーネント。通常はデコレーター経由で自動的に使用されます。
+
+**ボタン**:
+- ✅ **承認ボタン（緑）**: Administrator権限を持つユーザーがクリックするとコマンド実行
+- ❌ **拒否ボタン（赤）**: Administrator権限を持つユーザーがクリックすると拒否
+
+**タイムアウト処理**:
+- 指定時間（デフォルト24時間）経過すると自動的に拒否
+- メッセージを編集してタイムアウトを表示
+- ボタンを無効化
+
+### 注意事項
+
+**Interactionコンテキストの扱い**:
+- 承認後に実行されるコマンドには、承認ボタンの`Interaction`が渡されます
+- 元の`ctx.response`は承認リクエスト送信時に既に使用済みです
+- コマンド内では`ctx.response.send_message()`または`ctx.followup.send()`が使用できます
+
+**Bot再起動時の動作**:
+- 24時間のタイムアウト中にBotが再起動すると、承認リクエストは未処理のまま残ります
+- ユーザーがボタンをクリックすると「このインタラクションは無効です」とDiscordが表示します
+- この動作は現時点では許容範囲として設計されています
+
+**ログ記録**:
+```python
+# 承認リクエスト送信時
+logger.info(f"Approval request sent for command '{command_name}' by {user}")
+
+# 承認時
+logger.info(f"Command '{command_name}' approved by {approver}")
+
+# 拒否時
+logger.warning(f"Command '{command_name}' rejected by {rejector}")
+
+# タイムアウト時
+logger.warning(f"Approval request for '{command_name}' timed out")
+```
+
+### 将来的な拡張
+
+現在は「一人でも承認すればOK」モードのみ実装されています。将来的には以下の拡張が考えられます：
+
+- **全員承認モード**: 複数のAdministratorが全員承認する必要があるモード
+- **拒否理由の入力**: Modalを使用して拒否理由を記述する機能
+- **承認履歴の記録**: データベースやログファイルに承認履歴を保存
+- **Bot再起動後の復元**: 未処理の承認リクエストを復元する機能
 
 ## 設定管理
 

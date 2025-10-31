@@ -154,9 +154,10 @@ async def create_event_cmd(ctx: discord.Interaction, name: str, members: str = N
 
 1. `@command_meta()` - **最上位**: メタデータの登録
 2. `@tree.command()` - コマンドの登録
-3. `@app_commands.describe()` - パラメータの説明
-4. `@app_commands.choices()` - 選択肢（必要な場合）
-5. 関数定義
+3. `@require_approval()` - 承認ミドルウェア（必要な場合）
+4. `@app_commands.describe()` - パラメータの説明
+5. `@app_commands.choices()` - 選択肢（必要な場合）
+6. 関数定義
 
 #### ❌ 間違った順序
 
@@ -176,6 +177,27 @@ async def my_command(...):
 async def my_command(...):
     ...
 ```
+
+#### ✅ 承認ミドルウェアを使用する場合
+
+```python
+from ..utils.approval_decorator import require_approval
+
+@command_meta(...)               # メタデータを最初に
+@tree.command(...)               # Discord登録
+@require_approval(               # 承認ミドルウェア（tree.commandの直後）
+    timeout_hours=24,
+    description="新しいチャンネルを作成します"
+)
+@app_commands.describe(...)      # パラメータの説明
+async def my_command(...):
+    ...
+```
+
+**承認ミドルウェアについて:**
+- `@require_approval()` デコレーターを使用すると、Administrator以外のユーザーは承認が必要になります
+- Administratorユーザーは承認不要で即座にコマンドが実行されます
+- 詳細は [UTILITIES.md](./UTILITIES.md#承認ミドルウェア) を参照してください
 
 ## テンプレート
 
