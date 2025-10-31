@@ -5,6 +5,7 @@ from logging import getLogger
 import discord
 from discord import app_commands
 
+from ..utils.approval_decorator import require_approval
 from ..utils.channel_utils import (
     get_channel_by_name,
     get_next_event_index,
@@ -406,6 +407,7 @@ def setup(tree: app_commands.CommandTree):
         name="create_event_channel",
         description="新しいイベントチャンネルを作成します",
     )
+    @require_approval(timeout_hours=24, description="新しいイベントチャンネルを作成します")
     @app_commands.describe(
         channel_name="作成するイベントチャンネル名",
         members="ロールに追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
