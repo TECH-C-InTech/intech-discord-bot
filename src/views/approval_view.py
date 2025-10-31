@@ -5,6 +5,7 @@ from logging import getLogger
 from typing import Any
 
 import discord
+from discord.errors import InteractionResponded
 
 from src.utils.approval_config import ApprovalConfig
 from src.utils.approval_utils import (
@@ -17,6 +18,67 @@ from src.utils.message_utils import send_error_message
 
 logger = getLogger(__name__)
 
+
+class ThreadBoundResponse:
+    """Wrap interaction response so messages are redirected to the thread."""
+
+    def __init__(
+        self,
+        original_response: discord.InteractionResponse,
+        thread: discord.Thread,
+    ) -> None:
+        self._original_response = original_response
+        self._thread = thread
+
+    async def send_message(self, *args: Any, **kwargs: Any) -> discord.Message:
+        # Threads do not support ephemeral messages; drop the flag quietly.
+        kwargs.pop("ephemeral", None)
+        return await self._thread.send(*args, **kwargs)
+
+    async def defer(self, *args: Any, **kwargs: Any) -> None:
+        # The original interaction has already been responded to; defer is best-effort.
+        try:
+            await self._original_response.defer(*args, **kwargs)
+        except (InteractionResponded, discord.HTTPException):
+            return None
+
+    def is_done(self) -> bool:
+        return True
+
+    async def edit_message(self, *args: Any, **kwargs: Any) -> discord.Message:
+        return await self._original_response.edit_message(*args, **kwargs)
+
+
+class ThreadBoundFollowup:
+    """Redirect follow-up messages to the approval thread."""
+
+    def __init__(self, thread: discord.Thread) -> None:
+        self._thread = thread
+
+    async def send(self, *args: Any, **kwargs: Any) -> discord.Message:
+        kwargs.pop("ephemeral", None)
+        return await self._thread.send(*args, **kwargs)
+
+
+class ThreadBoundInteraction:
+    """Interaction wrapper that routes output to the approval thread."""
+
+    def __init__(
+        self,
+        original_interaction: discord.Interaction,
+        thread: discord.Thread,
+    ) -> None:
+        self._original_interaction = original_interaction
+        self._thread = thread
+        self.response = ThreadBoundResponse(original_interaction.response, thread)
+        self.followup = ThreadBoundFollowup(thread)
+
+    def __getattr__(self, item: str) -> Any:
+        return getattr(self._original_interaction, item)
+
+    @property
+    def channel(self) -> discord.abc.MessageableChannel:
+        return self._thread
 
 class ApprovalView(discord.ui.View):
     """承認/拒否ボタンを持つViewクラス.
@@ -129,9 +191,17 @@ class ApprovalView(discord.ui.View):
                 logger.error(f"Failed to send approval notification to thread: {e}")
 
         # 元のコマンドを実行（新しいInteractionコンテキストで）
+        interaction_for_command = (
+            ThreadBoundInteraction(self.original_interaction, self.thread)
+            if self.thread
+            else self.original_interaction
+        )
+
         try:
-            # 元のコマンドに新しいInteractionを渡して実行
-            await self.command_func(interaction, *self.args, **self.kwargs)
+            # 元のコマンドにスレッドへ束縛されたInteractionを渡して実行
+            await self.command_func(
+                interaction_for_command, *self.args, **self.kwargs
+            )
         except Exception as e:
             logger.error(
                 f"Error executing approved command '{self.command_name}': {e}",
