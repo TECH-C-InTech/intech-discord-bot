@@ -77,7 +77,11 @@ class ThreadBoundInteraction:
         return getattr(self._original_interaction, item)
 
     @property
-    def channel(self) -> discord.abc.MessageableChannel:
+    def channel(self) -> discord.Thread:
+        return self._original_interaction.channel
+
+    @property
+    def approval_thread(self) -> discord.Thread:
         return self._thread
 
 class ApprovalView(discord.ui.View):
@@ -151,9 +155,7 @@ class ApprovalView(discord.ui.View):
                 f"承認権限がありません。「{config.approver_role_name}」ロールが必要です。",
                 ephemeral=True,
             )
-            logger.warning(
-                f"User {interaction.user} attempted to approve without permission"
-            )
+            logger.warning(f"User {interaction.user} attempted to approve without permission")
             return
 
         # 応答時間を延長（コマンド実行に時間がかかる可能性があるため）
@@ -199,9 +201,7 @@ class ApprovalView(discord.ui.View):
 
         try:
             # 元のコマンドにスレッドへ束縛されたInteractionを渡して実行
-            await self.command_func(
-                interaction_for_command, *self.args, **self.kwargs
-            )
+            await self.command_func(interaction_for_command, *self.args, **self.kwargs)
         except Exception as e:
             logger.error(
                 f"Error executing approved command '{self.command_name}': {e}",
@@ -242,9 +242,7 @@ class ApprovalView(discord.ui.View):
                 f"拒否権限がありません。「{config.approver_role_name}」ロールが必要です。",
                 ephemeral=True,
             )
-            logger.warning(
-                f"User {interaction.user} attempted to reject without permission"
-            )
+            logger.warning(f"User {interaction.user} attempted to reject without permission")
             return
 
         await interaction.response.defer()
@@ -305,9 +303,7 @@ class ApprovalView(discord.ui.View):
                 item.disabled = True
 
         # タイムアウトメッセージを編集
-        timeout_embed = create_timeout_result_embed(
-            self.command_name, self.timeout_hours
-        )
+        timeout_embed = create_timeout_result_embed(self.command_name, self.timeout_hours)
 
         if self.message:
             try:
