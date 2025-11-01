@@ -66,6 +66,12 @@ flyctl status                    # Check deployment status
   - スレッド連携とUI実装
   - 実装例とベストプラクティス
 
+- **[docs/CHANNEL_RESTRICTION.md](docs/CHANNEL_RESTRICTION.md)** - チャンネル制限デコレーター
+  - `@require_channel` デコレーターの概要
+  - 基本的な使い方とパラメータ
+  - 承認システムとの統合
+  - 実装例とベストプラクティス
+
 - **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** - 開発ワークフロー
   - 開発環境のセットアップ
   - コードスタイル規約
@@ -101,6 +107,7 @@ async def command_cmd(...):
 - ユーティリティ使用時 → [docs/UTILITIES.md](docs/UTILITIES.md)
 - アーキテクチャ理解 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - 開発環境構築 → [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
+- チャンネル制限追加時 → [docs/CHANNEL_RESTRICTION.md](docs/CHANNEL_RESTRICTION.md)
 - 承認フロー追加時 → [docs/APPROVAL.md](docs/APPROVAL.md)
 
 ### 3. Development vs Production
@@ -147,6 +154,7 @@ async def command_cmd(...):
 - [src/utils/validation\_utils.py](src/utils/validation_utils.py) - Validation helpers
 - [src/utils/message\_utils.py](src/utils/message_utils.py) - Message & error handling
 - [src/utils/channel\_utils.py](src/utils/channel_utils.py) - Channel operations
+- [src/utils/channel\_decorator.py](src/utils/channel_decorator.py) - Channel restriction decorator
 - [src/utils/approval\_decorator.py](src/utils/approval_decorator.py) - Approval middleware
 - [src/utils/approval\_utils.py](src/utils/approval_utils.py) - Approval utilities
 - [src/views/approval\_view.py](src/views/approval_view.py) - Approval UI
@@ -159,8 +167,9 @@ async def command_cmd(...):
 2. Copy [src/commands/\_sample.py](src/commands/_sample.py)
 3. Follow decorator ordering rules
 4. Reference [docs/UTILITIES.md](docs/UTILITIES.md) for helper functions
-5. (オプション) 承認が必要な場合は [docs/APPROVAL.md](docs/APPROVAL.md) を参照
-6. Test with `.env.dev` and `DEV_GUILD_ID`
+5. (オプション) チャンネル制限が必要な場合は [docs/CHANNEL_RESTRICTION.md](docs/CHANNEL_RESTRICTION.md) を参照
+6. (オプション) 承認が必要な場合は [docs/APPROVAL.md](docs/APPROVAL.md) を参照
+7. Test with `.env.dev` and `DEV_GUILD_ID`
 
 ### Understanding Architecture
 
@@ -182,6 +191,7 @@ async def command_cmd(...):
    - Architecture changes → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
    - Utility changes → [docs/UTILITIES.md](docs/UTILITIES.md)
    - Command patterns → [docs/ADD_COMMAND.md](docs/ADD_COMMAND.md)
+   - Channel restriction → [docs/CHANNEL_RESTRICTION.md](docs/CHANNEL_RESTRICTION.md)
    - Approval system → [docs/APPROVAL.md](docs/APPROVAL.md)
    - Workflow changes → [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
 

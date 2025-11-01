@@ -76,6 +76,16 @@ Claude Code用のガイダンス（AI開発アシスタント向け）
 - スレッド連携とUI
 - 実装例とベストプラクティス
 
+#### [CHANNEL_RESTRICTION.md](./CHANNEL_RESTRICTION.md)
+
+チャンネル制限デコレーターの仕様と実装
+
+- `@require_channel` デコレーターの概要
+- 基本的な使い方とパラメータ
+- 承認システムとの統合
+- 実装例とベストプラクティス
+- トラブルシューティング
+
 #### [DEVELOPMENT.md](./DEVELOPMENT.md)
 
 開発ワークフローとCI/CD
@@ -99,13 +109,15 @@ Claude Code用のガイダンス（AI開発アシスタント向け）
 1. [DEVELOPMENT.md](./DEVELOPMENT.md) で開発環境を構築
 2. [ADD_COMMAND.md](./ADD_COMMAND.md) で新機能追加
 3. [UTILITIES.md](./UTILITIES.md) でユーティリティを活用
-4. [APPROVAL.md](./APPROVAL.md) で承認フローを追加
+4. [CHANNEL_RESTRICTION.md](./CHANNEL_RESTRICTION.md) でチャンネル制限を追加
+5. [APPROVAL.md](./APPROVAL.md) で承認フローを追加
 
 ### 困った時
 
 - [SETUP.md](./SETUP.md) のトラブルシューティングを確認
 - [ARCHITECTURE.md](./ARCHITECTURE.md) で設計パターンを確認
 - [UTILITIES.md](./UTILITIES.md) でヘルパー関数の使い方を確認
+- [CHANNEL_RESTRICTION.md](./CHANNEL_RESTRICTION.md) でチャンネル制限の使い方を確認
 - [APPROVAL.md](./APPROVAL.md) で承認システムの使い方を確認
 
 ## 📚 ドキュメント間の関連
@@ -120,6 +132,8 @@ ARCHITECTURE.md (アーキテクチャ理解)
 DEVELOPMENT.md (開発環境)
     ↓
 ADD_COMMAND.md (コマンド追加) ← UTILITIES.md (ヘルパー関数)
-    ↓                          ↖
-APPROVAL.md (承認フロー)       ← (承認が必要なコマンドの場合)
+    ↓
+CHANNEL_RESTRICTION.md (チャンネル制限) ← (必要な場合)
+    ↓
+APPROVAL.md (承認フロー) ← (必要な場合)
 ```
