@@ -301,7 +301,7 @@ def setup(tree: app_commands.CommandTree):
         restrictions="• 一部ロール以外のみ対象",
         examples=[
             "`/add_club_role_member members:@user1 @user2`",
-            "`/add_club_role_member members:@user1 role_name:@1-club`",
+            "`/add_club_role_member members:@user1 role_name:@club`",
         ],
     )
     @tree.command(
@@ -310,7 +310,7 @@ def setup(tree: app_commands.CommandTree):
     )
     @app_commands.describe(
         members="追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
-        role_name="対象のロール（@ロール形式で指定。例: @1-club. 省略時は実行チャンネルのロール）",
+        role_name="対象のロール（@ロール形式で指定。例: @club. 省略時は実行チャンネルのロール）",
     )
     async def add_club_role_member(
         ctx: discord.Interaction, members: str, role_name: str | None = None
