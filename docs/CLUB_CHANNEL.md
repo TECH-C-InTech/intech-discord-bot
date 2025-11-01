@@ -23,7 +23,7 @@ src/commands/club_channel.py
 └── setup()                         # コマンド登録
 
 src/utils/
-├── event_config.py                 # 環境変数管理
+├── channel_config.py               # 環境変数管理
 ├── channel_utils.py                # チャンネルユーティリティ
 ├── validation_utils.py             # バリデーション
 └── message_utils.py                # メッセージヘルパー
