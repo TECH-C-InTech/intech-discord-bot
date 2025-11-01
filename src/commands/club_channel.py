@@ -6,10 +6,10 @@ import discord
 from discord import app_commands
 
 from ..utils.approval_decorator import require_approval
+from ..utils.channel_config import ChannelConfig
 from ..utils.channel_decorator import require_channel
 from ..utils.channel_utils import validate_category_exists
 from ..utils.command_metadata import command_meta
-from ..utils.channel_config import ChannelConfig
 from ..utils.message_utils import (
     create_success_embed,
     handle_command_error,
