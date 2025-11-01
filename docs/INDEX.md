@@ -86,6 +86,16 @@ Claude Code用のガイダンス（AI開発アシスタント向け）
 - 実装例とベストプラクティス
 - トラブルシューティング
 
+#### [CLUB_CHANNEL.md](./CLUB_CHANNEL.md)
+
+クラブチャンネル管理システムの仕様と実装
+
+- クラブチャンネル作成機能の概要
+- チャンネルとロールの一括管理
+- メンバー管理とロール付与
+- イベントチャンネルとの比較
+- 実装例とベストプラクティス
+
 #### [DEVELOPMENT.md](./DEVELOPMENT.md)
 
 開発ワークフローとCI/CD
@@ -111,6 +121,7 @@ Claude Code用のガイダンス（AI開発アシスタント向け）
 3. [UTILITIES.md](./UTILITIES.md) でユーティリティを活用
 4. [CHANNEL_RESTRICTION.md](./CHANNEL_RESTRICTION.md) でチャンネル制限を追加
 5. [APPROVAL.md](./APPROVAL.md) で承認フローを追加
+6. [CLUB_CHANNEL.md](./CLUB_CHANNEL.md) でクラブチャンネル管理を理解
 
 ### 困った時
 
@@ -119,6 +130,7 @@ Claude Code用のガイダンス（AI開発アシスタント向け）
 - [UTILITIES.md](./UTILITIES.md) でヘルパー関数の使い方を確認
 - [CHANNEL_RESTRICTION.md](./CHANNEL_RESTRICTION.md) でチャンネル制限の使い方を確認
 - [APPROVAL.md](./APPROVAL.md) で承認システムの使い方を確認
+- [CLUB_CHANNEL.md](./CLUB_CHANNEL.md) でクラブチャンネルの使い方を確認
 
 ## 📚 ドキュメント間の関連
 
@@ -136,4 +148,6 @@ ADD_COMMAND.md (コマンド追加) ← UTILITIES.md (ヘルパー関数)
 CHANNEL_RESTRICTION.md (チャンネル制限) ← (必要な場合)
     ↓
 APPROVAL.md (承認フロー) ← (必要な場合)
+    ↓
+CLUB_CHANNEL.md (クラブチャンネル管理) ← (クラブ関連機能)
 ```

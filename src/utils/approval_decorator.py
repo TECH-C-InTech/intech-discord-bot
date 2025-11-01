@@ -22,7 +22,7 @@ logger = getLogger(__name__)
 
 
 def require_approval(
-    timeout_hours: int = 24,
+    timeout_hours: int | None = None,
     description: str | None = None,
 ) -> Callable:
     """コマンドに承認機能を追加するデコレーター.
@@ -35,13 +35,14 @@ def require_approval(
     使用例:
         @command_meta(name="create-channel", description="チャンネル作成")
         @tree.command(name="create-channel")
-        @require_approval(timeout_hours=24, description="新しいチャンネルを作成します")
+        @require_approval(description="新しいチャンネルを作成します")
         @app_commands.describe(channel_name="作成するチャンネル名")
         async def create_channel_cmd(ctx: discord.Interaction, channel_name: str):
             await ctx.response.send_message(f"チャンネル {channel_name} を作成しました")
 
     Args:
-        timeout_hours: タイムアウト時間（時間単位）。デフォルトは24時間
+        timeout_hours: タイムアウト時間（時間単位）。
+                      Noneの場合は環境変数 APPROVAL_TIMEOUT_HOURS から取得（デフォルト: 24）
         description: 承認リクエストに表示するコマンドの説明（オプション）
 
     Returns:
@@ -51,6 +52,12 @@ def require_approval(
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(interaction: discord.Interaction, *args: Any, **kwargs: Any) -> Any:
+            # タイムアウト時間を取得（未指定の場合は環境変数から）
+            actual_timeout_hours = timeout_hours
+            if actual_timeout_hours is None:
+                approval_config = ApprovalConfig.get_instance()
+                actual_timeout_hours = approval_config.approval_timeout_hours
+
             # コマンド名を取得
             command_name = getattr(func, "__name__", "unknown")
             if hasattr(func, "name"):
@@ -72,10 +79,10 @@ def require_approval(
 
             # 実行者が承認ロールを持っている場合は即座に実行
             if has_approver_role(interaction.user):
-                config = ApprovalConfig.get_instance()
+                approval_config = ApprovalConfig.get_instance()
                 logger.info(
                     f"Command '{command_name}' executed immediately by {interaction.user} "
-                    f"(has '{config.approver_role_name}' role)"
+                    f"(has '{approval_config.approver_role_name}' role)"
                 )
                 return await func(interaction, *args, **kwargs)
 
@@ -86,7 +93,7 @@ def require_approval(
             approval_embed = create_approval_request_embed(
                 command_name=command_name,
                 requester=interaction.user,
-                timeout_hours=timeout_hours,
+                timeout_hours=actual_timeout_hours,
                 description=description,
             )
 
@@ -97,13 +104,15 @@ def require_approval(
                 original_interaction=interaction,
                 args=args,
                 kwargs=kwargs,
-                timeout_hours=timeout_hours,
+                timeout_hours=actual_timeout_hours,
             )
 
             # 承認権限を持つロールを取得
-            config = ApprovalConfig.get_instance()
+            approval_config = ApprovalConfig.get_instance()
             approver_roles = [
-                role for role in interaction.guild.roles if role.name == config.approver_role_name
+                role
+                for role in interaction.guild.roles
+                if role.name == approval_config.approver_role_name
             ]
 
             # 承認権限を持つロールをメンション
@@ -111,7 +120,7 @@ def require_approval(
             mentions = " ".join([f"<@&{role.id}>" for role in approver_roles])
             if not mentions:
                 # 承認権限を持つロールがない場合は、ロール名を表示
-                mentions = f"**「{config.approver_role_name}」ロールを持つユーザー**"
+                mentions = f"**「{approval_config.approver_role_name}」ロールを持つユーザー**"
 
             # 承認リクエストメッセージを送信
             if interaction.response.is_done():
@@ -140,11 +149,11 @@ def require_approval(
 
             # auto_archive_durationの型を明示的に指定
             auto_archive_duration: Literal[60, 1440, 4320, 10080]
-            if timeout_hours <= 1:
+            if actual_timeout_hours <= 1:
                 auto_archive_duration = 60
-            elif timeout_hours <= 24:
+            elif actual_timeout_hours <= 24:
                 auto_archive_duration = 1440
-            elif timeout_hours <= 72:
+            elif actual_timeout_hours <= 72:
                 auto_archive_duration = 4320
             else:
                 auto_archive_duration = 10080

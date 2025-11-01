@@ -7,7 +7,7 @@ from typing import Any
 
 import discord
 
-from src.utils.event_config import EventChannelConfig
+from src.utils.channel_config import ChannelConfig
 from src.utils.validation_utils import validate_channel_restriction
 
 logger = getLogger(__name__)
@@ -46,7 +46,7 @@ def require_channel(
 
     Args:
         channel_name: チャンネル名を直接指定（channel_name_from_config と排他）
-        channel_name_from_config: EventChannelConfig の属性名を指定して動的取得
+        channel_name_from_config: ChannelConfig の属性名を指定して動的取得
                                   （channel_name と排他）
         must_be_in: チャンネル制限の方向
                     - True: 指定チャンネルでのみ実行可能
@@ -84,17 +84,17 @@ def require_channel(
 
             # 環境変数から動的に取得する場合
             if channel_name_from_config:
-                config = await EventChannelConfig.load(interaction)
+                config = await ChannelConfig.load(interaction)
                 if not config:
                     # 設定の読み込みに失敗した場合は早期リターン
-                    # （EventChannelConfig.load 内でエラーメッセージが送信される）
-                    logger.error(f"Failed to load EventChannelConfig for command '{command_name}'")
+                    # （ChannelConfig.load 内でエラーメッセージが送信される）
+                    logger.error(f"Failed to load ChannelConfig for command '{command_name}'")
                     return
 
                 # 属性が存在するかチェック
                 if not hasattr(config, channel_name_from_config):
                     logger.error(
-                        f"EventChannelConfig has no attribute '{channel_name_from_config}' "
+                        f"ChannelConfig has no attribute '{channel_name_from_config}' "
                         f"for command '{command_name}'"
                     )
                     if interaction.response.is_done():
