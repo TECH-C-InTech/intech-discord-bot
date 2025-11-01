@@ -60,6 +60,12 @@ flyctl status                    # Check deployment status
   - チャンネルユーティリティ
   - ロギングパターン
 
+- **[docs/APPROVAL.md](docs/APPROVAL.md)** - 承認システムの仕様
+  - 承認フローの概要とアーキテクチャ
+  - `@require_approval` デコレーターの使い方
+  - スレッド連携とUI実装
+  - 実装例とベストプラクティス
+
 - **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** - 開発ワークフロー
   - 開発環境のセットアップ
   - コードスタイル規約
@@ -95,6 +101,7 @@ async def command_cmd(...):
 - ユーティリティ使用時 → [docs/UTILITIES.md](docs/UTILITIES.md)
 - アーキテクチャ理解 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - 開発環境構築 → [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
+- 承認フロー追加時 → [docs/APPROVAL.md](docs/APPROVAL.md)
 
 ### 3. Development vs Production
 
@@ -124,6 +131,7 @@ async def command_cmd(...):
 ## Important File Locations
 
 ### Core Files
+
 - [bot.py](bot.py) - Main entry point, command sync logic
 - [keep_alive.py](keep_alive.py) - FastAPI health check server
 - [src/commands/\_\_init\_\_.py](src/commands/__init__.py) - Auto-registration system
@@ -139,6 +147,9 @@ async def command_cmd(...):
 - [src/utils/validation\_utils.py](src/utils/validation_utils.py) - Validation helpers
 - [src/utils/message\_utils.py](src/utils/message_utils.py) - Message & error handling
 - [src/utils/channel\_utils.py](src/utils/channel_utils.py) - Channel operations
+- [src/utils/approval\_decorator.py](src/utils/approval_decorator.py) - Approval middleware
+- [src/utils/approval\_utils.py](src/utils/approval_utils.py) - Approval utilities
+- [src/views/approval\_view.py](src/views/approval_view.py) - Approval UI
 
 ## Workflow for Common Tasks
 
@@ -148,7 +159,8 @@ async def command_cmd(...):
 2. Copy [src/commands/\_sample.py](src/commands/_sample.py)
 3. Follow decorator ordering rules
 4. Reference [docs/UTILITIES.md](docs/UTILITIES.md) for helper functions
-5. Test with `.env.dev` and `DEV_GUILD_ID`
+5. (オプション) 承認が必要な場合は [docs/APPROVAL.md](docs/APPROVAL.md) を参照
+6. Test with `.env.dev` and `DEV_GUILD_ID`
 
 ### Understanding Architecture
 
@@ -170,6 +182,7 @@ async def command_cmd(...):
    - Architecture changes → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
    - Utility changes → [docs/UTILITIES.md](docs/UTILITIES.md)
    - Command patterns → [docs/ADD_COMMAND.md](docs/ADD_COMMAND.md)
+   - Approval system → [docs/APPROVAL.md](docs/APPROVAL.md)
    - Workflow changes → [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
 
 2. Update [docs/INDEX.md](docs/INDEX.md) if adding new sections

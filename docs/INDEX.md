@@ -66,6 +66,16 @@ Claude Code用のガイダンス（AI開発アシスタント向け）
 - コマンドメタデータ
 - ロギングパターン
 
+#### [APPROVAL.md](./APPROVAL.md)
+
+承認システムの仕様と実装
+
+- 承認フローの概要
+- アーキテクチャとコンポーネント
+- `@require_approval` デコレーターの使い方
+- スレッド連携とUI
+- 実装例とベストプラクティス
+
 #### [DEVELOPMENT.md](./DEVELOPMENT.md)
 
 開発ワークフローとCI/CD
@@ -89,12 +99,14 @@ Claude Code用のガイダンス（AI開発アシスタント向け）
 1. [DEVELOPMENT.md](./DEVELOPMENT.md) で開発環境を構築
 2. [ADD_COMMAND.md](./ADD_COMMAND.md) で新機能追加
 3. [UTILITIES.md](./UTILITIES.md) でユーティリティを活用
+4. [APPROVAL.md](./APPROVAL.md) で承認フローを追加
 
 ### 困った時
 
 - [SETUP.md](./SETUP.md) のトラブルシューティングを確認
 - [ARCHITECTURE.md](./ARCHITECTURE.md) で設計パターンを確認
 - [UTILITIES.md](./UTILITIES.md) でヘルパー関数の使い方を確認
+- [APPROVAL.md](./APPROVAL.md) で承認システムの使い方を確認
 
 ## 📚 ドキュメント間の関連
 
@@ -108,4 +120,6 @@ ARCHITECTURE.md (アーキテクチャ理解)
 DEVELOPMENT.md (開発環境)
     ↓
 ADD_COMMAND.md (コマンド追加) ← UTILITIES.md (ヘルパー関数)
+    ↓                          ↖
+APPROVAL.md (承認フロー)       ← (承認が必要なコマンドの場合)
 ```
