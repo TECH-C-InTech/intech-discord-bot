@@ -187,11 +187,11 @@ class ApprovalView(discord.ui.View):
                 await self.message.edit(embed=approval_embed, view=self)
             except discord.HTTPException as e:
                 logger.error(f"Failed to edit approval message: {e}")
+
+        # スレッド内に承認通知を投稿
+        if self.thread:
+            try:
                 await self.thread.send(embed=approval_embed)
-                notification_embed = create_approval_result_embed(
-                    self.command_name, interaction.user, self.original_interaction.user
-                )
-                await self.thread.send(embed=notification_embed)
             except discord.HTTPException as e:
                 logger.error(f"Failed to send approval notification to thread: {e}")
 
@@ -274,10 +274,7 @@ class ApprovalView(discord.ui.View):
         # スレッド内に拒否通知を投稿
         if self.thread:
             try:
-                notification_embed = create_rejection_result_embed(
-                    self.command_name, interaction.user, self.original_interaction.user
-                )
-                await self.thread.send(embed=notification_embed)
+                await self.thread.send(embed=rejection_embed)
             except discord.HTTPException as e:
                 logger.error(f"Failed to send rejection notification to thread: {e}")
 
