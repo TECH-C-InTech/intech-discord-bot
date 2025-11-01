@@ -415,7 +415,7 @@ def setup(tree: app_commands.CommandTree):
         description="新しいイベントチャンネルを作成します",
     )
     @require_channel(channel_name_from_config="event_request_channel_name", must_be_in=True)
-    @require_approval(timeout_hours=24, description="新しいイベントチャンネルを作成します")
+    @require_approval(description="新しいイベントチャンネルを作成します")
     @app_commands.describe(
         channel_name="作成するイベントチャンネル名",
         members="ロールに追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",

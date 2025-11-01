@@ -82,6 +82,8 @@ uv run bot.py
 | `/archive_event_channel [name]` | イベントチャンネルをアーカイブ |
 | `/restore_event_channel [name]` | アーカイブされたチャンネルを復元 |
 | `/add_event_role_member <members> [role_name]` | イベントロールにメンバーを追加 |
+| `/create_club_channel <name> [members]` | クラブチャンネルとロールを作成 |
+| `/add_club_role_member <members> [role_name]` | クラブロールにメンバーを追加 |
 | `/show_role_members <role_name> [visibility]` | ロールのメンバー一覧を表示 |
 
 > 💡 各コマンドの詳細は `/docs command:コマンド名` で確認できます
@@ -99,6 +101,16 @@ uv run bot.py
 - `EVENT_CATEGORY_NAME`: イベントカテゴリー名
 - `ARCHIVE_EVENT_CATEGORY_NAME`: アーカイブカテゴリー名
 - `EVENT_REQUEST_CHANNEL_NAME`: イベント作成リクエストを受け付けるチャンネル名
+
+### クラブチャンネル管理
+
+- `CLUB_CATEGORY_NAME`: クラブカテゴリー名
+- `CLUBS_REQUEST_CHANNEL_NAME`: クラブチャンネル作成リクエストを受け付けるチャンネル名
+
+### 承認システム
+
+- `APPROVER_ROLE_NAME`: 承認権限を持つロール名（デフォルト: Administrator）
+- `APPROVAL_TIMEOUT_HOURS`: 承認リクエストのタイムアウト時間（時間単位、デフォルト: 24）
 
 ### 開発環境（任意）
 
