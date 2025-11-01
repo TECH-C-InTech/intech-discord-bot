@@ -200,7 +200,7 @@ async def create_club_channel(
 )
 @app_commands.describe(
     members="追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
-    role_name="対象のロール（@ロール形式で指定。例: @プログラミング部. 省略時は実行チャンネルのロール）",
+    role_name="対象のロール（@ロール形式で指定。例: @プログラミング部 省略時は実行チャンネルのロール）",
 )
 async def add_club_role_member(
     ctx: discord.Interaction, members: str, role_name: str | None = None
