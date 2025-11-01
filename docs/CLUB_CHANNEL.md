@@ -232,7 +232,7 @@ async def add_club_role_member(
 
 1. **環境変数の検証**
    ```python
-   config = await EventChannelConfig.load(ctx)
+   config = await ChannelConfig.load(ctx)
    if not config:
        return  # エラーメッセージは自動表示
    ```
