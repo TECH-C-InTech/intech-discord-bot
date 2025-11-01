@@ -283,7 +283,8 @@ class ApprovalView(discord.ui.View):
         if self.thread:
             try:
                 await self.thread.send(
-                    f"{self.original_interaction.user.mention} コマンド `{self.command_name}` は拒否されました。"
+                    f"{self.original_interaction.user.mention} コマンド `{self.command_name}`"
+                    " は拒否されました。"
                 )
             except discord.HTTPException as e:
                 logger.error(f"Failed to send rejection notification: {e}")

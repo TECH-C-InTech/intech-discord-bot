@@ -1,8 +1,8 @@
 """承認システムの設定を管理するクラス."""
 
-import os
 from dataclasses import dataclass
 from logging import getLogger
+import os
 
 logger = getLogger(__name__)
 

@@ -62,7 +62,8 @@ def require_channel(
     # パラメータの検証
     if channel_name is None and channel_name_from_config is None:
         raise ValueError(
-            "require_channel: channel_name または channel_name_from_config のいずれかを指定してください"
+            "require_channel: channel_name または channel_name_from_config " \
+            "のいずれかを指定してください"
         )
 
     if channel_name is not None and channel_name_from_config is not None:
@@ -112,7 +113,7 @@ def require_channel(
 
             # チャンネル制限をチェック
             if not await validate_channel_restriction(interaction, target_channel_name, must_be_in):
-                # バリデーション失敗（エラーメッセージは validate_channel_restriction 内で送信される）
+                # バリデーション失敗（エラーメッセージはvalidate_channel_restriction内で送信される）
                 logger.info(
                     f"Command '{command_name}' blocked by channel restriction: "
                     f"channel='{target_channel_name}', must_be_in={must_be_in}, "
