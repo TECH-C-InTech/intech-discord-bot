@@ -159,7 +159,7 @@ def create_timeout_result_embed(command_name: str, timeout_hours: int) -> discor
     embed = discord.Embed(
         title="⏱️ タイムアウト",
         description=f"コマンド `{command_name}` は\n"
-                    f"{timeout_hours}時間以内に承認されなかったため、自動的に拒否されました。",
+        f"{timeout_hours}時間以内に承認されなかったため、自動的に拒否されました。",
         color=discord.Color.orange(),
         timestamp=datetime.now(timezone.utc),
     )
