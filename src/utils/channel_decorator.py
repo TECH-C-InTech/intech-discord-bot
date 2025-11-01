@@ -72,9 +72,7 @@ def require_channel(
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
-        async def wrapper(
-            interaction: discord.Interaction, *args: Any, **kwargs: Any
-        ) -> Any:
+        async def wrapper(interaction: discord.Interaction, *args: Any, **kwargs: Any) -> Any:
             # コマンド名を取得
             command_name = getattr(func, "__name__", "unknown")
             if hasattr(func, "name"):
@@ -89,9 +87,7 @@ def require_channel(
                 if not config:
                     # 設定の読み込みに失敗した場合は早期リターン
                     # （EventChannelConfig.load 内でエラーメッセージが送信される）
-                    logger.error(
-                        f"Failed to load EventChannelConfig for command '{command_name}'"
-                    )
+                    logger.error(f"Failed to load EventChannelConfig for command '{command_name}'")
                     return
 
                 # 属性が存在するかチェック
@@ -115,9 +111,7 @@ def require_channel(
                 target_channel_name = getattr(config, channel_name_from_config)
 
             # チャンネル制限をチェック
-            if not await validate_channel_restriction(
-                interaction, target_channel_name, must_be_in
-            ):
+            if not await validate_channel_restriction(interaction, target_channel_name, must_be_in):
                 # バリデーション失敗（エラーメッセージは validate_channel_restriction 内で送信される）
                 logger.info(
                     f"Command '{command_name}' blocked by channel restriction: "

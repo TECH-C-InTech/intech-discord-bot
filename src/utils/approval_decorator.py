@@ -47,18 +47,14 @@ def require_approval(
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
-        async def wrapper(
-            interaction: discord.Interaction, *args: Any, **kwargs: Any
-        ) -> Any:
+        async def wrapper(interaction: discord.Interaction, *args: Any, **kwargs: Any) -> Any:
             # コマンド名を取得
             command_name = getattr(func, "__name__", "unknown")
             if hasattr(func, "name"):
                 command_name = func.name
 
             # Interactionがギルド内でない場合はエラー
-            if not interaction.guild or not isinstance(
-                interaction.user, discord.Member
-            ):
+            if not interaction.guild or not isinstance(interaction.user, discord.Member):
                 if interaction.response.is_done():
                     await interaction.followup.send(
                         "このコマンドはサーバー内でのみ使用できます。",
@@ -81,9 +77,7 @@ def require_approval(
                 return await func(interaction, *args, **kwargs)
 
             # 承認リクエストを送信
-            logger.info(
-                f"Approval request sent for command '{command_name}' by {interaction.user}"
-            )
+            logger.info(f"Approval request sent for command '{command_name}' by {interaction.user}")
 
             # 承認リクエストEmbedを作成
             approval_embed = create_approval_request_embed(
@@ -106,9 +100,7 @@ def require_approval(
             # 承認権限を持つロールを取得
             config = ApprovalConfig.get_instance()
             approver_roles = [
-                role
-                for role in interaction.guild.roles
-                if role.name == config.approver_role_name
+                role for role in interaction.guild.roles if role.name == config.approver_role_name
             ]
 
             # 承認権限を持つロールをメンション
@@ -124,18 +116,20 @@ def require_approval(
                     content=mentions,
                     embed=approval_embed,
                     view=approval_view,
-                    allowed_mentions=discord.AllowedMentions(roles=True),  # ロールメンションを有効化
+                    allowed_mentions=discord.AllowedMentions(
+                        roles=True
+                    ),  # ロールメンションを有効化
                 )
             else:
                 await interaction.response.send_message(
                     content=mentions,
                     embed=approval_embed,
                     view=approval_view,
-                    allowed_mentions=discord.AllowedMentions(roles=True),  # ロールメンションを有効化
+                    allowed_mentions=discord.AllowedMentions(
+                        roles=True
+                    ),  # ロールメンションを有効化
                 )
-            logger.info(
-                f"Sent approval request for command '{command_name}' by {interaction.user}"
-            )
+            logger.info(f"Sent approval request for command '{command_name}' by {interaction.user}")
 
             # 送信したメッセージをViewに保存（編集用）
             message = await interaction.original_response()

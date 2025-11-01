@@ -84,6 +84,7 @@ class ThreadBoundInteraction:
     def approval_thread(self) -> discord.Thread:
         return self._thread
 
+
 class ApprovalView(discord.ui.View):
     """承認/拒否ボタンを持つViewクラス.
 
