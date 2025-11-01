@@ -16,7 +16,6 @@ from src.utils.approval_utils import (
     create_request_details_embed,
     has_approver_role,
 )
-from src.utils.event_config import EventChannelConfig
 from src.views.approval_view import ApprovalView
 
 logger = getLogger(__name__)
@@ -56,15 +55,8 @@ def require_approval(
             # タイムアウト時間を取得（未指定の場合は環境変数から）
             actual_timeout_hours = timeout_hours
             if actual_timeout_hours is None:
-                config = EventChannelConfig.get_instance()
-                if config:
-                    actual_timeout_hours = config.approval_timeout_hours
-                else:
-                    # 設定が取得できない場合はデフォルト値
-                    actual_timeout_hours = 24
-                    logger.warning(
-                        "Failed to get approval timeout from config, using default: 24 hours"
-                    )
+                approval_config = ApprovalConfig.get_instance()
+                actual_timeout_hours = approval_config.approval_timeout_hours
 
             # コマンド名を取得
             command_name = getattr(func, "__name__", "unknown")
@@ -87,10 +79,10 @@ def require_approval(
 
             # 実行者が承認ロールを持っている場合は即座に実行
             if has_approver_role(interaction.user):
-                config = ApprovalConfig.get_instance()
+                approval_config = ApprovalConfig.get_instance()
                 logger.info(
                     f"Command '{command_name}' executed immediately by {interaction.user} "
-                    f"(has '{config.approver_role_name}' role)"
+                    f"(has '{approval_config.approver_role_name}' role)"
                 )
                 return await func(interaction, *args, **kwargs)
 
@@ -116,9 +108,11 @@ def require_approval(
             )
 
             # 承認権限を持つロールを取得
-            config = ApprovalConfig.get_instance()
+            approval_config = ApprovalConfig.get_instance()
             approver_roles = [
-                role for role in interaction.guild.roles if role.name == config.approver_role_name
+                role
+                for role in interaction.guild.roles
+                if role.name == approval_config.approver_role_name
             ]
 
             # 承認権限を持つロールをメンション
@@ -126,7 +120,7 @@ def require_approval(
             mentions = " ".join([f"<@&{role.id}>" for role in approver_roles])
             if not mentions:
                 # 承認権限を持つロールがない場合は、ロール名を表示
-                mentions = f"**「{config.approver_role_name}」ロールを持つユーザー**"
+                mentions = f"**「{approval_config.approver_role_name}」ロールを持つユーザー**"
 
             # 承認リクエストメッセージを送信
             if interaction.response.is_done():

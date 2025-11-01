@@ -6,6 +6,7 @@ import discord
 from discord import app_commands
 
 from ..utils.approval_decorator import require_approval
+from ..utils.channel_config import ChannelConfig
 from ..utils.channel_decorator import require_channel
 from ..utils.channel_utils import (
     get_channel_by_name,
@@ -13,7 +14,6 @@ from ..utils.channel_utils import (
     validate_category_exists,
 )
 from ..utils.command_metadata import command_meta
-from ..utils.event_config import EventChannelConfig
 from ..utils.message_utils import (
     create_success_embed,
     handle_command_error,
@@ -45,7 +45,7 @@ async def create_event_channel_impl(
         members: ロールに追加するメンバー（メンション形式）
     """
     # 環境変数を一括取得
-    config = await EventChannelConfig.load(ctx)
+    config = await ChannelConfig.load(ctx)
     if not config:
         return
 
@@ -137,7 +137,7 @@ async def archive_event_channel_impl(
         channel_name: アーカイブするチャンネル名（省略時は実行チャンネル）
     """
     # 環境変数を一括取得
-    config = await EventChannelConfig.load(ctx)
+    config = await ChannelConfig.load(ctx)
     if not config:
         return
 
@@ -206,7 +206,7 @@ async def restore_event_channel_impl(
         channel_name: 復元するチャンネル名（省略時は実行チャンネル）
     """
     # 環境変数を一括取得
-    config = await EventChannelConfig.load(ctx)
+    config = await ChannelConfig.load(ctx)
     if not config:
         return
 
@@ -279,7 +279,7 @@ async def add_event_role_member_impl(
         role_name: 対象のロール名（省略時は実行チャンネル名）
     """
     # 環境変数を一括取得
-    config = await EventChannelConfig.load(ctx)
+    config = await ChannelConfig.load(ctx)
     if not config:
         return
 

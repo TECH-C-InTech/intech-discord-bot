@@ -9,7 +9,7 @@ from ..utils.approval_decorator import require_approval
 from ..utils.channel_decorator import require_channel
 from ..utils.channel_utils import validate_category_exists
 from ..utils.command_metadata import command_meta
-from ..utils.event_config import EventChannelConfig
+from ..utils.channel_config import ChannelConfig
 from ..utils.message_utils import (
     create_success_embed,
     handle_command_error,
@@ -40,7 +40,7 @@ async def create_club_channel_impl(
         members: ロールに追加するメンバー（メンション形式）
     """
     # 環境変数を一括取得
-    config = await EventChannelConfig.load(ctx)
+    config = await ChannelConfig.load(ctx)
     if not config:
         return
 
@@ -71,7 +71,8 @@ async def create_club_channel_impl(
     if existing_channel:
         await send_error_message(
             ctx,
-            f"チャンネル `{formatted_channel_name}` は既に{config.club_category_name}カテゴリ内に存在します。\n"
+            f"チャンネル `{formatted_channel_name}` "
+            f"は既に{config.club_category_name}カテゴリ内に存在します。\n"
             f"別の名前を使用してください。",
         )
         logger.warning(
@@ -143,7 +144,7 @@ async def add_club_role_member_impl(
         role_name: 対象のロール名（省略時は実行チャンネル名）
     """
     # 環境変数を一括取得
-    config = await EventChannelConfig.load(ctx)
+    config = await ChannelConfig.load(ctx)
     if not config:
         return
 
