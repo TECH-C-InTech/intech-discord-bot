@@ -79,7 +79,11 @@ class ThreadBoundInteraction:
 
     @property
     def channel(self) -> discord.abc.MessageableChannel | None:
-        return self._original_interaction.channel
+        # ForumChannelとCategoryChannelは除外
+        channel = self._original_interaction.channel
+        if isinstance(channel, (discord.ForumChannel, discord.CategoryChannel)):
+            return None
+        return channel
 
     @property
     def approval_thread(self) -> discord.Thread:
