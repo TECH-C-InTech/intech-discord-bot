@@ -6,6 +6,7 @@ import discord
 from discord import app_commands
 
 from ..utils.approval_decorator import require_approval
+from ..utils.channel_decorator import require_channel
 from ..utils.channel_utils import (
     get_channel_by_name,
     get_next_event_index,
@@ -22,7 +23,6 @@ from ..utils.validation_utils import (
     parse_member_mentions,
     parse_role_mention,
     validate_channel_in_category,
-    validate_channel_restriction,
     validate_role_safety,
 )
 
@@ -47,12 +47,6 @@ async def create_event_channel_impl(
     # 環境変数を一括取得
     config = await EventChannelConfig.load(ctx)
     if not config:
-        return
-
-    # コマンド実行チャンネルの確認
-    if not await validate_channel_restriction(
-        ctx, config.event_request_channel_name, must_be_in=True
-    ):
         return
 
     # カテゴリーの存在確認
@@ -166,11 +160,6 @@ async def archive_event_channel_impl(
         if not channel:
             return
     else:
-        # channel_name省略時は、EVENT_REQUEST_CHANNEL以外で実行
-        if not await validate_channel_restriction(
-            ctx, config.event_request_channel_name, must_be_in=False
-        ):
-            return
         # ctx.channel が TextChannel であることを確認
         if not isinstance(ctx.channel, discord.TextChannel):
             await send_error_message(
@@ -406,7 +395,9 @@ def setup(tree: app_commands.CommandTree):
     デコレーターの順序（重要）:
     1. @command_meta() - メタデータの登録
     2. @tree.command() - コマンドの登録
-    3. @app_commands.describe() - パラメータの説明
+    3. @require_channel() - チャンネル制限（オプション）
+    4. @require_approval() - 承認ミドルウェア（オプション）
+    5. @app_commands.describe() - パラメータの説明
     """
 
     @command_meta(
@@ -423,6 +414,7 @@ def setup(tree: app_commands.CommandTree):
         name="create_event_channel",
         description="新しいイベントチャンネルを作成します",
     )
+    @require_channel(channel_name_from_config="event_request_channel_name", must_be_in=True)
     @require_approval(timeout_hours=24, description="新しいイベントチャンネルを作成します")
     @app_commands.describe(
         channel_name="作成するイベントチャンネル名",
@@ -437,7 +429,7 @@ def setup(tree: app_commands.CommandTree):
         category="イベントチャンネル管理",
         icon="📅",
         short_description="イベントチャンネルをアーカイブに移動",
-        restrictions="• イベントカテゴリー内のチャンネルでのみ実行可能",
+        restrictions="• channel_name省略時はイベントカテゴリー内で実行",
         examples=[
             "`/archive_event_channel` (実行チャンネルをアーカイブ)",
             "`/archive_event_channel channel_name:1-ハッカソン`",
