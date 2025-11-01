@@ -141,11 +141,21 @@ def require_approval(
             message = await interaction.original_response()
             approval_view.message = message
 
+            if timeout_hours <= 1:
+                auto_archive_duration = 60
+            elif timeout_hours <= 24:
+                auto_archive_duration = 1440
+            elif timeout_hours <= 72:
+                auto_archive_duration = 4320
+            else:
+                auto_archive_duration = 10080
+
             # スレッドを作成
             try:
                 thread = await message.create_thread(
                     name=f"承認: {command_name}",
-                    auto_archive_duration=1440,  # 24時間
+                    auto_archive_duration=auto_archive_duration,
+                    reason=f"Approval thread for command '{command_name}'",
                 )
                 approval_view.thread = thread
 
