@@ -41,6 +41,8 @@ class ThreadBoundResponse:
         try:
             await self._original_response.defer(*args, **kwargs)
         except (InteractionResponded, discord.HTTPException):
+            # These exceptions indicate the interaction has already been responded to or a Discord API error occurred.
+            # Since defer is best-effort, it's safe to ignore these and continue.
             pass
 
     def is_done(self) -> bool:
