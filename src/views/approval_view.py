@@ -30,22 +30,23 @@ class ThreadBoundResponse:
         self._original_response = original_response
         self._thread = thread
 
-    async def send_message(self, *args: Any, **kwargs: Any) -> discord.Message:
+    async def send_message(self, *args: Any, **kwargs: Any) -> discord.InteractionResponse | None:
         # Threads do not support ephemeral messages; drop the flag quietly.
         kwargs.pop("ephemeral", None)
-        return await self._thread.send(*args, **kwargs)
+        await self._thread.send(*args, **kwargs)
+        return None
 
     async def defer(self, *args: Any, **kwargs: Any) -> None:
         # The original interaction has already been responded to; defer is best-effort.
         try:
             await self._original_response.defer(*args, **kwargs)
         except (InteractionResponded, discord.HTTPException):
-            return None
+            pass
 
     def is_done(self) -> bool:
         return True
 
-    async def edit_message(self, *args: Any, **kwargs: Any) -> discord.Message:
+    async def edit_message(self, *args: Any, **kwargs: Any) -> Any:
         return await self._original_response.edit_message(*args, **kwargs)
 
 
@@ -77,7 +78,7 @@ class ThreadBoundInteraction:
         return getattr(self._original_interaction, item)
 
     @property
-    def channel(self) -> discord.Thread:
+    def channel(self) -> discord.abc.MessageableChannel | None:
         return self._original_interaction.channel
 
     @property

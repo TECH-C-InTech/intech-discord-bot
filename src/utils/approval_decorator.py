@@ -3,9 +3,12 @@
 from collections.abc import Callable
 from functools import wraps
 from logging import getLogger
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import discord
+
+if TYPE_CHECKING:
+    from typing import Literal
 
 from src.utils.approval_config import ApprovalConfig
 from src.utils.approval_utils import (
@@ -135,6 +138,8 @@ def require_approval(
             message = await interaction.original_response()
             approval_view.message = message
 
+            # auto_archive_durationの型を明示的に指定
+            auto_archive_duration: Literal[60, 1440, 4320, 10080]
             if timeout_hours <= 1:
                 auto_archive_duration = 60
             elif timeout_hours <= 24:

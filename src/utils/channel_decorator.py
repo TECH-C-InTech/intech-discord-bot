@@ -62,7 +62,7 @@ def require_channel(
     # パラメータの検証
     if channel_name is None and channel_name_from_config is None:
         raise ValueError(
-            "require_channel: channel_name または channel_name_from_config " \
+            "require_channel: channel_name または channel_name_from_config "
             "のいずれかを指定してください"
         )
 
@@ -110,6 +110,21 @@ def require_channel(
                     return
 
                 target_channel_name = getattr(config, channel_name_from_config)
+
+            # target_channel_name が None でないことを保証
+            if target_channel_name is None:
+                logger.error(f"Channel name is None for command '{command_name}'")
+                if interaction.response.is_done():
+                    await interaction.followup.send(
+                        "設定エラー: チャンネル名が取得できませんでした。",
+                        ephemeral=True,
+                    )
+                else:
+                    await interaction.response.send_message(
+                        "設定エラー: チャンネル名が取得できませんでした。",
+                        ephemeral=True,
+                    )
+                return
 
             # チャンネル制限をチェック
             if not await validate_channel_restriction(interaction, target_channel_name, must_be_in):
