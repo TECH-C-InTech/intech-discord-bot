@@ -306,6 +306,62 @@ async def create_event_channel_cmd(ctx: discord.Interaction, name: str, members:
 
 **重要**: `@command_meta` は必ず最上位のデコレーターとして配置してください。詳細は [ADD_COMMAND.md](./ADD_COMMAND.md#デコレーターの順序重要) を参照。
 
+## チャンネル制限デコレーター
+
+**場所**: [src/utils/channel_decorator.py](../src/utils/channel_decorator.py)
+
+### `@require_channel` デコレーター
+
+特定のチャンネルでのみ（または特定のチャンネル以外で）コマンドを実行できるように制限するデコレーター。
+
+**パラメータ**:
+- `channel_name: str | None` - チャンネル名を直接指定（`channel_name_from_config` と排他）
+- `channel_name_from_config: str | None` - `EventChannelConfig` の属性名を指定して動的取得（`channel_name` と排他）
+- `must_be_in: bool` - チャンネル制限の方向（デフォルト: `True`）
+  - `True`: 指定チャンネルでのみ実行可能
+  - `False`: 指定チャンネル以外で実行可能
+
+**使用例（直接指定）**:
+```python
+from src.utils.channel_decorator import require_channel
+
+@command_meta(...)
+@tree.command(name="admin_command", description="管理コマンド")
+@require_channel(channel_name="管理チャンネル", must_be_in=True)
+@app_commands.describe(...)
+async def admin_command_cmd(ctx: discord.Interaction, ...):
+    # このコマンドは「管理チャンネル」でのみ実行可能
+    await ctx.response.send_message("管理コマンドを実行しました")
+```
+
+**使用例（環境変数から取得）**:
+```python
+from src.utils.channel_decorator import require_channel
+
+@command_meta(...)
+@tree.command(name="create_event", description="イベント作成")
+@require_channel(channel_name_from_config="event_request_channel_name", must_be_in=True)
+@app_commands.describe(...)
+async def create_event_cmd(ctx: discord.Interaction, ...):
+    # このコマンドは EVENT_REQUEST_CHANNEL_NAME で指定されたチャンネルでのみ実行可能
+    await ctx.response.send_message("イベントを作成しました")
+```
+
+**チャンネル制限と承認の組み合わせ**:
+```python
+@command_meta(...)
+@tree.command(...)
+@require_channel(channel_name_from_config="event_request_channel_name", must_be_in=True)
+@require_approval(timeout_hours=24, description="新しいイベントを作成します")
+@app_commands.describe(...)
+async def create_event_cmd(ctx: discord.Interaction, ...):
+    # 1. まずチャンネル制限をチェック
+    # 2. 通過したら承認フローへ
+    ...
+```
+
+**重要**: `@require_channel` は `@require_approval` より上位に配置してください。これにより、承認リクエスト送信前にチャンネル制限をチェックできます。
+
 ## 承認ミドルウェア
 
 **場所**:
@@ -340,9 +396,10 @@ async def create_event_channel_cmd(ctx: discord.Interaction, name: str):
 
 **デコレーターの順序**:
 ```python
-@command_meta(...)         # 最上位（必須）
-@tree.command(...)         # Discord登録
-@require_approval(...)     # 承認ミドルウェア（ここに配置）
+@command_meta(...)          # 最上位（必須）
+@tree.command(...)          # Discord登録
+@require_channel(...)       # チャンネル制限（オプション、承認より上位）
+@require_approval(...)      # 承認ミドルウェア（ここに配置）
 @app_commands.describe(...) # パラメータ説明
 async def command(...):
 ```

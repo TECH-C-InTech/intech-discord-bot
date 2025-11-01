@@ -29,15 +29,19 @@
 ```text
 1. ユーザーがコマンド実行
    ↓
-2. @require_approval デコレーターが権限チェック
+2. @require_channel デコレーターでチャンネル制限をチェック（オプション）
+   ├─ チャンネル不正 → エラーメッセージを表示して終了
+   └─ チャンネル正常 → 次へ
+       ↓
+3. @require_approval デコレーターが権限チェック
    ├─ 承認ロール保持 → 即座に実行
    └─ 承認ロール未保持 → 承認リクエスト送信
        ↓
-3. 承認リクエストメッセージ + スレッド作成
+4. 承認リクエストメッセージ + スレッド作成
    ├─ メインチャンネル: 承認/拒否ボタン + Embed
    └─ スレッド内: リクエスト詳細 + コマンド実行結果
        ↓
-4. 承認者がボタンクリック
+5. 承認者がボタンクリック
    ├─ 承認 → コマンド実行（結果はスレッド内）
    ├─ 拒否 → リクエスト者に通知
    └─ タイムアウト → 自動拒否
@@ -67,10 +71,12 @@ from discord import app_commands
 import discord
 
 from src.utils.command_metadata import command_meta
+from src.utils.channel_decorator import require_channel
 from src.utils.approval_decorator import require_approval
 
 @command_meta(name="delete-channel", description="チャンネル削除（承認必須）")
 @tree.command(name="delete-channel", description="チャンネルを削除します")
+@require_channel(channel_name="管理チャンネル", must_be_in=True)  # チャンネル制限（オプション）
 @require_approval(timeout_hours=24, description="チャンネルを完全に削除します")
 @app_commands.describe(channel="削除するチャンネル")
 async def delete_channel_cmd(
@@ -218,6 +224,10 @@ class ThreadBoundInteraction:
     name="event",
     description="イベントチャンネルを作成します",
 )
+@require_channel(
+    channel_name_from_config="event_request_channel_name",
+    must_be_in=True
+)
 @require_approval(
     timeout_hours=24,
     description="新しいイベントチャンネルとロールを作成します",
@@ -236,13 +246,16 @@ async def create_event_channel_cmd(
 
 ### フロー例
 
-1. **ユーザーAが `/event` コマンド実行**
+1. **ユーザーAが `/event` コマンドを「イベントリクエスト」チャンネルで実行**
    - ユーザーAは承認ロール未保持
-2. **承認リクエスト送信**
+2. **`@require_channel` デコレーターでチャンネルチェック**
+   - 「イベントリクエスト」チャンネルで実行されているので通過
+   - もし他のチャンネルで実行されていたら、ここでエラーメッセージが表示されて終了
+3. **`@require_approval` デコレーターで承認リクエスト送信**
    - メインチャンネル: 承認/拒否ボタン + Embed
    - スレッド作成: "承認: event"
    - スレッド内: リクエスト詳細Embed（コマンド名、引数など）
-3. **承認者Bが承認ボタンクリック**
+4. **承認者Bが承認ボタンクリック**
    - メインチャンネルのEmbedが承認結果Embedに更新
    - スレッド内に承認通知Embed投稿
    - コマンド実行（イベントチャンネル作成）
@@ -255,13 +268,16 @@ async def create_event_channel_cmd(
 **必ず以下の順序でデコレーターを適用してください**:
 
 ```python
-@command_meta(...)      # 1. 最上位
-@tree.command(...)      # 2. コマンド登録
-@require_approval(...)  # 3. 承認ミドルウェア
-@app_commands.describe(...)  # 4. 引数説明
+@command_meta(...)          # 1. 最上位
+@tree.command(...)          # 2. コマンド登録
+@require_channel(...)       # 3. チャンネル制限（オプション）
+@require_approval(...)      # 4. 承認ミドルウェア（オプション）
+@app_commands.describe(...) # 5. 引数説明
 async def command_cmd(...):
     pass
 ```
+
+**重要**: `@require_channel` は `@require_approval` より上位に配置してください。これにより、承認リクエスト送信前にチャンネル制限をチェックでき、不正なチャンネルでの無駄な承認フローを防げます。
 
 詳細は [docs/ADD_COMMAND.md](./ADD_COMMAND.md) を参照してください。
 

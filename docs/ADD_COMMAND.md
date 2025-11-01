@@ -154,10 +154,15 @@ async def create_event_cmd(ctx: discord.Interaction, name: str, members: str = N
 
 1. `@command_meta()` - **最上位**: メタデータの登録
 2. `@tree.command()` - コマンドの登録
-3. `@require_approval()` - 承認ミドルウェア（必要な場合）
-4. `@app_commands.describe()` - パラメータの説明
-5. `@app_commands.choices()` - 選択肢（必要な場合）
-6. 関数定義
+3. `@require_channel()` - チャンネル制限（必要な場合）
+4. `@require_approval()` - 承認ミドルウェア（必要な場合）
+5. `@app_commands.describe()` - パラメータの説明
+6. `@app_commands.choices()` - 選択肢（必要な場合）
+7. 関数定義
+
+**チャンネル制限と承認の両方を使う場合の注意**:
+- `@require_channel` は `@require_approval` より上位に配置してください
+- これにより、承認リクエスト送信前にチャンネル制限をチェックでき、不正なチャンネルでの無駄な承認フローを防げます
 
 #### ❌ 間違った順序
 
@@ -168,7 +173,7 @@ async def my_command(...):
     ...
 ```
 
-#### ✅ 正しい順序
+#### ✅ 正しい順序（基本）
 
 ```python
 @command_meta(...)  # メタデータを最初に
@@ -178,7 +183,19 @@ async def my_command(...):
     ...
 ```
 
-#### ✅ 承認ミドルウェアを使用する場合
+#### ✅ 正しい順序（チャンネル制限 + 承認）
+
+```python
+@command_meta(...)          # 1. メタデータ
+@tree.command(...)          # 2. コマンド登録
+@require_channel(...)       # 3. チャンネル制限（先にチェック）
+@require_approval(...)      # 4. 承認ミドルウェア
+@app_commands.describe(...) # 5. パラメータ説明
+async def my_command(...):
+    ...
+```
+
+#### ✅ 承認ミドルウェアのみを使用する場合
 
 ```python
 from ..utils.approval_decorator import require_approval
