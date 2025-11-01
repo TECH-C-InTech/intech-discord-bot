@@ -15,7 +15,7 @@ logger = getLogger(__name__)
 # ==================== コマンド実装関数 ====================
 
 
-async def show_role_members(
+async def show_role_members_impl(
     ctx: discord.Interaction,
     role_name: str,
     visibility: str = "private",
@@ -82,7 +82,10 @@ async def show_role_members(
     # visibilityの値に応じて表示を切り替え（デフォルトは実行者のみ）
     is_private = visibility == "private"
 
-    await ctx.response.send_message(embed=embed, ephemeral=is_private)
+    if ctx.response.is_done():
+        await ctx.followup.send(embed=embed, ephemeral=is_private)
+    else:
+        await ctx.response.send_message(embed=embed, ephemeral=is_private)
     logger.info(
         f"Listed {len(members_with_role)} members for role {role.name} "
         f"(requested by {ctx.user}, visibility: {visibility})"
@@ -127,7 +130,7 @@ def setup(tree: app_commands.CommandTree):
             app_commands.Choice(name="全員に公開", value="public"),
         ]
     )
-    async def show_role_members_cmd(
+    async def show_role_members(
         ctx: discord.Interaction, role_name: str, visibility: str = "private"
     ):
-        await show_role_members(ctx, role_name, visibility)
+        await show_role_members_impl(ctx, role_name, visibility)
