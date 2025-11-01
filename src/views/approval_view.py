@@ -44,7 +44,7 @@ class ThreadBoundResponse:
             pass
 
     def is_done(self) -> bool:
-        return True
+        return self._original_response.is_done()
 
     async def edit_message(self, *args: Any, **kwargs: Any) -> Any:
         return await self._original_response.edit_message(*args, **kwargs)
