@@ -81,7 +81,7 @@ class ThreadBoundInteraction:
         return getattr(self._original_interaction, item)
 
     @property
-    def channel(self) -> discord.abc.MessageableChannel | None:
+    def channel(self) -> discord.abc.Messageable | None:
         # ForumChannelとCategoryChannelは除外
         channel = self._original_interaction.channel
         if isinstance(channel, (discord.ForumChannel, discord.CategoryChannel)):
