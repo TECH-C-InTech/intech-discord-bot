@@ -366,6 +366,6 @@ CLUBS_REQUEST_CHANNEL_NAME="club-request"
 
 完全な実装は以下のファイルを参照:
 - `src/commands/club_channel.py` - メインロジック
-- `src/utils/event_config.py` - 設定管理
+- `src/utils/channel_config.py` - 設定管理
 - `src/utils/channel_utils.py` - チャンネルユーティリティ
 - `src/utils/validation_utils.py` - バリデーション
