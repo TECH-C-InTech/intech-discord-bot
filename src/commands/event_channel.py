@@ -111,8 +111,11 @@ async def create_event_channel_impl(
             ロール付与人数=len(member_objects) if member_objects else 0,
         )
 
-        # 結果をfollowupで送信
-        await ctx.followup.send(embed=embed)
+        # Interactionが既に応答済みの場合はfollowupを使用
+        if ctx.response.is_done():
+            await ctx.followup.send(embed=embed)
+        else:
+            await ctx.response.send_message(embed=embed)
         logger.info(
             f"Created channel: {formatted_channel_name} (index: {next_index}) and role "
             f"with {len(member_objects)} members by {ctx.user}"
