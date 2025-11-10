@@ -174,7 +174,7 @@ async def archive_event_channel_impl(
         return
 
     try:
-        await channel.edit(category=archive_category_channel)
+        await channel.edit(category=archive_category_channel, sync_permissions=True)
 
         # 成功メッセージ
         embed = create_success_embed(
@@ -243,7 +243,7 @@ async def restore_event_channel_impl(
         return
 
     try:
-        await channel.edit(category=event_category_channel)
+        await channel.edit(category=event_category_channel, sync_permissions=True)
 
         # 成功メッセージ
         embed = create_success_embed(
