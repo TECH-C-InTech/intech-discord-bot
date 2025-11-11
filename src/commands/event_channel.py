@@ -173,7 +173,8 @@ async def archive_event_channel_impl(
     if not await validate_channel_in_category(ctx, channel, config.event_category_name):
         return
 
-    await ctx.response.defer(thinking=True)
+    if not ctx.response.is_done():
+        await ctx.response.defer(thinking=True)
 
     try:
         await channel.edit(category=archive_category_channel, sync_permissions=True)
@@ -244,7 +245,8 @@ async def restore_event_channel_impl(
     ):
         return
 
-    await ctx.response.defer(thinking=True)
+    if not ctx.response.is_done():
+        await ctx.response.defer(thinking=True)
 
     try:
         await channel.edit(category=event_category_channel, sync_permissions=True)
