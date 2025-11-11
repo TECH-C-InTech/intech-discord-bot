@@ -334,6 +334,10 @@ async def add_event_role_member_impl(
     if member_objects is None:
         return
 
+    # 応答を保留
+    if not ctx.response.is_done():
+        await ctx.response.defer(thinking=True)
+
     try:
         # ロールを追加
         added_members = []
@@ -369,11 +373,8 @@ async def add_event_role_member_impl(
             追加人数=len(added_members),
         )
 
-        # Interactionが既に応答済みの場合はfollowupを使用
-        if ctx.response.is_done():
-            await ctx.followup.send(embed=embed)
-        else:
-            await ctx.response.send_message(embed=embed)
+        # 結果をfollowupで送信
+        await ctx.followup.send(embed=embed)
         logger.info(
             f"Added {len(added_members)} members to event role {role.name} "
             f"(channel: {event_channel.name}) by {ctx.user}"
