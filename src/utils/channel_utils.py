@@ -4,6 +4,7 @@
 より詳細なドキュメントとエラーハンドリングを追加
 """
 
+import asyncio
 from logging import getLogger
 import re
 from typing import Optional
@@ -128,3 +129,126 @@ async def get_channel_by_name(
 
     logger.debug(f"Channel '{channel_name}' found with ID: {channel.id}")
     return channel
+
+async def sort_channels_by_index(category: discord.CategoryChannel, target_channel: discord.TextChannel | None = None) -> None:
+    """カテゴリー内のチャンネルを正しい位置に配置する
+
+    target_channel が指定されている場合、そのチャンネルをインデックス番号に基づいた
+    正しい位置に一度だけ移動します。指定されていない場合は処理を行いません。
+
+    カテゴリー移動直後（position=0 に固定されている状態）での使用を想定しています。
+
+    Args:
+        category: 対象のカテゴリーチャンネル
+        target_channel: 配置するチャンネル（省略時は処理なし）
+    Note:
+        - インデックス付きチャンネル（^(\\d+)-）のみが対象
+        - target_channel のインデックスに基づいて正しい位置を計算
+        - 1度の API 呼び出しでチャンネルを配置
+    """
+    if target_channel is None:
+        return
+
+    pattern = re.compile(r"^(\d+)-")
+    match = pattern.match(target_channel.name)
+    if not match:
+        logger.warning(
+            f"Channel '{target_channel.name}' does not have an index prefix"
+        )
+        return
+
+    target_index = int(match.group(1))
+    target_position = target_index - 1
+
+    try:
+        if target_channel.position != target_position:
+            await target_channel.edit(position=target_position)
+            logger.info(
+                f"Positioned channel '{target_channel.name}' (index={target_index}) "
+                f"to position {target_channel.position} in category '{category.name}'"
+            )
+        else:
+            logger.info(
+                f"Channel '{target_channel.name}' already at correct position {target_position}"
+            )
+    except discord.Forbidden:
+        logger.error(
+            f"Permission denied: Cannot edit position for channel '{target_channel.name}'"
+        )
+    except discord.HTTPException as e:
+        logger.error(f"HTTP error while positioning channel '{target_channel.name}': {e}")
+
+
+async def reset_all_event_positions_in_category(
+    category: discord.CategoryChannel,
+) -> int:
+    """カテゴリー内のすべてのインデックス付きチャンネルをリセット
+
+    チャンネル名が {index}-{name} 形式の場合、
+    position = index となるように逐次リセットします。
+
+    Args:
+        category: 対象のカテゴリーチャンネル
+
+    Returns:
+        リセットしたチャンネル数
+
+    Note:
+        - インデックス付きチャンネル（^(\\d+)-）のみが対象
+        - 各 channel.edit() 間に 0.05 秒のスリープを挿入（API制限回避）
+        - 既に正しい position のチャンネルはスキップ
+    """
+    pattern = re.compile(r"^(\d+)-")
+
+    # インデックス付きチャンネルを抽出
+    channels_with_index = []
+    for channel in category.text_channels:
+        match = pattern.match(channel.name)
+        if match:
+            index = int(match.group(1))
+            channels_with_index.append((index, channel))
+
+    if not channels_with_index:
+        logger.debug(f"No indexed channels found in category '{category.name}'")
+        return 0
+
+    # インデックスでソート
+    channels_with_index.sort(key=lambda x: x[0])
+
+    # position = index で逐次リセット
+    reset_count = 0
+    for index, channel in channels_with_index:
+        target_position = index - 1
+        # 既に正しい位置の場合はスキップ
+        if channel.position == target_position:
+            logger.debug(
+                f"Channel '{channel.name}' already at correct position {target_position}"
+            )
+        else:
+            try:
+                await channel.edit(position=target_position)
+                reset_count += 1
+                logger.info(
+                    f"Reset channel '{channel.name}' (index={index}) to position {target_position}"
+                )
+            except discord.Forbidden:
+                logger.error(
+                    f"Permission denied: Cannot edit position for channel '{channel.name}'"
+                )
+            except discord.HTTPException as e:
+                logger.error(
+                    f"HTTP error while resetting position for channel '{channel.name}': {e}"
+                )
+
+        await asyncio.sleep(2)
+
+    # 全チャンネルのpositionを表示
+    for channel in category.text_channels:
+        logger.info(
+            f"Channel '{channel.name}' final position: {channel.position}"
+        )
+
+    logger.info(
+        f"Reset {reset_count} channels in category '{category.name}'"
+    )
+    return reset_count

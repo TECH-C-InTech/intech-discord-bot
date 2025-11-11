@@ -1,5 +1,6 @@
 """イベントチャンネル管理コマンド"""
 
+import asyncio
 from logging import getLogger
 
 import discord
@@ -11,6 +12,8 @@ from ..utils.channel_decorator import require_channel
 from ..utils.channel_utils import (
     get_channel_by_name,
     get_next_event_index,
+    reset_all_event_positions_in_category,
+    sort_channels_by_index,
     validate_category_exists,
 )
 from ..utils.command_metadata import command_meta
@@ -82,6 +85,9 @@ async def create_event_channel_impl(
         channel = await guild.create_text_channel(
             name=formatted_channel_name, category=category_channel
         )
+
+        # インデックス番号に基づいて、カテゴリー内の正しい位置に配置
+        await sort_channels_by_index(category_channel, channel)
 
         # 同じ名前のロールを作成
         role = await guild.create_role(
@@ -177,7 +183,13 @@ async def archive_event_channel_impl(
         await ctx.response.defer(thinking=True)
 
     try:
-        await channel.edit(category=archive_category_channel, sync_permissions=True)
+        # カテゴリー移動時に権限設定を同期させるため、position を 0 に固定
+        await channel.edit(category=archive_category_channel, sync_permissions=True, position=0)
+
+        # インデックス番号に基づいて、アーカイブカテゴリー内の正しい位置に配置
+        await sort_channels_by_index(
+            archive_category_channel, channel
+        )
 
         # 成功メッセージ
         embed = create_success_embed(
@@ -249,7 +261,11 @@ async def restore_event_channel_impl(
         await ctx.response.defer(thinking=True)
 
     try:
-        await channel.edit(category=event_category_channel, sync_permissions=True)
+        # カテゴリー移動時に権限設定を同期させるため、position を 0 に固定
+        await channel.edit(category=event_category_channel, sync_permissions=True, position=0)
+
+        # インデックス番号に基づいて、イベントカテゴリー内の正しい位置に配置
+        await sort_channels_by_index(event_category_channel, channel)
 
         # 成功メッセージ
         embed = create_success_embed(
@@ -268,6 +284,79 @@ async def restore_event_channel_impl(
     except Exception as e:
         logger.error(f"Error restoring channel: {e}", exc_info=True)
         await handle_command_error(ctx, e, "チャンネルの復元")
+
+
+async def reset_all_event_positions_impl(
+    ctx: discord.Interaction,
+):
+    """すべてのイベントカテゴリーの position をリセット
+
+    Args:
+        ctx: Discord Interaction
+    """
+    # 管理者権限の確認
+    if not ctx.user.guild_permissions.administrator:
+        await send_error_message(ctx, "このコマンドは管理者のみ実行可能です。")
+        return
+
+    # 環境変数を一括取得
+    config = await ChannelConfig.load(ctx)
+    if not config:
+        return
+
+    guild = ctx.guild
+    if guild is None:
+        await send_error_message(ctx, "このコマンドはサーバー内でのみ実行できます。")
+        return
+
+    # カテゴリーの存在確認
+    event_category_channel = await validate_category_exists(ctx, guild, config.event_category_name)
+    if not event_category_channel:
+        return
+
+    archive_category_channel = await validate_category_exists(
+        ctx, guild, config.archive_event_category_name
+    )
+    if not archive_category_channel:
+        return
+
+    if not ctx.response.is_done():
+        await ctx.response.defer(thinking=True)
+
+    try:
+        # events カテゴリーをリセット
+        event_reset_count = await reset_all_event_positions_in_category(
+            event_category_channel
+        )
+
+        # archived-events カテゴリーをリセット
+        archive_reset_count = await reset_all_event_positions_in_category(
+            archive_category_channel
+        )
+
+        # 成功メッセージ
+        embed = create_success_embed(
+            title="イベントカテゴリーの位置をリセット完了",
+            description=(
+                f"events: {event_reset_count}チャンネルリセット\n"
+                f"archived-events: {archive_reset_count}チャンネルリセット"
+            ),
+        )
+
+        # Interactionが既に応答済みの場合はfollowupを使用
+        if ctx.response.is_done():
+            await ctx.followup.send(embed=embed)
+        else:
+            await ctx.response.send_message(embed=embed)
+
+        logger.info(
+            f"Reset all event positions: events={event_reset_count}, "
+            f"archived={archive_reset_count} by {ctx.user}"
+        )
+
+    except Exception as e:
+        logger.error(f"Error resetting event positions: {e}", exc_info=True)
+        await handle_command_error(ctx, e, "イベントカテゴリーの位置リセット")
 
 
 async def add_event_role_member_impl(
@@ -471,6 +560,22 @@ def setup(tree: app_commands.CommandTree):
     )
     async def restore_event_channel(ctx: discord.Interaction, channel_name: str | None = None):
         await restore_event_channel_impl(ctx, channel_name)
+
+    @command_meta(
+        category="イベントチャンネル管理",
+        icon="🔄",
+        short_description="イベントカテゴリーの位置をリセット",
+        restrictions="• 管理者のみ実行可能",
+        examples=[
+            "`/reset_all_event_positions`",
+        ],
+    )
+    @tree.command(
+        name="reset_all_event_positions",
+        description="すべてのイベントカテゴリーの位置をリセットします",
+    )
+    async def reset_all_event_positions(ctx: discord.Interaction):
+        await reset_all_event_positions_impl(ctx)
 
     @command_meta(
         category="ロール管理",
