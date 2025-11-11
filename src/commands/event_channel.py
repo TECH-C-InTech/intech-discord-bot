@@ -325,9 +325,14 @@ async def add_event_role_member_impl(
     if not await validate_role_safety(ctx, role):
         return
 
+
     # 同名のチャンネルがEVENT_CATEGORY_NAMEカテゴリーに存在するか確認
     # {index}-で始まるチャンネルを検索
-    event_channel = next((ch_name for ch_name in event_category.text_channels if ch_name.name.startswith(f"{role_name}-")), None)
+    event_channel = None
+    for ch_name in event_category.text_channels:
+        if ch_name.name.startswith(f"{role_name}-"):
+            event_channel = ch_name
+            break
 
     if not event_channel:
         await send_error_message(
