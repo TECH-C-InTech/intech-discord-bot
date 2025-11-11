@@ -459,7 +459,7 @@ def setup(tree: app_commands.CommandTree):
         description="アーカイブされたイベントチャンネルをイベントカテゴリーに戻します",
     )
     @app_commands.describe(
-        channel_name="復元するイベントチャンネル名(デフォルトはコマンド実行チャンネル)"
+        channel_name="復元するイベントチャンネル（メンション形式、デフォルトはコマンド実行チャンネル）"
     )
     async def restore_event_channel(
         ctx: discord.Interaction, channel_name: discord.TextChannel | None = None
