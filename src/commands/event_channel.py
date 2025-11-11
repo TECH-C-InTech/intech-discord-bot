@@ -307,8 +307,9 @@ async def add_event_role_member_impl(
             return
         if not await validate_channel_in_category(ctx, ctx.channel, config.event_category_name):
             return
-        role_name = ctx.channel.name
-        # ロールを名前で検索
+        channel_name = ctx.channel.name
+        # roleは{index}のみなので、先頭の部分を抽出して検索
+        role_name = channel_name.split("-")[0]
         role = discord.utils.get(guild.roles, name=role_name)
         if not role:
             await send_error_message(ctx, f"ロール `{role_name}` が見つかりません。")
@@ -325,8 +326,9 @@ async def add_event_role_member_impl(
         return
 
     # 同名のチャンネルがEVENT_CATEGORY_NAMEカテゴリーに存在するか確認
-    channel_dict = {ch.name: ch for ch in event_category.text_channels}
-    event_channel = channel_dict.get(role_name)
+    # {index}-で始まるチャンネルを検索
+    event_channel = next((ch_name for ch_name in event_category.text_channels if ch_name.name.startswith(f"{role_name}-")), None)
+
     if not event_channel:
         await send_error_message(
             ctx,
@@ -479,7 +481,7 @@ def setup(tree: app_commands.CommandTree):
         restrictions="• 一部ロール以外のみ対象",
         examples=[
             "`/add_event_role_member members:@user1 @user2`",
-            "`/add_event_role_member members:@user1 role_name:@1-event`",
+            "`/add_event_role_member members:@user1 role_name:@1`",
         ],
     )
     @tree.command(
@@ -488,7 +490,7 @@ def setup(tree: app_commands.CommandTree):
     )
     @app_commands.describe(
         members="追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
-        role_name="対象のロール（@ロール形式で指定。例: @1-event. 省略時は実行チャンネルのロール）",
+        role_name="対象のロール（@ロール形式で指定。例: @1. 省略時は実行チャンネルのロール）",
     )
     async def add_event_role_member(
         ctx: discord.Interaction, members: str, role_name: str | None = None
