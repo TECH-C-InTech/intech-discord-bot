@@ -437,7 +437,7 @@ def setup(tree: app_commands.CommandTree):
         description="イベントチャンネルをアーカイブします",
     )
     @app_commands.describe(
-        channel_name="アーカイブするイベントチャンネル名(デフォルトはコマンド実行チャンネル)"
+        channel_name="アーカイブするイベントチャンネル（メンション形式、省略時はコマンド実行チャンネル）"
     )
     async def archive_event_channel(
         ctx: discord.Interaction, channel_name: discord.TextChannel | None = None
