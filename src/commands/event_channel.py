@@ -83,9 +83,9 @@ async def create_event_channel_impl(
             name=formatted_channel_name, category=category_channel
         )
 
-        # 同じ名前のロールを作成
+        # indexのみのロールを作成
         role = await guild.create_role(
-            name=formatted_channel_name,
+            name=str(next_index),
             mentionable=True,
         )
 
