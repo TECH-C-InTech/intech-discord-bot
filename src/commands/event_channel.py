@@ -9,7 +9,6 @@ from ..utils.approval_decorator import require_approval
 from ..utils.channel_config import ChannelConfig
 from ..utils.channel_decorator import require_channel
 from ..utils.channel_utils import (
-    get_channel_by_name,
     get_next_event_index,
     validate_category_exists,
 )
@@ -128,7 +127,7 @@ async def create_event_channel_impl(
 
 async def archive_event_channel_impl(
     ctx: discord.Interaction,
-    channel_name: str | None = None,
+    channel_name: discord.TextChannel | None = None,
 ):
     """イベントチャンネルをアーカイブする
 
@@ -154,13 +153,8 @@ async def archive_event_channel_impl(
         return
 
     # 移動するチャンネルを特定
-    channel: discord.TextChannel | None = None
-    if channel_name:
-        channel = await get_channel_by_name(ctx, guild, channel_name)
-        if not channel:
-            return
-    else:
-        # ctx.channel が TextChannel であることを確認
+    channel: discord.TextChannel | None = channel_name
+    if channel is None:
         if not isinstance(ctx.channel, discord.TextChannel):
             await send_error_message(
                 ctx,
@@ -200,7 +194,7 @@ async def archive_event_channel_impl(
 
 async def restore_event_channel_impl(
     ctx: discord.Interaction,
-    channel_name: str | None = None,
+    channel_name: discord.TextChannel | None = None,
 ):
     """アーカイブされたイベントチャンネルを復元する
 
@@ -224,25 +218,15 @@ async def restore_event_channel_impl(
         return
 
     # 移動するチャンネルを特定
-    channel: discord.TextChannel | None = None
-    if channel_name:
-        # channel_name指定時は任意の場所で実行可能
-        channel = await get_channel_by_name(ctx, guild, channel_name)
-        if not channel:
-            return
-    else:
+    channel: discord.TextChannel | None = channel_name
+    if channel is None:
         # channel_name省略時は、アーカイブカテゴリー内でのみ実行可能
         if not isinstance(ctx.channel, discord.TextChannel):
             await send_error_message(ctx, "このコマンドはテキストチャンネルでのみ実行できます。")
             return
         channel = ctx.channel
-        if not await validate_channel_in_category(ctx, channel, config.archive_event_category_name):
-            return
 
-    # チャンネルがアーカイブカテゴリーに属しているか確認（channel_name指定時）
-    if channel_name and not await validate_channel_in_category(
-        ctx, channel, config.archive_event_category_name
-    ):
+    if not await validate_channel_in_category(ctx, channel, config.archive_event_category_name):
         return
 
     if not ctx.response.is_done():
@@ -445,7 +429,7 @@ def setup(tree: app_commands.CommandTree):
         restrictions="• channel_name省略時はイベントカテゴリー内で実行",
         examples=[
             "`/archive_event_channel` (実行チャンネルをアーカイブ)",
-            "`/archive_event_channel channel_name:1-ハッカソン`",
+            "`/archive_event_channel channel_name:#1-ハッカソン`",
         ],
     )
     @tree.command(
@@ -453,9 +437,11 @@ def setup(tree: app_commands.CommandTree):
         description="イベントチャンネルをアーカイブします",
     )
     @app_commands.describe(
-        channel_name="アーカイブするイベントチャンネル名(デフォルトはコマンド実行チャンネル)"
+        channel_name="アーカイブするイベントチャンネル（メンション形式、省略時はコマンド実行チャンネル）"
     )
-    async def archive_event_channel(ctx: discord.Interaction, channel_name: str | None = None):
+    async def archive_event_channel(
+        ctx: discord.Interaction, channel_name: discord.TextChannel | None = None
+    ):
         await archive_event_channel_impl(ctx, channel_name)
 
     @command_meta(
@@ -465,7 +451,7 @@ def setup(tree: app_commands.CommandTree):
         restrictions="• アーカイブカテゴリー内のチャンネルでのみ実行可能",
         examples=[
             "`/restore_event_channel` (実行チャンネルを復元)",
-            "`/restore_event_channel channel_name:1-ハッカソン`",
+            "`/restore_event_channel channel_name:#1-ハッカソン`",
         ],
     )
     @tree.command(
@@ -473,9 +459,11 @@ def setup(tree: app_commands.CommandTree):
         description="アーカイブされたイベントチャンネルをイベントカテゴリーに戻します",
     )
     @app_commands.describe(
-        channel_name="復元するイベントチャンネル名(デフォルトはコマンド実行チャンネル)"
+        channel_name="復元するイベントチャンネル（メンション形式、デフォルトはコマンド実行チャンネル）"
     )
-    async def restore_event_channel(ctx: discord.Interaction, channel_name: str | None = None):
+    async def restore_event_channel(
+        ctx: discord.Interaction, channel_name: discord.TextChannel | None = None
+    ):
         await restore_event_channel_impl(ctx, channel_name)
 
     @command_meta(
