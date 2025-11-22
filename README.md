@@ -9,11 +9,19 @@ intech-discord-bot/
 │   ├── __init__.py
 │   ├── commands/                # コマンド定義
 │   └── utils/                   # ユーティリティ関数
+├── docs/                        # ドキュメントルート
 ├── .env.sample                  # 環境変数のサンプル
 ├── .env.dev.sample              # 開発環境用環境変数のサンプル
 ├── pyproject.toml               # プロジェクト設定
 └── README.md
 ```
+
+## 📚 ドキュメント
+
+詳細なドキュメントは `docs/` ディレクトリにあります。
+
+- [セットアップガイド](docs/SETUP.md)
+- [開発ガイド](docs/DEVELOPMENT.md)
 
 ## Setup
 
@@ -141,7 +149,7 @@ uv run bot.py
 3. `@command_meta()` デコレーターでメタデータを登録（カテゴリー、アイコン、説明など）
 4. ファイルを保存すれば自動的に登録されます
 
-**詳細は `docs/ADD_COMMAND.md` を参照してください。**
+**詳細は [docs/ADD_COMMAND.md](docs/ADD_COMMAND.md) を参照してください。**
 
 #### テンプレート
 

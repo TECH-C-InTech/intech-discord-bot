@@ -30,6 +30,7 @@ Botは2つの並列サーバーを実行します:
 両方のサーバーは[bot.py](../bot.py)内で`asyncio.gather()`を使用して実行されます。これにより、HTTPエンドポイントを必要とするプラットフォーム(Fly.ioなど)へのデプロイが可能になります。
 
 **実装コード** ([bot.py](../bot.py)):
+
 ```python
 async def main():
     async with bot:
@@ -49,6 +50,7 @@ async def main():
 - 設定は環境変数から取得
 
 この設計により、以下のメリットがあります:
+
 - シンプルな構成（DBサーバー不要）
 - 高い可用性（状態同期の問題なし）
 - 簡単なバックアップ（Discordが管理）
@@ -69,6 +71,7 @@ async def main():
 ### 登録の仕組み
 
 [src/commands/\_\_init\_\_.py](../src/commands/__init__.py):
+
 ```python
 def register_commands(tree: app_commands.CommandTree):
     """自動的にコマンドを登録"""
@@ -102,6 +105,7 @@ def register_commands(tree: app_commands.CommandTree):
 開発環境と本番環境で異なる同期戦略を使用:
 
 **開発環境** (`.env.dev` with `DEV_GUILD_ID`):
+
 ```python
 if dev_guild_id:
     # 即座に同期（開発モード）
@@ -111,6 +115,7 @@ if dev_guild_id:
 ```
 
 **本番環境** (`.env` without `DEV_GUILD_ID`):
+
 ```python
 else:
     # グローバル同期（最大1時間かかる）
@@ -121,31 +126,34 @@ else:
 
 ### シングルトンパターン
 
-[src/utils/event_config.py](../src/utils/event_config.py)で実装:
+[src/utils/channel_config.py](../src/utils/channel_config.py)で実装:
 
 ```python
-class EventChannelConfig:
-    """環境変数をキャッシュする設定クラス"""
+class ChannelConfig:
+    """チャンネル関連の環境変数を保持するクラス"""
     _instance = None
 
-    def __new__(cls):
+    @classmethod
+    def get_instance(cls):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._load_config()
+            # 環境変数の読み込みとバリデーション
+            cls._instance = cls(...)
         return cls._instance
 ```
 
 **特徴**:
+
 - 環境変数を一度だけ読み込み、キャッシュ
 - 遅延ロード（初回アクセス時に検証）
 - コードベース全体で一貫した設定アクセス
 
 **使用例**:
-```python
-from src.utils.event_config import EventChannelConfig
 
-config = EventChannelConfig()
-category_name = config.event_category_name
+```python
+from src.utils.channel_config import ChannelConfig
+
+config = ChannelConfig.get_instance()
+event_category = config.event_category_name
 ```
 
 ## イベントチャンネルのインデックス管理
@@ -155,6 +163,7 @@ category_name = config.event_category_name
 イベントチャンネルは番号付きプレフィックスを使用: `{index}-{name}`
 
 **例**:
+
 - `1-hackathon`
 - `2-study-group`
 - `3-welcome-event`
@@ -164,7 +173,11 @@ category_name = config.event_category_name
 [src/utils/channel_utils.py](../src/utils/channel_utils.py)で実装:
 
 ```python
-def get_next_event_index(guild: discord.Guild, config: EventChannelConfig) -> int:
+def get_next_event_index(
+    guild: discord.Guild,
+    event_category_name: str,
+    archive_event_category_name: str
+) -> int:
     """次のイベントチャンネルのインデックスを取得"""
     # イベントカテゴリーとアーカイブカテゴリーの両方をスキャン
     # 正規表現 r"^(\d+)-" でインデックスを抽出
@@ -172,12 +185,14 @@ def get_next_event_index(guild: discord.Guild, config: EventChannelConfig) -> in
 ```
 
 **重要なポイント**:
+
 - **両方のカテゴリーをスキャン**: イベントとアーカイブの両方
 - **正規表現**: `r"^(\d+)-"` を使用してインデックスを抽出
 - **衝突回避**: アーカイブ/復元操作間で重複なし
 - **最小値**: インデックスは1から始まる
 
 **アルゴリズムの流れ**:
+
 1. イベントカテゴリー内の全チャンネルを取得
 2. アーカイブカテゴリー内の全チャンネルを取得
 3. 各チャンネル名から `数字-` パターンを抽出
