@@ -21,6 +21,9 @@ class ChannelConfig:
         event_category_name: イベントチャンネルを作成するカテゴリー名
         archive_event_category_name: アーカイブ先のカテゴリー名
         event_request_channel_name: チャンネル作成リクエストを受け付けるチャンネル名
+        project_category_name: プロジェクトチャンネルを作成するカテゴリー名
+        archive_project_category_name: プロジェクトのアーカイブ先カテゴリー名
+        project_request_channel_name: プロジェクト作成リクエストを受け付けるチャンネル名
         club_category_name: クラブチャンネルを作成するカテゴリー名
         clubs_request_channel_name: クラブチャンネル作成リクエストを受け付けるチャンネル名
     """
@@ -28,6 +31,9 @@ class ChannelConfig:
     event_category_name: str
     archive_event_category_name: str
     event_request_channel_name: str
+    project_category_name: str
+    archive_project_category_name: str
+    project_request_channel_name: str
     club_category_name: str
     clubs_request_channel_name: str
 
@@ -49,6 +55,9 @@ class ChannelConfig:
             event_category_name = os.getenv("EVENT_CATEGORY_NAME")
             archive_event_category_name = os.getenv("ARCHIVE_EVENT_CATEGORY_NAME")
             event_request_channel_name = os.getenv("EVENT_REQUEST_CHANNEL_NAME")
+            project_category_name = os.getenv("PROJECT_CATEGORY_NAME")
+            archive_project_category_name = os.getenv("ARCHIVE_PROJECT_CATEGORY_NAME")
+            project_request_channel_name = os.getenv("PROJECT_REQUEST_CHANNEL_NAME")
             club_category_name = os.getenv("CLUB_CATEGORY_NAME")
             clubs_request_channel_name = os.getenv("CLUBS_REQUEST_CHANNEL_NAME")
 
@@ -60,6 +69,12 @@ class ChannelConfig:
                 missing_vars.append("ARCHIVE_EVENT_CATEGORY_NAME")
             if not event_request_channel_name:
                 missing_vars.append("EVENT_REQUEST_CHANNEL_NAME")
+            if not project_category_name:
+                missing_vars.append("PROJECT_CATEGORY_NAME")
+            if not archive_project_category_name:
+                missing_vars.append("ARCHIVE_PROJECT_CATEGORY_NAME")
+            if not project_request_channel_name:
+                missing_vars.append("PROJECT_REQUEST_CHANNEL_NAME")
             if not club_category_name:
                 missing_vars.append("CLUB_CATEGORY_NAME")
             if not clubs_request_channel_name:
@@ -77,12 +92,18 @@ class ChannelConfig:
             assert event_category_name is not None
             assert archive_event_category_name is not None
             assert event_request_channel_name is not None
+            assert project_category_name is not None
+            assert archive_project_category_name is not None
+            assert project_request_channel_name is not None
             assert club_category_name is not None
             assert clubs_request_channel_name is not None
             cls._instance = cls(
                 event_category_name=event_category_name,
                 archive_event_category_name=archive_event_category_name,
                 event_request_channel_name=event_request_channel_name,
+                project_category_name=project_category_name,
+                archive_project_category_name=archive_project_category_name,
+                project_request_channel_name=project_request_channel_name,
                 club_category_name=club_category_name,
                 clubs_request_channel_name=clubs_request_channel_name,
             )
@@ -90,8 +111,11 @@ class ChannelConfig:
             logger.info(
                 f"ChannelConfig initialized: "
                 f"event_category='{event_category_name}', "
-                f"archive_category='{archive_event_category_name}', "
-                f"request_channel='{event_request_channel_name}', "
+                f"archive_event_category='{archive_event_category_name}', "
+                f"event_request_channel='{event_request_channel_name}', "
+                f"project_category='{project_category_name}', "
+                f"archive_project_category='{archive_project_category_name}', "
+                f"project_request_channel='{project_request_channel_name}', "
                 f"club_category='{club_category_name}', "
                 f"clubs_request_channel='{clubs_request_channel_name}'"
             )
@@ -122,6 +146,9 @@ class ChannelConfig:
                 "• `EVENT_CATEGORY_NAME`\n"
                 "• `ARCHIVE_EVENT_CATEGORY_NAME`\n"
                 "• `EVENT_REQUEST_CHANNEL_NAME`\n"
+                "• `PROJECT_CATEGORY_NAME`\n"
+                "• `ARCHIVE_PROJECT_CATEGORY_NAME`\n"
+                "• `PROJECT_REQUEST_CHANNEL_NAME`\n"
                 "• `CLUB_CATEGORY_NAME`\n"
                 "• `CLUBS_REQUEST_CHANNEL_NAME`",
                 ephemeral=True,
@@ -136,8 +163,11 @@ class ChannelConfig:
         return (
             f"ChannelConfig("
             f"event='{self.event_category_name}', "
-            f"archive='{self.archive_event_category_name}', "
-            f"request='{self.event_request_channel_name}', "
+            f"archive_event='{self.archive_event_category_name}', "
+            f"event_request='{self.event_request_channel_name}', "
+            f"project='{self.project_category_name}', "
+            f"archive_project='{self.archive_project_category_name}', "
+            f"project_request='{self.project_request_channel_name}', "
             f"club='{self.club_category_name}', "
             f"clubs_request='{self.clubs_request_channel_name}')"
         )

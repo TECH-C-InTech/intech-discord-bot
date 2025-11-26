@@ -1,4 +1,4 @@
-"""イベントチャンネル管理コマンド"""
+"""プロジェクトチャンネル管理コマンド"""
 
 from logging import getLogger
 import re
@@ -10,7 +10,7 @@ from ..utils.approval_decorator import require_approval
 from ..utils.channel_config import ChannelConfig
 from ..utils.channel_decorator import require_channel
 from ..utils.channel_utils import (
-    get_next_event_index,
+    get_next_project_index,
     validate_category_exists,
 )
 from ..utils.command_metadata import command_meta
@@ -32,16 +32,16 @@ logger = getLogger(__name__)
 # ==================== コマンド実装関数 ====================
 
 
-async def create_event_channel_impl(
+async def create_project_channel_impl(
     ctx: discord.Interaction,
     channel_name: str,
     members: str | None = None,
 ):
-    """イベントチャンネルを作成する
+    """プロジェクトチャンネルを作成する
 
     Args:
         ctx: Discord Interaction
-        channel_name: 作成するイベントチャンネル名
+        channel_name: 作成するプロジェクトチャンネル名
         members: ロールに追加するメンバー（メンション形式）
     """
     # 環境変数を一括取得
@@ -55,7 +55,7 @@ async def create_event_channel_impl(
         await send_error_message(ctx, "このコマンドはサーバー内でのみ実行できます。")
         return
 
-    category_channel = await validate_category_exists(ctx, guild, config.event_category_name)
+    category_channel = await validate_category_exists(ctx, guild, config.project_category_name)
     if not category_channel:
         return
 
@@ -69,10 +69,10 @@ async def create_event_channel_impl(
 
     try:
         # 次のインデックス番号を取得
-        next_index = get_next_event_index(
+        next_index = get_next_project_index(
             guild,
-            config.event_category_name,
-            config.archive_event_category_name,
+            config.project_category_name,
+            config.archive_project_category_name,
         )
 
         # チャンネル名を {index}-{name} の形式で構築
@@ -83,8 +83,8 @@ async def create_event_channel_impl(
             name=formatted_channel_name, category=category_channel
         )
 
-        # e{index}形式のロールを作成（2桁0埋め）
-        role_name = f"e{next_index:02d}"
+        # p{index}形式のロールを作成（2桁0埋め）
+        role_name = f"p{next_index:02d}"
         role = await guild.create_role(
             name=role_name,
             mentionable=True,
@@ -105,7 +105,7 @@ async def create_event_channel_impl(
             )
 
         embed = create_success_embed(
-            title="イベントチャンネル作成完了",
+            title="プロジェクトチャンネル作成完了",
             description="".join(description_parts),
             チャンネル名=formatted_channel_name,
             インデックス=next_index,
@@ -127,11 +127,11 @@ async def create_event_channel_impl(
         await handle_command_error(ctx, e, "チャンネルの作成")
 
 
-async def archive_event_channel_impl(
+async def archive_project_channel_impl(
     ctx: discord.Interaction,
     channel_name: discord.TextChannel | None = None,
 ):
-    """イベントチャンネルをアーカイブする
+    """プロジェクトチャンネルをアーカイブする
 
     Args:
         ctx: Discord Interaction
@@ -149,7 +149,7 @@ async def archive_event_channel_impl(
 
     # アーカイブ先カテゴリーの存在確認
     archive_category_channel = await validate_category_exists(
-        ctx, guild, config.archive_event_category_name
+        ctx, guild, config.archive_project_category_name
     )
     if not archive_category_channel:
         return
@@ -165,8 +165,8 @@ async def archive_event_channel_impl(
             return
         channel = ctx.channel
 
-    # チャンネルがイベントカテゴリーに属しているか確認
-    if not await validate_channel_in_category(ctx, channel, config.event_category_name):
+    # チャンネルがプロジェクトカテゴリーに属しているか確認
+    if not await validate_channel_in_category(ctx, channel, config.project_category_name):
         return
 
     if not ctx.response.is_done():
@@ -177,7 +177,7 @@ async def archive_event_channel_impl(
 
         # 成功メッセージ
         embed = create_success_embed(
-            title="イベントチャンネルアーカイブ完了",
+            title="プロジェクトチャンネルアーカイブ完了",
             description=f"{channel.mention} をアーカイブしました",
             チャンネル名=channel.name,
         )
@@ -194,11 +194,11 @@ async def archive_event_channel_impl(
         await handle_command_error(ctx, e, "チャンネルのアーカイブ")
 
 
-async def restore_event_channel_impl(
+async def restore_project_channel_impl(
     ctx: discord.Interaction,
     channel_name: discord.TextChannel | None = None,
 ):
-    """アーカイブされたイベントチャンネルを復元する
+    """アーカイブされたプロジェクトチャンネルを復元する
 
     Args:
         ctx: Discord Interaction
@@ -214,9 +214,11 @@ async def restore_event_channel_impl(
         await send_error_message(ctx, "このコマンドはサーバー内でのみ実行できます。")
         return
 
-    # イベントカテゴリーの存在確認
-    event_category_channel = await validate_category_exists(ctx, guild, config.event_category_name)
-    if not event_category_channel:
+    # プロジェクトカテゴリーの存在確認
+    project_category_channel = await validate_category_exists(
+        ctx, guild, config.project_category_name
+    )
+    if not project_category_channel:
         return
 
     # 移動するチャンネルを特定
@@ -228,19 +230,19 @@ async def restore_event_channel_impl(
             return
         channel = ctx.channel
 
-    if not await validate_channel_in_category(ctx, channel, config.archive_event_category_name):
+    if not await validate_channel_in_category(ctx, channel, config.archive_project_category_name):
         return
 
     if not ctx.response.is_done():
         await ctx.response.defer(thinking=True)
 
     try:
-        await channel.edit(category=event_category_channel, sync_permissions=True)
+        await channel.edit(category=project_category_channel, sync_permissions=True)
 
         # 成功メッセージ
         embed = create_success_embed(
-            title="イベントチャンネル復元完了",
-            description=f"{channel.mention} をイベントカテゴリーに戻しました",
+            title="プロジェクトチャンネル復元完了",
+            description=f"{channel.mention} をプロジェクトカテゴリーに戻しました",
             チャンネル名=channel.name,
         )
 
@@ -256,14 +258,14 @@ async def restore_event_channel_impl(
         await handle_command_error(ctx, e, "チャンネルの復元")
 
 
-async def add_event_role_member_impl(
+async def add_project_role_member_impl(
     ctx: discord.Interaction,
     members: str,
     role_name: str | None = None,
 ):
-    """イベントロールにメンバーを追加する
+    """プロジェクトロールにメンバーを追加する
 
-    実行可能なロールはEVENT_CATEGORY_NAMEカテゴリのチャンネルに対応するものだけ
+    実行可能なロールはPROJECT_CATEGORY_NAMEカテゴリのチャンネルに対応するものだけ
 
     Args:
         ctx: Discord Interaction
@@ -281,22 +283,22 @@ async def add_event_role_member_impl(
         return
 
     # カテゴリーの存在確認
-    event_category = await validate_category_exists(ctx, guild, config.event_category_name)
-    if not event_category:
+    project_category = await validate_category_exists(ctx, guild, config.project_category_name)
+    if not project_category:
         return
 
     # role_nameが省略された場合は実行チャンネル名を使用
     if role_name is None:
-        # コマンド実行チャンネルがEVENT_CATEGORY_NAMEカテゴリーに属しているか確認
+        # コマンド実行チャンネルがPROJECT_CATEGORY_NAMEカテゴリーに属しているか確認
         if not isinstance(ctx.channel, discord.TextChannel):
             await send_error_message(ctx, "このコマンドはテキストチャンネルでのみ実行できます。")
             return
-        if not await validate_channel_in_category(ctx, ctx.channel, config.event_category_name):
+        if not await validate_channel_in_category(ctx, ctx.channel, config.project_category_name):
             return
         channel_name = ctx.channel.name
-        # チャンネル名からindexを抽出して、e{index}形式のロールを検索
+        # チャンネル名からindexを抽出して、p{index}形式のロールを検索
         channel_index = channel_name.split("-")[0]
-        role_name_to_find = f"e{int(channel_index):02d}"
+        role_name_to_find = f"p{int(channel_index):02d}"
         role = discord.utils.get(guild.roles, name=role_name_to_find)
         if not role:
             await send_error_message(ctx, f"ロール `{role_name_to_find}` が見つかりません。")
@@ -312,33 +314,33 @@ async def add_event_role_member_impl(
     if not await validate_role_safety(ctx, role):
         return
 
-    # ロール名から数字部分を抽出（e00 -> 0）
+    # ロール名から数字部分を抽出（p00 -> 0）
     # role_nameはこの時点で必ず文字列
     assert role_name is not None
-    role_pattern = re.compile(r"^e(\d+)$")
+    role_pattern = re.compile(r"^p(\d+)$")
     role_match = role_pattern.match(role_name)
     if not role_match:
         await send_error_message(
             ctx,
-            f"ロール {role.mention} はイベントロールの形式（e00形式）ではありません。",
+            f"ロール {role.mention} はプロジェクトロールの形式（p00形式）ではありません。",
         )
         return
 
     role_index = int(role_match.group(1))
 
-    # 同名のチャンネルがEVENT_CATEGORY_NAMEカテゴリーに存在するか確認
+    # 同名のチャンネルがPROJECT_CATEGORY_NAMEカテゴリーに存在するか確認
     # {index}-で始まるチャンネルを検索
-    event_channel = None
-    for ch_name in event_category.text_channels:
+    project_channel = None
+    for ch_name in project_category.text_channels:
         if ch_name.name.startswith(f"{role_index}-"):
-            event_channel = ch_name
+            project_channel = ch_name
             break
 
-    if not event_channel:
+    if not project_channel:
         await send_error_message(
             ctx,
-            f"ロール {role.mention} に対応するイベントチャンネルが見つかりません。\n"
-            f"このコマンドは{config.event_category_name}カテゴリー内のチャンネルに対応するロールのみ操作可能です。",
+            f"ロール {role.mention} に対応するプロジェクトチャンネルが見つかりません。\n"
+            f"このコマンドは{config.project_category_name}カテゴリー内のチャンネルに対応するロールのみ操作可能です。",
         )
         return
 
@@ -379,9 +381,9 @@ async def add_event_role_member_impl(
             )
 
         embed = create_success_embed(
-            title="イベントロールメンバー追加完了",
+            title="プロジェクトロールメンバー追加完了",
             description="\n".join(description_parts),
-            イベントチャンネル=event_channel.mention,
+            プロジェクトチャンネル=project_channel.mention,
             ロール=role.name,
             追加人数=len(added_members),
         )
@@ -389,22 +391,22 @@ async def add_event_role_member_impl(
         # 結果をfollowupで送信
         await ctx.followup.send(embed=embed)
         logger.info(
-            f"Added {len(added_members)} members to event role {role.name} "
-            f"(channel: {event_channel.name}) by {ctx.user}"
+            f"Added {len(added_members)} members to project role {role.name} "
+            f"(channel: {project_channel.name}) by {ctx.user}"
         )
 
     except discord.Forbidden:
         await send_error_message(ctx, f"Botに {role.mention} を付与する権限がありません。")
     except Exception as e:
-        logger.error(f"Error adding event role members: {e}", exc_info=True)
-        await handle_command_error(ctx, e, "イベントロールメンバーの追加")
+        logger.error(f"Error adding project role members: {e}", exc_info=True)
+        await handle_command_error(ctx, e, "プロジェクトロールメンバーの追加")
 
 
 # ==================== コマンド登録 ====================
 
 
 def setup(tree: app_commands.CommandTree):
-    """イベントチャンネル関連のコマンドを登録する
+    """プロジェクトチャンネル関連のコマンドを登録する
 
     デコレーターの順序（重要）:
     1. @command_meta() - メタデータの登録
@@ -415,93 +417,93 @@ def setup(tree: app_commands.CommandTree):
     """
 
     @command_meta(
-        category="イベントチャンネル管理",
-        icon="📅",
-        short_description="イベント用のチャンネルとロールを作成",
-        restrictions="• イベントリクエストチャンネルでのみ実行可能",
+        category="プロジェクトチャンネル管理",
+        icon="🚀",
+        short_description="プロジェクト用のチャンネルとロールを作成",
+        restrictions="• プロジェクトリクエストチャンネルでのみ実行可能",
         examples=[
-            "`/create_event_channel channel_name:ハッカソン`",
-            "`/create_event_channel channel_name:勉強会 members:@user1 @user2`",
+            "`/create_project_channel channel_name:ハッカソン`",
+            "`/create_project_channel channel_name:勉強会 members:@user1 @user2`",
         ],
     )
     @tree.command(
-        name="create_event_channel",
-        description="新しいイベントチャンネルを作成します",
+        name="create_project_channel",
+        description="新しいプロジェクトチャンネルを作成します",
     )
-    @require_channel(channel_name_from_config="event_request_channel_name", must_be_in=True)
-    @require_approval(description="新しいイベントチャンネルを作成します")
+    @require_channel(channel_name_from_config="project_request_channel_name", must_be_in=True)
+    @require_approval(description="新しいプロジェクトチャンネルを作成します")
     @app_commands.describe(
-        channel_name="作成するイベントチャンネル名",
+        channel_name="作成するプロジェクトチャンネル名",
         members="ロールに追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
     )
-    async def create_event_channel(
+    async def create_project_channel(
         ctx: discord.Interaction, channel_name: str, members: str | None = None
     ):
-        await create_event_channel_impl(ctx, channel_name, members)
+        await create_project_channel_impl(ctx, channel_name, members)
 
     @command_meta(
-        category="イベントチャンネル管理",
-        icon="📅",
-        short_description="イベントチャンネルをアーカイブに移動",
-        restrictions="• channel_name省略時はイベントカテゴリー内で実行",
+        category="プロジェクトチャンネル管理",
+        icon="🚀",
+        short_description="プロジェクトチャンネルをアーカイブに移動",
+        restrictions="• channel_name省略時はプロジェクトカテゴリー内で実行",
         examples=[
-            "`/archive_event_channel` (実行チャンネルをアーカイブ)",
-            "`/archive_event_channel channel_name:#1-ハッカソン`",
+            "`/archive_project_channel` (実行チャンネルをアーカイブ)",
+            "`/archive_project_channel channel_name:#1-ハッカソン`",
         ],
     )
     @tree.command(
-        name="archive_event_channel",
-        description="イベントチャンネルをアーカイブします",
+        name="archive_project_channel",
+        description="プロジェクトチャンネルをアーカイブします",
     )
     @app_commands.describe(
-        channel_name="アーカイブするイベントチャンネル（メンション形式、省略時はコマンド実行チャンネル）"
+        channel_name="アーカイブするプロジェクトチャンネル（メンション形式、省略時はコマンド実行チャンネル）"
     )
-    async def archive_event_channel(
+    async def archive_project_channel(
         ctx: discord.Interaction, channel_name: discord.TextChannel | None = None
     ):
-        await archive_event_channel_impl(ctx, channel_name)
+        await archive_project_channel_impl(ctx, channel_name)
 
     @command_meta(
-        category="イベントチャンネル管理",
-        icon="📅",
-        short_description="アーカイブからイベントチャンネルを復元",
+        category="プロジェクトチャンネル管理",
+        icon="🚀",
+        short_description="アーカイブからプロジェクトチャンネルを復元",
         restrictions="• アーカイブカテゴリー内のチャンネルでのみ実行可能",
         examples=[
-            "`/restore_event_channel` (実行チャンネルを復元)",
-            "`/restore_event_channel channel_name:#1-ハッカソン`",
+            "`/restore_project_channel` (実行チャンネルを復元)",
+            "`/restore_project_channel channel_name:#1-ハッカソン`",
         ],
     )
     @tree.command(
-        name="restore_event_channel",
-        description="アーカイブされたイベントチャンネルをイベントカテゴリーに戻します",
+        name="restore_project_channel",
+        description="アーカイブされたプロジェクトチャンネルをプロジェクトカテゴリーに戻します",
     )
     @app_commands.describe(
-        channel_name="復元するイベントチャンネル（メンション形式、デフォルトはコマンド実行チャンネル）"
+        channel_name="復元するプロジェクトチャンネル（メンション形式、デフォルトはコマンド実行チャンネル）"
     )
-    async def restore_event_channel(
+    async def restore_project_channel(
         ctx: discord.Interaction, channel_name: discord.TextChannel | None = None
     ):
-        await restore_event_channel_impl(ctx, channel_name)
+        await restore_project_channel_impl(ctx, channel_name)
 
     @command_meta(
         category="ロール管理",
         icon="👥",
-        short_description="イベントロールにメンバーを追加",
+        short_description="プロジェクトロールにメンバーを追加",
         restrictions="• 一部ロール以外のみ対象",
         examples=[
-            "`/add_event_role_member members:@user1 @user2`",
-            "`/add_event_role_member members:@user1 role_name:@1`",
+            "`/add_project_role_member members:@user1 @user2`",
+            "`/add_project_role_member members:@user1 role_name:@1`",
         ],
     )
     @tree.command(
-        name="add_event_role_member",
-        description="イベントチャンネルに紐づくロールにメンバーを追加します",
+        name="add_project_role_member",
+        description="プロジェクトチャンネルに紐づくロールにメンバーを追加します",
     )
     @app_commands.describe(
         members="追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
         role_name="対象のロール（@ロール形式で指定。例: @1. 省略時は実行チャンネルのロール）",
     )
-    async def add_event_role_member(
+    async def add_project_role_member(
         ctx: discord.Interaction, members: str, role_name: str | None = None
     ):
-        await add_event_role_member_impl(ctx, members, role_name)
+        await add_project_role_member_impl(ctx, members, role_name)

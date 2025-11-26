@@ -64,6 +64,57 @@ def get_next_event_index(
     return next_index
 
 
+def get_next_project_index(
+    guild: discord.Guild,
+    project_category_name: str,
+    archive_project_category_name: str,
+) -> int:
+    """プロジェクトカテゴリーとアーカイブカテゴリーから次のインデックス番号を取得する
+
+    チャンネル名のパターン: {index}-{name}
+    例: 1-新規プロジェクト, 2-研究開発
+
+    両方のカテゴリーのチャンネルから最大のインデックス番号を見つけて+1した値を返す。
+    これにより、アーカイブされたチャンネルも考慮した連番を維持できる。
+
+    Args:
+        guild: Discordサーバー
+        project_category_name: プロジェクトカテゴリー名
+        archive_project_category_name: アーカイブカテゴリー名
+
+    Returns:
+        次のインデックス番号（最小値は1）
+    """
+    max_index = 0
+    pattern = re.compile(r"^(\d+)-")
+
+    # プロジェクトカテゴリーのチャンネルをチェック
+    project_category = discord.utils.get(guild.categories, name=project_category_name)
+    if project_category:
+        for channel in project_category.channels:
+            match = pattern.match(channel.name)
+            if match:
+                index = int(match.group(1))
+                max_index = max(max_index, index)
+                logger.debug(f"Found project channel: {channel.name} with index {index}")
+
+    # アーカイブカテゴリーのチャンネルをチェック
+    archive_category = discord.utils.get(guild.categories, name=archive_project_category_name)
+    if archive_category:
+        for channel in archive_category.channels:
+            match = pattern.match(channel.name)
+            if match:
+                index = int(match.group(1))
+                max_index = max(max_index, index)
+                logger.debug(f"Found archived project channel: {channel.name} with index {index}")
+
+    next_index = max_index + 1
+    logger.info(
+        f"Next project index: {next_index} (max found: {max_index}) in guild '{guild.name}'"
+    )
+    return next_index
+
+
 async def validate_category_exists(
     ctx: discord.Interaction, guild: discord.Guild, category_name: str
 ) -> Optional[discord.CategoryChannel]:
