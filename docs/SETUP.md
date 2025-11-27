@@ -49,7 +49,7 @@ cp .env.sample .env
 ```env
 DISCORD_BOT_TOKEN=your_bot_token_here
 EVENT_CATEGORY_NAME=event
-ARCHIVE_EVENT_CATEGORY_NAME=archived-event
+ARCHIVE_EVENT_CATEGORY_NAME=archived
 EVENT_REQUEST_CHANNEL_NAME=event-request
 ```
 
@@ -61,7 +61,7 @@ EVENT_REQUEST_CHANNEL_NAME=event-request
 |--------|------|--------------|
 | `DISCORD_BOT_TOKEN` | Discord Botのトークン(Bot起動に必須) | - |
 | `EVENT_CATEGORY_NAME` | イベントチャンネルを作成するカテゴリー名 | `event` |
-| `ARCHIVE_EVENT_CATEGORY_NAME` | アーカイブ先のカテゴリー名 | `archived-event` |
+| `ARCHIVE_EVENT_CATEGORY_NAME` | アーカイブ先のカテゴリー名 | `archived` |
 | `EVENT_REQUEST_CHANNEL_NAME` | チャンネル作成リクエストを受け付けるチャンネル名 | `event-request` |
 
 ## Discord サーバーの設定
@@ -71,7 +71,7 @@ EVENT_REQUEST_CHANNEL_NAME=event-request
 ### カテゴリー
 
 1. `event` - イベントチャンネル用
-2. `archived-event` - アーカイブ用
+2. `archived` - アーカイブ用
 
 ### チャンネル
 
@@ -84,7 +84,7 @@ EVENT_REQUEST_CHANNEL_NAME=event-request
 ├── # 1-新歓イベント
 └── # 2-ハッカソン
 
-📁 archived-event
+📁 archived
 └── # 3-終了したイベント
 
 📁 その他

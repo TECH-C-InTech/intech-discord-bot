@@ -15,64 +15,60 @@
 
 **場所**: [src/utils/validation_utils.py](../src/utils/validation_utils.py)
 
-### `validate_channel_restriction(ctx, channel_name)`
+### `validate_channel_restriction(ctx, allowed_channel_name, must_be_in=True)`
 
 特定のチャンネルでのみコマンド実行を許可するチェック。
 
 **パラメータ**:
 - `ctx: discord.Interaction` - Discord インタラクション
-- `channel_name: str` - 許可するチャンネル名
+- `allowed_channel_name: str` - 許可するチャンネル名
+- `must_be_in: bool` - `True`ならそのチャンネルのみ、`False`ならそのチャンネル以外（デフォルト: `True`）
 
 **戻り値**:
-- `str | None` - エラーメッセージ（制限違反の場合）、または `None`（OK の場合）
+- `bool` - バリデーション成功なら `True`、失敗なら `False`（エラーメッセージは自動送信）
 
 **使用例**:
 ```python
 from src.utils.validation_utils import validate_channel_restriction
 
 async def my_command(ctx: discord.Interaction):
-    error = validate_channel_restriction(ctx, "event-request")
-    if error:
-        await send_error_message(ctx, error)
-        return
+    if not await validate_channel_restriction(ctx, "event-request"):
+        return  # エラーメッセージは既に送信されている
 
     # コマンドの処理
 ```
 
-### `validate_channel_in_category(channel, category_name, config)`
+### `validate_channel_in_category(ctx, channel, category_name)`
 
 チャンネルが指定されたカテゴリーに属しているかチェック。
 
 **パラメータ**:
+- `ctx: discord.Interaction` - Discord インタラクション
 - `channel: discord.TextChannel` - チェックするチャンネル
-- `category_name: str` - カテゴリー名（"event" または "archive"）
-- `config: EventChannelConfig` - 設定オブジェクト
+- `category_name: str` - カテゴリー名
 
 **戻り値**:
-- `str | None` - エラーメッセージ、または `None`
+- `bool` - バリデーション成功なら `True`、失敗なら `False`（エラーメッセージは自動送信）
 
 **使用例**:
 ```python
 from src.utils.validation_utils import validate_channel_in_category
-from src.utils.event_config import EventChannelConfig
 
-config = EventChannelConfig()
-error = validate_channel_in_category(channel, "event", config)
-if error:
-    await send_error_message(ctx, error)
-    return
+if not await validate_channel_in_category(ctx, channel, "event"):
+    return  # エラーメッセージは既に送信されている
 ```
 
-### `parse_member_mentions(ctx, mention_string)`
+### `parse_member_mentions(ctx, members_str, guild)`
 
 メンション文字列を解析して`discord.Member`オブジェクトのリストに変換。
 
 **パラメータ**:
 - `ctx: discord.Interaction` - Discord インタラクション
-- `mention_string: str | None` - メンション文字列（例: "@user1 @user2"）
+- `members_str: str` - メンション文字列（例: "@user1 @user2"）
+- `guild: discord.Guild` - Discordギルド
 
 **戻り値**:
-- `list[discord.Member]` - メンバーオブジェクトのリスト
+- `list[discord.Member] | None` - メンバーオブジェクトのリスト。エラー時は `None`（エラーメッセージは自動送信）
 
 **使用例**:
 ```python
@@ -95,15 +91,16 @@ async def add_members_command(ctx: discord.Interaction, members: str):
 - `<@123456789>` - ID形式のメンション
 - 複数メンションをスペース区切り
 
-### `validate_role_safety(role)`
+### `validate_role_safety(ctx, role)`
 
 ロールが安全に操作できるかチェック（管理者ロール、マネージドロール、@everyoneロールをブロック）。
 
 **パラメータ**:
+- `ctx: discord.Interaction` - Discord インタラクション
 - `role: discord.Role` - チェックするロール
 
 **戻り値**:
-- `str | None` - エラーメッセージ、または `None`
+- `bool` - 安全なら `True`、危険なら `False`（エラーメッセージは自動送信）
 
 **使用例**:
 ```python
@@ -212,13 +209,14 @@ else:
 
 **場所**: [src/utils/channel_utils.py](../src/utils/channel_utils.py)
 
-### `get_next_event_index(guild, config)`
+### `get_next_event_index(guild, event_category_name, archive_event_category_name)`
 
 次のイベントチャンネルのインデックスを取得。
 
 **パラメータ**:
 - `guild: discord.Guild` - Discordサーバー
-- `config: EventChannelConfig` - 設定オブジェクト
+- `event_category_name: str` - イベントカテゴリー名
+- `archive_event_category_name: str` - アーカイブカテゴリー名
 
 **戻り値**:
 - `int` - 次のインデックス番号（最小値: 1）
@@ -226,10 +224,14 @@ else:
 **使用例**:
 ```python
 from src.utils.channel_utils import get_next_event_index
-from src.utils.event_config import EventChannelConfig
+from src.utils.channel_config import ChannelConfig
 
-config = EventChannelConfig()
-index = get_next_event_index(ctx.guild, config)
+config = ChannelConfig.get_instance()
+index = get_next_event_index(
+    ctx.guild,
+    config.event_category_name,
+    config.archive_event_category_name
+)
 channel_name = f"{index}-{event_name}"
 ```
 
@@ -248,7 +250,7 @@ channel_name = f"{index}-{event_name}"
 **パラメータ**:
 - `guild: discord.Guild` - Discordサーバー
 - `partial_name: str` - チャンネル名（部分一致）
-- `config: EventChannelConfig` - 設定オブジェクト
+- `config: ChannelConfig` - 設定オブジェクト
 
 **戻り値**:
 - `discord.TextChannel | None` - 見つかったチャンネル、または `None`
@@ -316,7 +318,7 @@ async def create_event_channel_cmd(ctx: discord.Interaction, name: str, members:
 
 **パラメータ**:
 - `channel_name: str | None` - チャンネル名を直接指定（`channel_name_from_config` と排他）
-- `channel_name_from_config: str | None` - `EventChannelConfig` の属性名を指定して動的取得（`channel_name` と排他）
+- `channel_name_from_config: str | None` - `ChannelConfig` の属性名を指定して動的取得（`channel_name` と排他）
 - `must_be_in: bool` - チャンネル制限の方向（デフォルト: `True`）
   - `True`: 指定チャンネルでのみ実行可能
   - `False`: 指定チャンネル以外で実行可能
@@ -503,28 +505,31 @@ logger.warning(f"Approval request for '{command_name}' timed out")
 
 ## 設定管理
 
-**場所**: [src/utils/event_config.py](../src/utils/event_config.py)
+**場所**: [src/utils/channel_config.py](../src/utils/channel_config.py)
 
-### `EventChannelConfig` クラス
+### `ChannelConfig` クラス
 
 環境変数を管理するシングルトンクラス。
 
 **使用例**:
 ```python
-from src.utils.event_config import EventChannelConfig
+from src.utils.channel_config import ChannelConfig
 
-config = EventChannelConfig()
+config = ChannelConfig.get_instance()
 
 # 設定値へのアクセス
 event_category = config.event_category_name
 archive_category = config.archive_event_category_name
 request_channel = config.event_request_channel_name
+club_category = config.club_category_name
 ```
 
 **プロパティ**:
 - `event_category_name: str` - イベントカテゴリー名
 - `archive_event_category_name: str` - アーカイブカテゴリー名
 - `event_request_channel_name: str` - リクエストチャンネル名
+- `club_category_name: str` - クラブカテゴリー名
+- `clubs_request_channel_name: str` - クラブ作成リクエストチャンネル名
 
 **特徴**:
 - シングルトンパターン（インスタンスは1つのみ）
