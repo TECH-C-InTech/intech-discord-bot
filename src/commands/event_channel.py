@@ -454,7 +454,7 @@ def setup(tree: app_commands.CommandTree):
         restrictions="• channel_name省略時はイベントカテゴリー内で実行",
         examples=[
             "`/archive_event_channel` (実行チャンネルをアーカイブ)",
-            "`/archive_event_channel channel_name:#1-ハッカソン`",
+            "`/archive_event_channel channel_name:#e01-ハッカソン`",
         ],
     )
     @tree.command(
@@ -476,7 +476,7 @@ def setup(tree: app_commands.CommandTree):
         restrictions="• アーカイブカテゴリー内のチャンネルでのみ実行可能",
         examples=[
             "`/restore_event_channel` (実行チャンネルを復元)",
-            "`/restore_event_channel channel_name:#1-ハッカソン`",
+            "`/restore_event_channel channel_name:#e01-ハッカソン`",
         ],
     )
     @tree.command(
@@ -498,7 +498,7 @@ def setup(tree: app_commands.CommandTree):
         restrictions="• 一部ロール以外のみ対象",
         examples=[
             "`/add_event_role_member members:@user1 @user2`",
-            "`/add_event_role_member members:@user1 role_name:@1`",
+            "`/add_event_role_member members:@user1 role_name:@e01`",
         ],
     )
     @tree.command(
@@ -507,7 +507,7 @@ def setup(tree: app_commands.CommandTree):
     )
     @app_commands.describe(
         members="追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
-        role_name="対象のロール（@ロール形式で指定。例: @1. 省略時は実行チャンネルのロール）",
+        role_name="対象のロール（@ロール形式で指定。例: @e01. 省略時は実行チャンネルのロール）",
     )
     async def add_event_role_member(
         ctx: discord.Interaction, members: str, role_name: str | None = None
