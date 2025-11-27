@@ -310,6 +310,7 @@ async def add_project_role_member_impl(
         if not role:
             await send_error_message(ctx, f"ロール `{role_name_to_find}` が見つかりません。")
             return
+        role_name = role.name
     else:
         # role_nameが指定された場合、パース関数でロールを取得
         role = await parse_role_mention(ctx, role_name, guild)
@@ -499,7 +500,7 @@ def setup(tree: app_commands.CommandTree):
         restrictions="• 一部ロール以外のみ対象",
         examples=[
             "`/add_project_role_member members:@user1 @user2`",
-            "`/add_project_role_member members:@user1 role_name:@1`",
+            "`/add_project_role_member members:@user1 role_name:@p01`",
         ],
     )
     @tree.command(
@@ -508,7 +509,7 @@ def setup(tree: app_commands.CommandTree):
     )
     @app_commands.describe(
         members="追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
-        role_name="対象のロール（@ロール形式で指定。例: @1. 省略時は実行チャンネルのロール）",
+        role_name="対象のロール（@ロール形式で指定。例: @p01. 省略時は実行チャンネルのロール）",
     )
     async def add_project_role_member(
         ctx: discord.Interaction, members: str, role_name: str | None = None

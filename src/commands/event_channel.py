@@ -308,6 +308,7 @@ async def add_event_role_member_impl(
         if not role:
             await send_error_message(ctx, f"ロール `{role_name_to_find}` が見つかりません。")
             return
+        role_name = role.name
     else:
         # role_nameが指定された場合、パース関数でロールを取得
         role = await parse_role_mention(ctx, role_name, guild)
