@@ -133,14 +133,14 @@ async def handle_command_error(
 
     default_help_texts = {
         discord.Forbidden: "サーバー管理者にBotの権限設定を確認してください。",
-        discord.HTTPException: "時間をおいて再度お試しください。",
         discord.NotFound: "対象が削除されたか、アクセス権限がない可能性があります。",
+        discord.HTTPException: "時間をおいて再度お試しください。",
     }
 
     error_messages = {
         discord.Forbidden: f"Botに{action}する権限がありません。",
-        discord.HTTPException: f"{action}中にDiscord APIエラーが発生しました。",
         discord.NotFound: f"{action}対象が見つかりませんでした。",
+        discord.HTTPException: f"{action}中にDiscord APIエラーが発生しました。",
     }
 
     for error_type, message in error_messages.items():
