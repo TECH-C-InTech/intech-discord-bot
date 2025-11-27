@@ -110,7 +110,7 @@ async def send_error_message(
     logger.info(f"Error message sent to {ctx.user}: {message}")
 
 
-async def handle_command_error(ctx: discord.Interaction, error: Exception, action: str) -> None:
+async def handle_command_error(ctx: discord.Interaction, error: Exception, action: str, help_text: str = None) -> None:
     """コマンド実行時のエラーをハンドリングする
 
     一般的なDiscordエラーを適切にハンドリングし、ユーザーにわかりやすいメッセージを表示する。
@@ -119,6 +119,7 @@ async def handle_command_error(ctx: discord.Interaction, error: Exception, actio
         ctx: Discord Interaction
         error: 発生したエラー
         action: 実行していたアクション（例: "チャンネルの作成"）
+        help_text: ヘルプテキスト（任意）
     """
     logger.error(f"Error during {action}: {error}", exc_info=True)
 
@@ -126,19 +127,19 @@ async def handle_command_error(ctx: discord.Interaction, error: Exception, actio
         await send_error_message(
             ctx,
             f"Botに{action}する権限がありません。",
-            help_text="サーバー管理者にBotの権限設定を確認してください。",
+            help_text=help_text or "サーバー管理者にBotの権限設定を確認してください。",
         )
     elif isinstance(error, discord.HTTPException):
         await send_error_message(
             ctx,
             f"{action}中にDiscord APIエラーが発生しました。",
-            help_text="時間をおいて再度お試しください。",
+            help_text=help_text or "時間をおいて再度お試しください。",
         )
     elif isinstance(error, discord.NotFound):
         await send_error_message(
             ctx,
             f"{action}対象が見つかりませんでした。",
-            help_text="対象が削除されたか、アクセス権限がない可能性があります。",
+            help_text=help_text or "対象が削除されたか、アクセス権限がない可能性があります。",
         )
     else:
         # その他の予期しないエラー
