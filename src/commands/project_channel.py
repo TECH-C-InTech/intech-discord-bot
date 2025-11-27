@@ -456,7 +456,7 @@ def setup(tree: app_commands.CommandTree):
         restrictions="• channel_name省略時はプロジェクトカテゴリー内で実行",
         examples=[
             "`/archive_project_channel` (実行チャンネルをアーカイブ)",
-            "`/archive_project_channel channel_name:#1-ハッカソン`",
+            "`/archive_project_channel channel_name:#p01-ハッカソン`",
         ],
     )
     @tree.command(
@@ -478,7 +478,7 @@ def setup(tree: app_commands.CommandTree):
         restrictions="• アーカイブカテゴリー内のチャンネルでのみ実行可能",
         examples=[
             "`/restore_project_channel` (実行チャンネルを復元)",
-            "`/restore_project_channel channel_name:#1-ハッカソン`",
+            "`/restore_project_channel channel_name:#p01-ハッカソン`",
         ],
     )
     @tree.command(
