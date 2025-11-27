@@ -75,8 +75,8 @@ async def create_event_channel_impl(
             config.archive_event_category_name,
         )
 
-        # チャンネル名を {index}-{name} の形式で構築
-        formatted_channel_name = f"{next_index}-{channel_name}"
+        # チャンネル名を {index:02d}-{name} の形式で構築（2桁0埋め）
+        formatted_channel_name = f"{next_index:02d}-{channel_name}"
 
         # チャンネルを作成
         channel = await guild.create_text_channel(
@@ -327,10 +327,10 @@ async def add_event_role_member_impl(
     role_index = int(role_match.group(1))
 
     # 同名のチャンネルがEVENT_CATEGORY_NAMEカテゴリーに存在するか確認
-    # {index}-で始まるチャンネルを検索
+    # {index:02d}-で始まるチャンネルを検索（2桁0埋め）
     event_channel = None
     for ch_name in event_category.text_channels:
-        if ch_name.name.startswith(f"{role_index}-"):
+        if ch_name.name.startswith(f"{role_index:02d}-"):
             event_channel = ch_name
             break
 
