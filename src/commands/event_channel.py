@@ -195,8 +195,13 @@ async def archive_event_channel_impl(
             ctx,
             e,
             "チャンネルのアーカイブ",
-            f"サーバー管理者に、`{config.event_category_name}`, `{config.archive_event_category_name}`"
-            f"のカテゴリに「権限の管理」権限がInTech Botのみに付与されているか確認してください。",
+            custom_help_texts={
+                discord.Forbidden: (
+                    f"サーバー管理者に、`{config.event_category_name}`, "
+                    f"`{config.archive_event_category_name}`のカテゴリに「権限の管理」"
+                    "権限がInTech Botのみに付与されているか確認してください。"
+                )
+            }
         )
 
 
@@ -263,8 +268,13 @@ async def restore_event_channel_impl(
             ctx,
             e,
             "チャンネルの復元",
-            f"サーバー管理者に、`{config.event_category_name}`, `{config.archive_event_category_name}`"
-            f"のカテゴリに「権限の管理」権限がInTech Botのみに付与されているか確認してください。",
+            custom_help_texts={
+                discord.Forbidden: (
+                    f"サーバー管理者に、`{config.event_category_name}`, "
+                    f"`{config.archive_event_category_name}`のカテゴリに「権限の管理」"
+                    "権限がInTech Botのみに付与されているか確認してください。"
+                )
+            }
         )
 
 

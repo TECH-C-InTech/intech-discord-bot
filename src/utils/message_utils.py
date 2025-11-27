@@ -110,7 +110,13 @@ async def send_error_message(
     logger.info(f"Error message sent to {ctx.user}: {message}")
 
 
-async def handle_command_error(ctx: discord.Interaction, error: Exception, action: str, help_text: str = None) -> None:
+async def handle_command_error(
+    ctx: discord.Interaction,
+    error: Exception,
+    action: str,
+    help_text: Optional[str] = None,
+    custom_help_texts: Optional[dict[type[Exception], str]] = None,
+) -> None:
     """コマンド実行時のエラーをハンドリングする
 
     一般的なDiscordエラーを適切にハンドリングし、ユーザーにわかりやすいメッセージを表示する。
@@ -119,32 +125,38 @@ async def handle_command_error(ctx: discord.Interaction, error: Exception, actio
         ctx: Discord Interaction
         error: 発生したエラー
         action: 実行していたアクション（例: "チャンネルの作成"）
-        help_text: ヘルプテキスト（任意）
+        help_text: 全エラー共通のカスタムヘルプテキスト（任意）
+        custom_help_texts: エラータイプごとのカスタムヘルプテキスト（任意）
+            例: {discord.Forbidden: "カスタムメッセージ"}
     """
     logger.error(f"Error during {action}: {error}", exc_info=True)
 
-    if isinstance(error, discord.Forbidden):
-        await send_error_message(
-            ctx,
-            f"Botに{action}する権限がありません。",
-            help_text=help_text or "サーバー管理者にBotの権限設定を確認してください。",
-        )
-    elif isinstance(error, discord.HTTPException):
-        await send_error_message(
-            ctx,
-            f"{action}中にDiscord APIエラーが発生しました。",
-            help_text=help_text or "時間をおいて再度お試しください。",
-        )
-    elif isinstance(error, discord.NotFound):
-        await send_error_message(
-            ctx,
-            f"{action}対象が見つかりませんでした。",
-            help_text=help_text or "対象が削除されたか、アクセス権限がない可能性があります。",
-        )
-    else:
-        # その他の予期しないエラー
-        await send_error_message(
-            ctx,
-            f"{action}中にエラーが発生しました: {type(error).__name__}",
-            help_text="管理者に連絡してください。",
-        )
+    default_help_texts = {
+        discord.Forbidden: "サーバー管理者にBotの権限設定を確認してください。",
+        discord.HTTPException: "時間をおいて再度お試しください。",
+        discord.NotFound: "対象が削除されたか、アクセス権限がない可能性があります。",
+    }
+
+    error_messages = {
+        discord.Forbidden: f"Botに{action}する権限がありません。",
+        discord.HTTPException: f"{action}中にDiscord APIエラーが発生しました。",
+        discord.NotFound: f"{action}対象が見つかりませんでした。",
+    }
+
+    for error_type, message in error_messages.items():
+        if isinstance(error, error_type):
+            # 優先順位: custom_help_texts > help_text > default_help_texts
+            final_help_text = (
+                (custom_help_texts or {}).get(error_type)
+                or help_text
+                or default_help_texts[error_type]
+            )
+            await send_error_message(ctx, message, help_text=final_help_text)
+            return
+
+    # その他の予期しないエラー
+    await send_error_message(
+        ctx,
+        f"{action}中にエラーが発生しました: {type(error).__name__}",
+        help_text=help_text or "管理者に連絡してください。",
+    )
