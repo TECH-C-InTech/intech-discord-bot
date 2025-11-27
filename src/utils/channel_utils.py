@@ -37,7 +37,7 @@ def get_next_event_index(
         次のインデックス番号（最小値は1）
     """
     max_index = 0
-    pattern = re.compile(r"^e(\d+)-")
+    pattern = re.compile(r"^e(\d{2})-")
 
     # イベントカテゴリーのチャンネルをチェック
     event_category = discord.utils.get(guild.categories, name=event_category_name)
@@ -86,7 +86,7 @@ def get_next_project_index(
         次のインデックス番号（最小値は1）
     """
     max_index = 0
-    pattern = re.compile(r"^p(\d+)-")
+    pattern = re.compile(r"^p(\d{2})-")
 
     # プロジェクトカテゴリーのチャンネルをチェック
     project_category = discord.utils.get(guild.categories, name=project_category_name)

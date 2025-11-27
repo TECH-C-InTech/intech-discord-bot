@@ -296,7 +296,7 @@ async def add_event_role_member_impl(
         channel_name = ctx.channel.name
         # チャンネル名からindexを抽出して、e{index}形式のロールを検索
         # チャンネル名: e01-xxx -> index: 01
-        match = re.match(r"^e(\d+)-", channel_name)
+        match = re.match(r"^e(\d{2})-", channel_name)
         if not match:
             await send_error_message(
                 ctx, "このチャンネルはイベントチャンネルの形式（e00-xxx）ではありません。"
@@ -323,7 +323,7 @@ async def add_event_role_member_impl(
     # ロール名から数字部分を抽出（e00 -> 0）
     # role_nameはこの時点で必ず文字列
     assert role_name is not None
-    role_pattern = re.compile(r"^e(\d+)$")
+    role_pattern = re.compile(r"^e(\d{2})$")
     role_match = role_pattern.match(role_name)
     if not role_match:
         await send_error_message(

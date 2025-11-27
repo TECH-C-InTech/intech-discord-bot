@@ -298,7 +298,7 @@ async def add_project_role_member_impl(
         channel_name = ctx.channel.name
         # チャンネル名からindexを抽出して、p{index}形式のロールを検索
         # チャンネル名: p01-xxx -> index: 01
-        match = re.match(r"^p(\d+)-", channel_name)
+        match = re.match(r"^p(\d{2})-", channel_name)
         if not match:
             await send_error_message(
                 ctx, "このチャンネルはプロジェクトチャンネルの形式（p00-xxx）ではありません。"
@@ -325,7 +325,7 @@ async def add_project_role_member_impl(
     # ロール名から数字部分を抽出（p00 -> 0）
     # role_nameはこの時点で必ず文字列
     assert role_name is not None
-    role_pattern = re.compile(r"^p(\d+)$")
+    role_pattern = re.compile(r"^p(\d{2})$")
     role_match = role_pattern.match(role_name)
     if not role_match:
         await send_error_message(
