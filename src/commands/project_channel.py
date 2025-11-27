@@ -431,7 +431,7 @@ def setup(tree: app_commands.CommandTree):
         restrictions="• プロジェクトリクエストチャンネルでのみ実行可能",
         examples=[
             "`/create_project_channel channel_name:ハッカソン`",
-            "`/create_project_channel channel_name:勉強会 members:@user1 @user2`",
+            "`/create_project_channel channel_name:discordbot members:@user1 @user2`",
         ],
     )
     @tree.command(

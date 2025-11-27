@@ -428,8 +428,8 @@ def setup(tree: app_commands.CommandTree):
         short_description="イベント用のチャンネルとロールを作成",
         restrictions="• イベントリクエストチャンネルでのみ実行可能",
         examples=[
-            "`/create_event_channel channel_name:ハッカソン`",
-            "`/create_event_channel channel_name:勉強会 members:@user1 @user2`",
+            "`/create_event_channel channel_name:おでん会`",
+            "`/create_event_channel channel_name:忘年会 members:@user1 @user2`",
         ],
     )
     @tree.command(
@@ -454,7 +454,7 @@ def setup(tree: app_commands.CommandTree):
         restrictions="• channel_name省略時はイベントカテゴリー内で実行",
         examples=[
             "`/archive_event_channel` (実行チャンネルをアーカイブ)",
-            "`/archive_event_channel channel_name:#e01-ハッカソン`",
+            "`/archive_event_channel channel_name:#e01-おでん会`",
         ],
     )
     @tree.command(
@@ -476,7 +476,7 @@ def setup(tree: app_commands.CommandTree):
         restrictions="• アーカイブカテゴリー内のチャンネルでのみ実行可能",
         examples=[
             "`/restore_event_channel` (実行チャンネルを復元)",
-            "`/restore_event_channel channel_name:#e01-ハッカソン`",
+            "`/restore_event_channel channel_name:#e01-おでん会`",
         ],
     )
     @tree.command(
