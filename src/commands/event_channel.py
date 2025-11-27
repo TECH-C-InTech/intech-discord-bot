@@ -75,8 +75,8 @@ async def create_event_channel_impl(
             config.archive_event_category_name,
         )
 
-        # チャンネル名を {index:02d}-{name} の形式で構築（2桁0埋め）
-        formatted_channel_name = f"{next_index:02d}-{channel_name}"
+        # チャンネル名を e{index:02d}-{name} の形式で構築（2桁0埋め）
+        formatted_channel_name = f"e{next_index:02d}-{channel_name}"
 
         # チャンネルを作成
         channel = await guild.create_text_channel(
@@ -295,8 +295,15 @@ async def add_event_role_member_impl(
             return
         channel_name = ctx.channel.name
         # チャンネル名からindexを抽出して、e{index}形式のロールを検索
-        channel_index = channel_name.split("-")[0]
-        role_name_to_find = f"e{int(channel_index):02d}"
+        # チャンネル名: e01-xxx -> index: 01
+        match = re.match(r"^e(\d+)-", channel_name)
+        if not match:
+            await send_error_message(
+                ctx, "このチャンネルはイベントチャンネルの形式（e00-xxx）ではありません。"
+            )
+            return
+        channel_index = int(match.group(1))
+        role_name_to_find = f"e{channel_index:02d}"
         role = discord.utils.get(guild.roles, name=role_name_to_find)
         if not role:
             await send_error_message(ctx, f"ロール `{role_name_to_find}` が見つかりません。")
@@ -327,10 +334,10 @@ async def add_event_role_member_impl(
     role_index = int(role_match.group(1))
 
     # 同名のチャンネルがEVENT_CATEGORY_NAMEカテゴリーに存在するか確認
-    # {index:02d}-で始まるチャンネルを検索（2桁0埋め）
+    # e{index:02d}-で始まるチャンネルを検索（2桁0埋め）
     event_channel = None
     for ch_name in event_category.text_channels:
-        if ch_name.name.startswith(f"{role_index:02d}-"):
+        if ch_name.name.startswith(f"e{role_index:02d}-"):
             event_channel = ch_name
             break
 

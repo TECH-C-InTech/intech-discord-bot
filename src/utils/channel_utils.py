@@ -22,8 +22,8 @@ def get_next_event_index(
 ) -> int:
     """イベントカテゴリーとアーカイブカテゴリーから次のインデックス番号を取得する
 
-    チャンネル名のパターン: {index}-{name}
-    例: 1-新歓イベント, 2-ハッカソン
+    チャンネル名のパターン: e{index}-{name}
+    例: e01-新歓イベント, e02-ハッカソン
 
     両方のカテゴリーのチャンネルから最大のインデックス番号を見つけて+1した値を返す。
     これにより、アーカイブされたチャンネルも考慮した連番を維持できる。
@@ -37,7 +37,7 @@ def get_next_event_index(
         次のインデックス番号（最小値は1）
     """
     max_index = 0
-    pattern = re.compile(r"^(\d+)-")
+    pattern = re.compile(r"^e(\d+)-")
 
     # イベントカテゴリーのチャンネルをチェック
     event_category = discord.utils.get(guild.categories, name=event_category_name)
@@ -71,8 +71,8 @@ def get_next_project_index(
 ) -> int:
     """プロジェクトカテゴリーとアーカイブカテゴリーから次のインデックス番号を取得する
 
-    チャンネル名のパターン: {index}-{name}
-    例: 1-新規プロジェクト, 2-研究開発
+    チャンネル名のパターン: p{index}-{name}
+    例: p01-新規プロジェクト, p02-研究開発
 
     両方のカテゴリーのチャンネルから最大のインデックス番号を見つけて+1した値を返す。
     これにより、アーカイブされたチャンネルも考慮した連番を維持できる。
@@ -86,7 +86,7 @@ def get_next_project_index(
         次のインデックス番号（最小値は1）
     """
     max_index = 0
-    pattern = re.compile(r"^(\d+)-")
+    pattern = re.compile(r"^p(\d+)-")
 
     # プロジェクトカテゴリーのチャンネルをチェック
     project_category = discord.utils.get(guild.categories, name=project_category_name)
