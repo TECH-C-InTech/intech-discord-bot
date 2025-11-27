@@ -119,32 +119,35 @@ else:
 
 ## 設定管理
 
-### シングルトンパターン
+### 非同期設定ロード
 
-[src/utils/event_config.py](../src/utils/event_config.py)で実装:
+[src/utils/channel_config.py](../src/utils/channel_config.py)で実装:
 
 ```python
-class EventChannelConfig:
-    """環境変数をキャッシュする設定クラス"""
-    _instance = None
+class ChannelConfig:
+    """環境変数を管理する設定クラス"""
 
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._load_config()
-        return cls._instance
+    @classmethod
+    async def load(cls, ctx: discord.Interaction) -> "ChannelConfig | None":
+        """非同期で設定をロード"""
+        # 環境変数を読み込み、バリデーション
+        # エラーメッセージは自動表示
 ```
 
 **特徴**:
-- 環境変数を一度だけ読み込み、キャッシュ
-- 遅延ロード（初回アクセス時に検証）
-- コードベース全体で一貫した設定アクセス
+- 非同期ロード (`await ChannelConfig.load(ctx)`)
+- コマンド実行時に環境変数を検証
+- バリデーションエラーは自動的にユーザーに表示
+- イベント・プロジェクトの両方の設定に対応
 
 **使用例**:
 ```python
-from src.utils.event_config import EventChannelConfig
+from src.utils.channel_config import ChannelConfig
 
-config = EventChannelConfig()
+config = await ChannelConfig.load(ctx)
+if not config:
+    return  # エラーメッセージは既に表示済み
+
 category_name = config.event_category_name
 ```
 
@@ -152,35 +155,38 @@ category_name = config.event_category_name
 
 ### インデックスフォーマット
 
-イベントチャンネルは番号付きプレフィックスを使用: `{index}-{name}`
+イベントチャンネルは番号付きプレフィックスを使用: `e{index:03d}-{name}` (3桁0埋め)
 
 **例**:
-- `1-hackathon`
-- `2-study-group`
-- `3-welcome-event`
+- `e001-hackathon`
+- `e002-study-group`
+- `e003-welcome-event`
+
+プロジェクトチャンネルは同様に: `p{index:03d}-{name}` 形式を使用
 
 ### インデックス算出アルゴリズム
 
 [src/utils/channel_utils.py](../src/utils/channel_utils.py)で実装:
 
 ```python
-def get_next_event_index(guild: discord.Guild, config: EventChannelConfig) -> int:
+def get_next_event_index(guild: discord.Guild, event_category_name: str, archive_event_category_name: str) -> int:
     """次のイベントチャンネルのインデックスを取得"""
     # イベントカテゴリーとアーカイブカテゴリーの両方をスキャン
-    # 正規表現 r"^(\d+)-" でインデックスを抽出
+    # 正規表現 r"^e(\d{3})-" でインデックスを抽出（3桁0埋め）
     # 最大値 + 1 を返す（最小値は1）
 ```
 
 **重要なポイント**:
+- **フォーマット**: `e{index:03d}-{name}` (3桁0埋め、e001, e002, ..., e099, e100 など)
 - **両方のカテゴリーをスキャン**: イベントとアーカイブの両方
-- **正規表現**: `r"^(\d+)-"` を使用してインデックスを抽出
+- **正規表現**: `r"^e(\d{3})-"` を使用してインデックスを抽出
 - **衝突回避**: アーカイブ/復元操作間で重複なし
 - **最小値**: インデックスは1から始まる
 
 **アルゴリズムの流れ**:
 1. イベントカテゴリー内の全チャンネルを取得
 2. アーカイブカテゴリー内の全チャンネルを取得
-3. 各チャンネル名から `数字-` パターンを抽出
+3. 各チャンネル名から `e(\d{3})-` パターンを抽出
 4. すべてのインデックスの最大値を取得
 5. `max + 1` を返す（チャンネルがない場合は1）
 

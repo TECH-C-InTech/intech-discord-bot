@@ -87,7 +87,7 @@ async def general_chat_cmd(ctx: discord.Interaction, message: str):
 | パラメータ | 型 | デフォルト | 説明 |
 |-----------|-----|----------|------|
 | `channel_name` | `str \| None` | `None` | チャンネル名を直接指定（`channel_name_from_config` と排他） |
-| `channel_name_from_config` | `str \| None` | `None` | `EventChannelConfig` の属性名を指定して動的取得（`channel_name` と排他） |
+| `channel_name_from_config` | `str \| None` | `None` | `ChannelConfig` の属性名を指定して動的取得（`channel_name` と排他） |
 | `must_be_in` | `bool` | `True` | チャンネル制限の方向<br>- `True`: 指定チャンネルでのみ実行可能<br>- `False`: 指定チャンネル以外で実行可能 |
 
 **重要**: `channel_name` と `channel_name_from_config` は排他的です。どちらか一方のみを指定してください。両方未指定または両方指定した場合は `ValueError` が発生します。
@@ -99,7 +99,7 @@ async def general_chat_cmd(ctx: discord.Interaction, message: str):
 1. **パラメータ検証**: `channel_name` と `channel_name_from_config` の排他性をチェック
 2. **チャンネル名の取得**:
    - `channel_name` が指定されている場合: その値を使用
-   - `channel_name_from_config` が指定されている場合: `EventChannelConfig` から動的に取得
+   - `channel_name_from_config` が指定されている場合: `ChannelConfig` から動的に取得
 3. **チャンネル制限チェック**: `validate_channel_restriction()` を呼び出し
 4. **結果に応じた処理**:
    - チェック成功: 元の関数を実行
@@ -107,7 +107,7 @@ async def general_chat_cmd(ctx: discord.Interaction, message: str):
 
 ### 環境変数からの動的取得
 
-`channel_name_from_config` パラメータを使用すると、`EventChannelConfig` の属性から動的にチャンネル名を取得できます。
+`channel_name_from_config` パラメータを使用すると、`ChannelConfig` の属性から動的にチャンネル名を取得できます。
 
 **利用可能な属性**:
 - `event_request_channel_name`: `EVENT_REQUEST_CHANNEL_NAME` 環境変数
@@ -135,9 +135,9 @@ async def general_chat_cmd(ctx: discord.Interaction, message: str):
 
 `channel_name_from_config` を使用した場合、以下のエラーが発生する可能性があります:
 
-1. **`EventChannelConfig.load()` 失敗**: 環境変数が設定されていない場合
-   - デコレーター内で早期リターン（エラーメッセージは `EventChannelConfig.load` 内で送信）
-2. **属性が存在しない**: 指定した属性名が `EventChannelConfig` に存在しない場合
+1. **`ChannelConfig.load()` 失敗**: 環境変数が設定されていない場合
+   - デコレーター内で早期リターン（エラーメッセージは `ChannelConfig.load` 内で送信）
+2. **属性が存在しない**: 指定した属性名が `ChannelConfig` に存在しない場合
    - エラーメッセージを送信して早期リターン
 
 ## 承認システムとの統合
@@ -278,7 +278,8 @@ async def create_event_channel(
 from src.utils.validation_utils import validate_channel_restriction
 
 async def complex_command_impl(ctx: discord.Interaction, option: str):
-    config = await EventChannelConfig.load(ctx)
+    from src.utils.channel_config import ChannelConfig
+    config = await ChannelConfig.load(ctx)
     if not config:
         return
 
@@ -302,10 +303,10 @@ async def complex_command_impl(ctx: discord.Interaction, option: str):
 
 **症状**: 「設定エラー: 環境変数 `xxx` が見つかりません」というエラーが表示される
 
-**原因**: `channel_name_from_config` で指定した属性が `EventChannelConfig` に存在しない
+**原因**: `channel_name_from_config` で指定した属性が `ChannelConfig` に存在しない
 
 **解決方法**:
-1. `EventChannelConfig` の定義を確認（[src/utils/event_config.py](../src/utils/event_config.py)）
+1. `ChannelConfig` の定義を確認（[src/utils/channel_config.py](../src/utils/channel_config.py)）
 2. 利用可能な属性名を使用する
 3. または `channel_name` パラメータで直接指定する
 
@@ -345,7 +346,7 @@ src/
 ├── utils/
 │   ├── channel_decorator.py      # @require_channel デコレーター
 │   ├── validation_utils.py       # validate_channel_restriction()
-│   └── event_config.py            # EventChannelConfig（環境変数管理）
+│   └── channel_config.py          # ChannelConfig（環境変数管理）
 └── commands/
     └── event_channel.py           # 実装例
 ```
