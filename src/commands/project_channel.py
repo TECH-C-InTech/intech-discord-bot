@@ -201,7 +201,7 @@ async def archive_project_channel_impl(
                     f"`{config.archive_project_category_name}`のカテゴリに「権限の管理」"
                     "権限がInTech Botのみに付与されているか確認してください。"
                 )
-            }
+            },
         )
 
 
@@ -276,7 +276,7 @@ async def restore_project_channel_impl(
                     f"`{config.archive_project_category_name}`のカテゴリに「権限の管理」"
                     "権限がInTech Botのみに付与されているか確認してください。"
                 )
-            }
+            },
         )
 
 

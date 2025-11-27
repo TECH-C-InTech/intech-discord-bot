@@ -201,7 +201,7 @@ async def archive_event_channel_impl(
                     f"`{config.archive_event_category_name}`のカテゴリに「権限の管理」"
                     "権限がInTech Botのみに付与されているか確認してください。"
                 )
-            }
+            },
         )
 
 
@@ -274,7 +274,7 @@ async def restore_event_channel_impl(
                     f"`{config.archive_event_category_name}`のカテゴリに「権限の管理」"
                     "権限がInTech Botのみに付与されているか確認してください。"
                 )
-            }
+            },
         )
 
 
