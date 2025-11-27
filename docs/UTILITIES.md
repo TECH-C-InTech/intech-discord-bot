@@ -39,27 +39,25 @@ async def my_command(ctx: discord.Interaction):
     # コマンドの処理
 ```
 
-### `validate_channel_in_category(channel, category_name, config)`
+### `validate_channel_in_category(ctx, channel, category_name)`
 
 チャンネルが指定されたカテゴリーに属しているかチェック。
 
 **パラメータ**:
+- `ctx: discord.Interaction` - Discord インタラクション
 - `channel: discord.TextChannel` - チェックするチャンネル
-- `category_name: str` - カテゴリー名（"event" または "archive"）
-- `config: EventChannelConfig` - 設定オブジェクト
+- `category_name: str` - カテゴリー名
 
 **戻り値**:
-- `str | None` - エラーメッセージ、または `None`
+- `bool` - チャンネルがカテゴリーに属しているか
 
 **使用例**:
 ```python
 from src.utils.validation_utils import validate_channel_in_category
-from src.utils.event_config import EventChannelConfig
 
-config = EventChannelConfig()
-error = validate_channel_in_category(channel, "event", config)
-if error:
-    await send_error_message(ctx, error)
+valid = await validate_channel_in_category(ctx, ctx.channel, "event")
+if not valid:
+    # エラーメッセージは自動表示
     return
 ```
 
@@ -212,13 +210,14 @@ else:
 
 **場所**: [src/utils/channel_utils.py](../src/utils/channel_utils.py)
 
-### `get_next_event_index(guild, config)`
+### `get_next_event_index(guild, event_category_name, archive_event_category_name)`
 
 次のイベントチャンネルのインデックスを取得。
 
 **パラメータ**:
 - `guild: discord.Guild` - Discordサーバー
-- `config: EventChannelConfig` - 設定オブジェクト
+- `event_category_name: str` - イベントカテゴリー名
+- `archive_event_category_name: str` - アーカイブカテゴリー名
 
 **戻り値**:
 - `int` - 次のインデックス番号（最小値: 1）
@@ -226,29 +225,29 @@ else:
 **使用例**:
 ```python
 from src.utils.channel_utils import get_next_event_index
-from src.utils.event_config import EventChannelConfig
+from src.utils.channel_config import ChannelConfig
 
-config = EventChannelConfig()
-index = get_next_event_index(ctx.guild, config)
-channel_name = f"{index}-{event_name}"
+config = await ChannelConfig.load(ctx)
+index = get_next_event_index(ctx.guild, config.event_category_name, config.archive_event_category_name)
+channel_name = f"e{index:03d}-{event_name}"
 ```
 
 **アルゴリズム**:
 1. イベントカテゴリーとアーカイブカテゴリーの両方をスキャン
-2. 正規表現 `r"^(\d+)-"` でインデックスを抽出
+2. 正規表現 `r"^e(\d{3})-"` でインデックスを抽出（3桁0埋め）
 3. 最大値 + 1 を返す（最小値は1）
 4. アーカイブ/復元操作間で衝突を回避
 
 詳細は [ARCHITECTURE.md](./ARCHITECTURE.md#イベントチャンネルのインデックス管理) を参照。
 
-### `find_event_channel_by_name(guild, partial_name, config)`
+### `find_event_channel_by_name(guild, partial_name, category_name)`
 
 部分一致でイベントチャンネルを検索。
 
 **パラメータ**:
 - `guild: discord.Guild` - Discordサーバー
 - `partial_name: str` - チャンネル名（部分一致）
-- `config: EventChannelConfig` - 設定オブジェクト
+- `category_name: str` - カテゴリー名
 
 **戻り値**:
 - `discord.TextChannel | None` - 見つかったチャンネル、または `None`
@@ -264,8 +263,8 @@ if not channel:
 ```
 
 **検索の挙動**:
-- `1-hackathon` というチャンネル名に対して `"hackathon"` で検索可能
-- インデックス部分（`1-`）を除いた名前で部分一致
+- `e001-hackathon` というチャンネル名に対して `"hackathon"` で検索可能
+- インデックス部分（`e001-`）を除いた名前で部分一致
 - 大文字小文字を区別
 
 ## コマンドメタデータ
@@ -316,7 +315,7 @@ async def create_event_channel_cmd(ctx: discord.Interaction, name: str, members:
 
 **パラメータ**:
 - `channel_name: str | None` - チャンネル名を直接指定（`channel_name_from_config` と排他）
-- `channel_name_from_config: str | None` - `EventChannelConfig` の属性名を指定して動的取得（`channel_name` と排他）
+- `channel_name_from_config: str | None` - `ChannelConfig` の属性名を指定して動的取得（`channel_name` と排他）
 - `must_be_in: bool` - チャンネル制限の方向（デフォルト: `True`）
   - `True`: 指定チャンネルでのみ実行可能
   - `False`: 指定チャンネル以外で実行可能
@@ -503,33 +502,38 @@ logger.warning(f"Approval request for '{command_name}' timed out")
 
 ## 設定管理
 
-**場所**: [src/utils/event_config.py](../src/utils/event_config.py)
+**場所**: [src/utils/channel_config.py](../src/utils/channel_config.py)
 
-### `EventChannelConfig` クラス
+### `ChannelConfig` クラス
 
-環境変数を管理するシングルトンクラス。
+環境変数を管理する非同期設定クラス。
 
 **使用例**:
 ```python
-from src.utils.event_config import EventChannelConfig
+from src.utils.channel_config import ChannelConfig
 
-config = EventChannelConfig()
+config = await ChannelConfig.load(ctx)
 
 # 設定値へのアクセス
 event_category = config.event_category_name
 archive_category = config.archive_event_category_name
+project_category = config.project_category_name
 request_channel = config.event_request_channel_name
 ```
 
-**プロパティ**:
+**プロパティ** (主要):
 - `event_category_name: str` - イベントカテゴリー名
 - `archive_event_category_name: str` - アーカイブカテゴリー名
-- `event_request_channel_name: str` - リクエストチャンネル名
+- `project_category_name: str` - プロジェクトカテゴリー名
+- `archive_project_category_name: str` - プロジェクトアーカイブカテゴリー名
+- `event_request_channel_name: str` - イベントリクエストチャンネル名
+- `project_request_channel_name: str` - プロジェクトリクエストチャンネル名
 
 **特徴**:
-- シングルトンパターン（インスタンスは1つのみ）
+- 非同期ロード (`await ChannelConfig.load(ctx)`)
 - 初回アクセス時に環境変数を読み込み、キャッシュ
 - バリデーション付き
+- エラーメッセージは自動表示
 
 詳細は [ARCHITECTURE.md](./ARCHITECTURE.md#設定管理) を参照。
 

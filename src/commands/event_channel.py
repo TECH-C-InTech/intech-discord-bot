@@ -75,16 +75,16 @@ async def create_event_channel_impl(
             config.archive_event_category_name,
         )
 
-        # チャンネル名を e{index:02d}-{name} の形式で構築（2桁0埋め）
-        formatted_channel_name = f"e{next_index:02d}-{channel_name}"
+        # チャンネル名を e{index:03d}-{name} の形式で構築（3桁0埋め）
+        formatted_channel_name = f"e{next_index:03d}-{channel_name}"
 
         # チャンネルを作成
         channel = await guild.create_text_channel(
             name=formatted_channel_name, category=category_channel
         )
 
-        # e{index}形式のロールを作成（2桁0埋め）
-        role_name = f"e{next_index:02d}"
+        # e{index}形式のロールを作成（3桁0埋め）
+        role_name = f"e{next_index:03d}"
         role = await guild.create_role(
             name=role_name,
             mentionable=True,
@@ -295,15 +295,15 @@ async def add_event_role_member_impl(
             return
         channel_name = ctx.channel.name
         # チャンネル名からindexを抽出して、e{index}形式のロールを検索
-        # チャンネル名: e01-xxx -> index: 01
-        match = re.match(r"^e(\d{2})-", channel_name)
+        # チャンネル名: e001-xxx -> index: 001
+        match = re.match(r"^e(\d{3})-", channel_name)
         if not match:
             await send_error_message(
-                ctx, "このチャンネルはイベントチャンネルの形式（e00-xxx）ではありません。"
+                ctx, "このチャンネルはイベントチャンネルの形式（e001-xxx）ではありません。"
             )
             return
         channel_index = int(match.group(1))
-        role_name_to_find = f"e{channel_index:02d}"
+        role_name_to_find = f"e{channel_index:03d}"
         role = discord.utils.get(guild.roles, name=role_name_to_find)
         if not role:
             await send_error_message(ctx, f"ロール `{role_name_to_find}` が見つかりません。")
@@ -320,25 +320,25 @@ async def add_event_role_member_impl(
     if not await validate_role_safety(ctx, role):
         return
 
-    # ロール名から数字部分を抽出（e00 -> 0）
+    # ロール名から数字部分を抽出（e001 -> 1）
     # role_nameはこの時点で必ず文字列
     assert role_name is not None
-    role_pattern = re.compile(r"^e(\d{2})$")
+    role_pattern = re.compile(r"^e(\d{3})$")
     role_match = role_pattern.match(role_name)
     if not role_match:
         await send_error_message(
             ctx,
-            f"ロール {role.mention} はイベントロールの形式（e00形式）ではありません。",
+            f"ロール {role.mention} はイベントロールの形式（e001形式）ではありません。",
         )
         return
 
     role_index = int(role_match.group(1))
 
     # 同名のチャンネルがEVENT_CATEGORY_NAMEカテゴリーに存在するか確認
-    # e{index:02d}-で始まるチャンネルを検索（2桁0埋め）
+    # e{index:03d}-で始まるチャンネルを検索（3桁0埋め）
     event_channel = None
     for ch_name in event_category.text_channels:
-        if ch_name.name.startswith(f"e{role_index:02d}-"):
+        if ch_name.name.startswith(f"e{role_index:03d}-"):
             event_channel = ch_name
             break
 
@@ -454,7 +454,7 @@ def setup(tree: app_commands.CommandTree):
         restrictions="• channel_name省略時はイベントカテゴリー内で実行",
         examples=[
             "`/archive_event_channel` (実行チャンネルをアーカイブ)",
-            "`/archive_event_channel channel_name:#e01-おでん会`",
+            "`/archive_event_channel channel_name:#e001-おでん会`",
         ],
     )
     @tree.command(
@@ -476,7 +476,7 @@ def setup(tree: app_commands.CommandTree):
         restrictions="• アーカイブカテゴリー内のチャンネルでのみ実行可能",
         examples=[
             "`/restore_event_channel` (実行チャンネルを復元)",
-            "`/restore_event_channel channel_name:#e01-おでん会`",
+            "`/restore_event_channel channel_name:#e001-おでん会`",
         ],
     )
     @tree.command(
@@ -498,7 +498,7 @@ def setup(tree: app_commands.CommandTree):
         restrictions="• 一部ロール以外のみ対象",
         examples=[
             "`/add_event_role_member members:@user1 @user2`",
-            "`/add_event_role_member members:@user1 role_name:@e01`",
+            "`/add_event_role_member members:@user1 role_name:@e001`",
         ],
     )
     @tree.command(
@@ -507,7 +507,7 @@ def setup(tree: app_commands.CommandTree):
     )
     @app_commands.describe(
         members="追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
-        role_name="対象のロール（@ロール形式で指定。例: @e01. 省略時は実行チャンネルのロール）",
+        role_name="対象のロール（@ロール形式で指定。例: @e001. 省略時は実行チャンネルのロール）",
     )
     async def add_event_role_member(
         ctx: discord.Interaction, members: str, role_name: str | None = None
