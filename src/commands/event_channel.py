@@ -299,7 +299,7 @@ async def add_event_role_member_impl(
         match = re.match(r"^e(\d{3})-", channel_name)
         if not match:
             await send_error_message(
-                ctx, "このチャンネルはイベントチャンネルの形式（e000-xxx）ではありません。"
+                ctx, "このチャンネルはイベントチャンネルの形式（e001-xxx）ではありません。"
             )
             return
         channel_index = int(match.group(1))
@@ -320,7 +320,7 @@ async def add_event_role_member_impl(
     if not await validate_role_safety(ctx, role):
         return
 
-    # ロール名から数字部分を抽出（e000 -> 0）
+    # ロール名から数字部分を抽出（e001 -> 1）
     # role_nameはこの時点で必ず文字列
     assert role_name is not None
     role_pattern = re.compile(r"^e(\d{3})$")
@@ -328,7 +328,7 @@ async def add_event_role_member_impl(
     if not role_match:
         await send_error_message(
             ctx,
-            f"ロール {role.mention} はイベントロールの形式（e000形式）ではありません。",
+            f"ロール {role.mention} はイベントロールの形式（e001形式）ではありません。",
         )
         return
 
