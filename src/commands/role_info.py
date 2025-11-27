@@ -111,8 +111,8 @@ def setup(tree: app_commands.CommandTree):
         short_description="ロールに所属するメンバー一覧を表示",
         restrictions="• 一部ロール以外のみ表示可能",
         examples=[
-            "`/show_role_members role_name:@e01-event`",
-            "`/show_role_members role_name:@e01-event visibility:全員に公開`",
+            "`/show_role_members role_name:@e01`",
+            "`/show_role_members role_name:@p01 visibility:全員に公開`",
         ],
         notes="メンバーが50人を超える場合は自動的に分割して表示されます",
     )
