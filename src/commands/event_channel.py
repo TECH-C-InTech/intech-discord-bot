@@ -191,7 +191,18 @@ async def archive_event_channel_impl(
 
     except Exception as e:
         logger.error(f"Error archiving channel: {e}", exc_info=True)
-        await handle_command_error(ctx, e, "チャンネルのアーカイブ")
+        await handle_command_error(
+            ctx,
+            e,
+            "チャンネルのアーカイブ",
+            custom_help_texts={
+                discord.Forbidden: (
+                    f"サーバー管理者に、`{config.event_category_name}`, "
+                    f"`{config.archive_event_category_name}`のカテゴリに「権限の管理」"
+                    f"権限がInTech Botのみに付与されているか確認してください。"
+                )
+            },
+        )
 
 
 async def restore_event_channel_impl(
@@ -253,7 +264,18 @@ async def restore_event_channel_impl(
 
     except Exception as e:
         logger.error(f"Error restoring channel: {e}", exc_info=True)
-        await handle_command_error(ctx, e, "チャンネルの復元")
+        await handle_command_error(
+            ctx,
+            e,
+            "チャンネルの復元",
+            custom_help_texts={
+                discord.Forbidden: (
+                    f"サーバー管理者に、`{config.event_category_name}`, "
+                    f"`{config.archive_event_category_name}`のカテゴリに「権限の管理」"
+                    f"権限がInTech Botのみに付与されているか確認してください。"
+                )
+            },
+        )
 
 
 async def add_event_role_member_impl(
