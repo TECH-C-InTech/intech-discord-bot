@@ -8,7 +8,10 @@ from discord import app_commands
 from ..utils.approval_decorator import require_approval
 from ..utils.channel_config import ChannelConfig
 from ..utils.channel_decorator import require_channel
-from ..utils.channel_utils import validate_category_exists
+from ..utils.channel_utils import (
+    position_role_above_numbered_roles,
+    validate_category_exists,
+)
 from ..utils.command_metadata import command_meta
 from ..utils.message_utils import (
     create_success_embed,
@@ -92,6 +95,9 @@ async def create_club_channel_impl(
             name=formatted_channel_name,
             mentionable=True,
         )
+
+        # ロールを番号のみのロール（イベントロール）より上に配置
+        await position_role_above_numbered_roles(role, guild)
 
         # 指定されたメンバーにロールを付与
         if member_objects:
