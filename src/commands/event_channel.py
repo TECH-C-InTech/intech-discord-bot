@@ -4,16 +4,12 @@ from logging import getLogger
 import re
 
 import discord
-from discord import app_commands
 
-from ..utils.approval_decorator import require_approval
 from ..utils.channel_config import ChannelConfig
-from ..utils.channel_decorator import require_channel
 from ..utils.channel_utils import (
     get_next_event_index,
     validate_category_exists,
 )
-from ..utils.command_metadata import command_meta
 from ..utils.message_utils import (
     create_success_embed,
     handle_command_error,
@@ -432,106 +428,108 @@ async def add_event_role_member_impl(
 
 # ==================== コマンド登録 ====================
 
+# 旧コマンド登録は無効化されました
+# 新しい統合コマンドは src/commands/channel.py を参照してください
 
-def setup(tree: app_commands.CommandTree):
-    """イベントチャンネル関連のコマンドを登録する
-
-    デコレーターの順序（重要）:
-    1. @command_meta() - メタデータの登録
-    2. @tree.command() - コマンドの登録
-    3. @require_channel() - チャンネル制限（オプション）
-    4. @require_approval() - 承認ミドルウェア（オプション）
-    5. @app_commands.describe() - パラメータの説明
-    """
-
-    @command_meta(
-        category="イベントチャンネル管理",
-        icon="📅",
-        short_description="イベント用のチャンネルとロールを作成",
-        restrictions="• イベントリクエストチャンネルでのみ実行可能",
-        examples=[
-            "`/create_event_channel channel_name:おでん会`",
-            "`/create_event_channel channel_name:忘年会 members:@user1 @user2`",
-        ],
-    )
-    @tree.command(
-        name="create_event_channel",
-        description="新しいイベントチャンネルを作成します",
-    )
-    @require_channel(channel_name_from_config="event_request_channel_name", must_be_in=True)
-    @require_approval(description="新しいイベントチャンネルを作成します")
-    @app_commands.describe(
-        channel_name="作成するイベントチャンネル名",
-        members="ロールに追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
-    )
-    async def create_event_channel(
-        ctx: discord.Interaction, channel_name: str, members: str | None = None
-    ):
-        await create_event_channel_impl(ctx, channel_name, members)
-
-    @command_meta(
-        category="イベントチャンネル管理",
-        icon="📅",
-        short_description="イベントチャンネルをアーカイブに移動",
-        restrictions="• channel_name省略時はイベントカテゴリー内で実行",
-        examples=[
-            "`/archive_event_channel` (実行チャンネルをアーカイブ)",
-            "`/archive_event_channel channel_name:#e001-おでん会`",
-        ],
-    )
-    @tree.command(
-        name="archive_event_channel",
-        description="イベントチャンネルをアーカイブします",
-    )
-    @app_commands.describe(
-        channel_name="アーカイブするイベントチャンネル（メンション形式、省略時はコマンド実行チャンネル）"
-    )
-    async def archive_event_channel(
-        ctx: discord.Interaction, channel_name: discord.TextChannel | None = None
-    ):
-        await archive_event_channel_impl(ctx, channel_name)
-
-    @command_meta(
-        category="イベントチャンネル管理",
-        icon="📅",
-        short_description="アーカイブからイベントチャンネルを復元",
-        restrictions="• アーカイブカテゴリー内のチャンネルでのみ実行可能",
-        examples=[
-            "`/restore_event_channel` (実行チャンネルを復元)",
-            "`/restore_event_channel channel_name:#e001-おでん会`",
-        ],
-    )
-    @tree.command(
-        name="restore_event_channel",
-        description="アーカイブされたイベントチャンネルをイベントカテゴリーに戻します",
-    )
-    @app_commands.describe(
-        channel_name="復元するイベントチャンネル（メンション形式、デフォルトはコマンド実行チャンネル）"
-    )
-    async def restore_event_channel(
-        ctx: discord.Interaction, channel_name: discord.TextChannel | None = None
-    ):
-        await restore_event_channel_impl(ctx, channel_name)
-
-    @command_meta(
-        category="ロール管理",
-        icon="👥",
-        short_description="イベントロールにメンバーを追加",
-        restrictions="• 一部ロール以外のみ対象",
-        examples=[
-            "`/add_event_role_member members:@user1 @user2`",
-            "`/add_event_role_member members:@user1 role_name:@e001`",
-        ],
-    )
-    @tree.command(
-        name="add_event_role_member",
-        description="イベントチャンネルに紐づくロールにメンバーを追加します",
-    )
-    @app_commands.describe(
-        members="追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
-        role_name="対象のロール（@ロール形式で指定。例: @e001. 省略時は実行チャンネルのロール）",
-    )
-    async def add_event_role_member(
-        ctx: discord.Interaction, members: str, role_name: str | None = None
-    ):
-        await add_event_role_member_impl(ctx, members, role_name)
+# def setup(tree: app_commands.CommandTree):
+#     """イベントチャンネル関連のコマンドを登録する
+#
+#     デコレーターの順序（重要）:
+#     1. @command_meta() - メタデータの登録
+#     2. @tree.command() - コマンドの登録
+#     3. @require_channel() - チャンネル制限（オプション）
+#     4. @require_approval() - 承認ミドルウェア（オプション）
+#     5. @app_commands.describe() - パラメータの説明
+#     """
+#
+#     @command_meta(
+#         category="イベントチャンネル管理",
+#         icon="📅",
+#         short_description="イベント用のチャンネルとロールを作成",
+#         restrictions="• イベントリクエストチャンネルでのみ実行可能",
+#         examples=[
+#             "`/create_event_channel channel_name:おでん会`",
+#             "`/create_event_channel channel_name:忘年会 members:@user1 @user2`",
+#         ],
+#     )
+#     @tree.command(
+#         name="create_event_channel",
+#         description="新しいイベントチャンネルを作成します",
+#     )
+#     @require_channel(channel_name_from_config="event_request_channel_name", must_be_in=True)
+#     @require_approval(description="新しいイベントチャンネルを作成します")
+#     @app_commands.describe(
+#         channel_name="作成するイベントチャンネル名",
+#         members="ロールに追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
+#     )
+#     async def create_event_channel(
+#         ctx: discord.Interaction, channel_name: str, members: str | None = None
+#     ):
+#         await create_event_channel_impl(ctx, channel_name, members)
+#
+#     @command_meta(
+#         category="イベントチャンネル管理",
+#         icon="📅",
+#         short_description="イベントチャンネルをアーカイブに移動",
+#         restrictions="• channel_name省略時はイベントカテゴリー内で実行",
+#         examples=[
+#             "`/archive_event_channel` (実行チャンネルをアーカイブ)",
+#             "`/archive_event_channel channel_name:#e001-おでん会`",
+#         ],
+#     )
+#     @tree.command(
+#         name="archive_event_channel",
+#         description="イベントチャンネルをアーカイブします",
+#     )
+#     @app_commands.describe(
+#         channel_name="アーカイブするイベントチャンネル（メンション形式、省略時はコマンド実行チャンネル）"
+#     )
+#     async def archive_event_channel(
+#         ctx: discord.Interaction, channel_name: discord.TextChannel | None = None
+#     ):
+#         await archive_event_channel_impl(ctx, channel_name)
+#
+#     @command_meta(
+#         category="イベントチャンネル管理",
+#         icon="📅",
+#         short_description="アーカイブからイベントチャンネルを復元",
+#         restrictions="• アーカイブカテゴリー内のチャンネルでのみ実行可能",
+#         examples=[
+#             "`/restore_event_channel` (実行チャンネルを復元)",
+#             "`/restore_event_channel channel_name:#e001-おでん会`",
+#         ],
+#     )
+#     @tree.command(
+#         name="restore_event_channel",
+#         description="アーカイブされたイベントチャンネルをイベントカテゴリーに戻します",
+#     )
+#     @app_commands.describe(
+#         channel_name="復元するイベントチャンネル（メンション形式、デフォルトはコマンド実行チャンネル）"
+#     )
+#     async def restore_event_channel(
+#         ctx: discord.Interaction, channel_name: discord.TextChannel | None = None
+#     ):
+#         await restore_event_channel_impl(ctx, channel_name)
+#
+#     @command_meta(
+#         category="ロール管理",
+#         icon="👥",
+#         short_description="イベントロールにメンバーを追加",
+#         restrictions="• 一部ロール以外のみ対象",
+#         examples=[
+#             "`/add_event_role_member members:@user1 @user2`",
+#             "`/add_event_role_member members:@user1 role_name:@e001`",
+#         ],
+#     )
+#     @tree.command(
+#         name="add_event_role_member",
+#         description="イベントチャンネルに紐づくロールにメンバーを追加します",
+#     )
+#     @app_commands.describe(
+#         members="追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
+#         role_name="対象のロール（@ロール形式で指定。例: @e001. 省略時は実行チャンネルのロール）",
+#     )
+#     async def add_event_role_member(
+#         ctx: discord.Interaction, members: str, role_name: str | None = None
+#     ):
+#         await add_event_role_member_impl(ctx, members, role_name)
