@@ -67,6 +67,9 @@ async def create_project_channel_impl(
             return
         member_objects = parsed_members
 
+    if not ctx.response.is_done():
+        await ctx.response.defer(thinking=True)
+
     try:
         # 次のインデックス番号を取得
         next_index = get_next_project_index(
