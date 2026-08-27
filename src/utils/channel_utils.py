@@ -179,3 +179,72 @@ async def get_channel_by_name(
 
     logger.debug(f"Channel '{channel_name}' found with ID: {channel.id}")
     return channel
+
+
+def find_highest_numbered_role(guild: discord.Guild) -> Optional[discord.Role]:
+    """番号のみのロール（イベントロール）の中で最も上位のものを見つける
+
+    イベントロールは番号のみ（例: "1", "2", "3"）で作成されているため、
+    全てのロールから番号のみのロールを検出し、その中で最も上位（position が最大）のロールを返す。
+
+    Args:
+        guild: Discordサーバー
+
+    Returns:
+        番号のみのロールの中で最も上位のロール。見つからない場合はNone
+    """
+    numbered_roles = []
+
+    for role in guild.roles:
+        # ロール名が数字のみかチェック
+        if role.name.isdigit():
+            numbered_roles.append(role)
+            logger.debug(f"Found numbered role: {role.name} (position: {role.position})")
+
+    if not numbered_roles:
+        logger.debug("No numbered roles found in guild")
+        return None
+
+    # positionが最も大きいもの（最も上位）を返す
+    highest_role = max(numbered_roles, key=lambda r: r.position)
+    logger.info(
+        f"Highest numbered role: {highest_role.name} "
+        f"(position: {highest_role.position}) in guild '{guild.name}'"
+    )
+    return highest_role
+
+
+async def position_role_above_numbered_roles(
+    role: discord.Role,
+    guild: discord.Guild,
+) -> None:
+    """ロールを番号のみのロール（イベントロール）より上に配置する
+
+    番号のみのロール（イベントロール）を検出し、その中で最も上位のロールの
+    1つ上にロールを移動する。番号のみのロールが存在しない場合は何もしない。
+
+    Args:
+        role: 配置するロール
+        guild: Discordサーバー
+    """
+    highest_numbered_role = find_highest_numbered_role(guild)
+
+    if highest_numbered_role is None:
+        logger.info(f"No numbered roles found, skipping position adjustment for role '{role.name}'")
+        return
+
+    # 番号のみのロールの1つ上に配置
+    target_position = highest_numbered_role.position + 1
+
+    try:
+        await role.edit(position=target_position)
+        logger.info(
+            f"Successfully positioned role '{role.name}' at position {target_position} "
+            f"(above numbered role '{highest_numbered_role.name}')"
+        )
+    except discord.Forbidden:
+        logger.error(f"Permission denied to move role '{role.name}' to position {target_position}")
+        raise
+    except discord.HTTPException as e:
+        logger.error(f"Failed to move role '{role.name}': {e}")
+        raise
