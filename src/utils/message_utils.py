@@ -96,16 +96,30 @@ async def send_error_message(
             description=message,
             help_text=help_text,
         )
-        if not ctx.response.is_done():
-            await ctx.response.send_message(embed=embed, ephemeral=ephemeral)
-        else:
-            await ctx.followup.send(embed=embed, ephemeral=ephemeral)
+        try:
+            if not ctx.response.is_done():
+                await ctx.response.send_message(embed=embed, ephemeral=ephemeral)
+            else:
+                await ctx.followup.send(embed=embed, ephemeral=ephemeral)
+        except discord.NotFound:
+            logger.warning(
+                "Failed to send error embed because interaction is no longer valid: %s",
+                message,
+            )
+            return
     else:
         # シンプルなエラーメッセージ
-        if not ctx.response.is_done():
-            await ctx.response.send_message(f"❌ {message}", ephemeral=ephemeral)
-        else:
-            await ctx.followup.send(f"❌ {message}", ephemeral=ephemeral)
+        try:
+            if not ctx.response.is_done():
+                await ctx.response.send_message(f"❌ {message}", ephemeral=ephemeral)
+            else:
+                await ctx.followup.send(f"❌ {message}", ephemeral=ephemeral)
+        except discord.NotFound:
+            logger.warning(
+                "Failed to send error message because interaction is no longer valid: %s",
+                message,
+            )
+            return
 
     logger.info(f"Error message sent to {ctx.user}: {message}")
 
