@@ -26,3 +26,11 @@ def test_items_with_the_number_are_picked_by_name() -> None:
     names = ["c003-映画", "c004-写真", "c003-写真", "e003"]
 
     assert with_number("c", 3, names, name=lambda n: n) == ["c003-映画", "c003-写真"]
+
+
+def test_no_number_is_left_after_999() -> None:
+    assert next_number("e", ["e999-last"]) is None
+
+
+def test_998_still_has_a_next_number() -> None:
+    assert next_number("e", ["e998-x"]) == 999

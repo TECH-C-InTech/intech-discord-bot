@@ -15,7 +15,7 @@ from ..utils.channel_utils import (
     validate_category_exists,
 )
 from ..utils.command_metadata import command_meta
-from ..utils.creation import Created, create_channel_with_role
+from ..utils.creation import Created, Rejected, create_channel_with_role
 from ..utils.message_utils import (
     create_success_embed,
     handle_command_error,
@@ -23,6 +23,7 @@ from ..utils.message_utils import (
     send_error_message,
     send_private_reply,
 )
+from ..utils.numbering import NUMBERS_EXHAUSTED
 from ..utils.records import (
     build_archive_notice_embed,
     build_creation_embed,
@@ -88,13 +89,15 @@ async def create_event_channel_impl(
     if not ctx.response.is_done():
         await ctx.response.defer(ephemeral=True, thinking=True)
 
-    def decide_name(guild: discord.Guild, category: discord.CategoryChannel) -> str:
+    def decide_name(guild: discord.Guild, category: discord.CategoryChannel) -> str | Rejected:
         # 採番はLockの中で行い、並行した作成で番号が重ならないようにする
         next_index = get_next_event_index(
             guild,
             config.event_category_name,
             config.archive_event_category_name,
         )
+        if next_index is None:
+            return Rejected(NUMBERS_EXHAUSTED)
         # チャンネル名を e{index:03d}-{name} の形式で構築（3桁0埋め）
         return f"e{next_index:03d}-{channel_name}"
 

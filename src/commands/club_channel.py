@@ -12,7 +12,7 @@ from ..utils.channel_utils import (
     validate_category_exists,
 )
 from ..utils.command_metadata import command_meta
-from ..utils.creation import Created, create_channel_with_role
+from ..utils.creation import Created, Rejected, create_channel_with_role
 from ..utils.message_utils import (
     create_success_embed,
     handle_command_error,
@@ -20,7 +20,7 @@ from ..utils.message_utils import (
     send_error_message,
     send_private_reply,
 )
-from ..utils.numbering import next_number, number_of, with_number
+from ..utils.numbering import NUMBERS_EXHAUSTED, next_number, number_of, with_number
 from ..utils.records import (
     build_creation_embed,
     build_members_added_embed,
@@ -87,9 +87,14 @@ async def create_club_channel_impl(
     if not ctx.response.is_done():
         await ctx.response.defer(ephemeral=True, thinking=True)
 
-    def decide_name(guild: discord.Guild, category: discord.CategoryChannel) -> str:
-        # 採番はLockの中で行い、並行した作成で番号が重ならないようにする
-        number = next_number("c", (ch.name for ch in category.channels))
+    def decide_name(guild: discord.Guild, category: discord.CategoryChannel) -> str | Rejected:
+        # 採番はLockの中で行い、並行した作成で番号が重ならないようにする。
+        # チャンネルだけ消されてロールが残っている番号も、再利用しないよう避ける
+        number = next_number(
+            "c", [*(ch.name for ch in category.channels), *(r.name for r in guild.roles)]
+        )
+        if number is None:
+            return Rejected(NUMBERS_EXHAUSTED)
         # チャンネル名を c{number:03d}-{name} の形式で構築（3桁0埋め）
         return f"c{number:03d}-{channel_name}"
 
@@ -215,6 +220,14 @@ async def add_club_role_member_impl(
 
     # ロールと同じ番号のチャンネルがCLUB_CATEGORY_NAMEカテゴリーに存在するか確認
     role_number = number_of("c", role.name)
+    # role_nameを明示した場合も、同じ番号のロールが重なっていれば紐づけが決まらないので止める
+    if role_number is not None:
+        same_number_roles = with_number("c", role_number, guild.roles, name=lambda r: r.name)
+        if len(same_number_roles) > 1:
+            await send_error_message(
+                ctx, _number_mismatch_message("ロール", role_number, len(same_number_roles))
+            )
+            return
     channels = (
         with_number("c", role_number, club_category.text_channels, name=lambda ch: ch.name)
         if role_number is not None
