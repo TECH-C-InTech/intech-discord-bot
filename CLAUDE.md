@@ -153,7 +153,7 @@ async def command_cmd(...):
 - [src/utils/channel\_name.py](src/utils/channel_name.py) - Channel name normalization
 - [src/utils/club\_name.py](src/utils/club_name.py) - Club name validation
 - [src/utils/role\_utils.py](src/utils/role_utils.py) - Role granting
-- [src/utils/records.py](src/utils/records.py) - Log channel and in-channel records
+- [src/utils/records.py](src/utils/records.py) - In-channel records
 
 ## Workflow for Common Tasks
 

@@ -117,12 +117,7 @@ async def create_club_channel_impl(
 
     channel, role = outcome.channel, outcome.role
     # 立てた人は、その時点で参加者になる
-    participants = (
-        with_creator(member_objects, ctx.user)
-        if isinstance(ctx.user, discord.Member)
-        else member_objects
-    )
-    grant = await grant_role(participants, role)
+    grant = await grant_role(with_creator(member_objects, ctx.user), role)
 
     description = f"{channel.mention} と {role.mention} を作成しました"
     grant_description = describe_grant(grant)

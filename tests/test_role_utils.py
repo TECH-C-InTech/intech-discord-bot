@@ -96,3 +96,11 @@ def test_creator_listed_in_members_is_not_duplicated() -> None:
     other = member_with_id(2)
 
     assert with_creator([other, member_with_id(1)], creator) == [creator, other]
+
+
+def test_creator_who_is_not_a_server_member_is_not_added() -> None:
+    other = member_with_id(2)
+    creator = MagicMock(spec=discord.User)
+    creator.id = 1
+
+    assert with_creator([other], creator) == [other]

@@ -60,7 +60,12 @@ def describe_grant(result: GrantResult) -> str:
 
 
 def with_creator(
-    members: Sequence[discord.Member], creator: discord.Member
+    members: Sequence[discord.Member], creator: discord.Member | discord.User
 ) -> list[discord.Member]:
-    """作成者を先頭に加えた参加者の一覧を返す（作成者は立てた時点で参加者になる）"""
+    """作成者を先頭に加えた参加者の一覧を返す（作成者は立てた時点で参加者になる）
+
+    サーバーのメンバーとして取れない作成者（discord.User）にはロールを付けられないので加えない。
+    """
+    if not isinstance(creator, discord.Member):
+        return list(members)
     return [creator, *(member for member in members if member.id != creator.id)]

@@ -28,6 +28,7 @@ from ..utils.records import (
     build_creation_embed,
     build_members_added_embed,
     build_restored_embed,
+    delete_record,
     post_channel_record,
 )
 from ..utils.role_utils import describe_grant, grant_role, with_creator
@@ -115,12 +116,7 @@ async def create_event_channel_impl(
 
     channel, role = outcome.channel, outcome.role
     # 立てた人は、その時点で参加者になる
-    participants = (
-        with_creator(member_objects, ctx.user)
-        if isinstance(ctx.user, discord.Member)
-        else member_objects
-    )
-    grant = await grant_role(participants, role)
+    grant = await grant_role(with_creator(member_objects, ctx.user), role)
 
     description = f"{channel.mention} と {role.mention} を作成しました"
     grant_description = describe_grant(grant)
@@ -214,11 +210,7 @@ async def archive_event_channel_impl(
     try:
         await channel.edit(category=archive_category_channel, sync_permissions=True)
     except Exception as e:
-        if notice is not None:
-            try:
-                await notice.delete()
-            except discord.HTTPException as delete_error:
-                logger.warning(f"Failed to delete archive notice: {delete_error}")
+        notice_left = notice is not None and not await delete_record(notice)
         await handle_command_error(
             ctx,
             e,
@@ -230,6 +222,12 @@ async def archive_event_channel_impl(
                 )
             },
         )
+        if notice_left:
+            await send_error_message(
+                ctx,
+                f"{channel.mention} に投稿した「アーカイブしました」の記録を消せませんでした。"
+                "アーカイブはされていないので、記録を手で消してください。",
+            )
         return
 
     await send_private_reply(

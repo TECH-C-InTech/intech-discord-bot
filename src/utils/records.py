@@ -37,7 +37,7 @@ def build_creation_embed(
 ) -> discord.Embed:
     """作成のチャンネル内の記録。あとから来た人のために参加方法を添える"""
     embed = discord.Embed(
-        title=f"新しい{kind}",
+        title=f"{kind}作成",
         description=f"{actor.mention} が {channel.mention} を立てました",
         color=discord.Color.green(),
     )
@@ -50,7 +50,7 @@ def build_creation_embed(
         )
     embed.add_field(
         name="参加方法",
-        value=f"{channel.mention} で `{join_command} members:@自分`",
+        value=f"{channel.mention} で `{join_command}` を実行し、`members` に自分をメンションする",
         inline=False,
     )
     return embed
@@ -61,7 +61,7 @@ def build_members_added_embed(
 ) -> discord.Embed:
     """メンバー追加のチャンネル内の記録"""
     return discord.Embed(
-        title="メンバーが加わりました",
+        title="メンバー追加",
         description=f"{actor.mention} が {_mentions(members)} を {role.mention} に加えました",
         color=discord.Color.green(),
     )
@@ -70,8 +70,8 @@ def build_members_added_embed(
 def build_archive_notice_embed(*, actor: Mentionable, restore_command: str) -> discord.Embed:
     """アーカイブのチャンネル内の記録（移動の前に投稿する）"""
     embed = discord.Embed(
-        title="このチャンネルをアーカイブします",
-        description=f"{actor.mention} がアーカイブします",
+        title="アーカイブ",
+        description=f"{actor.mention} がこのチャンネルをアーカイブしました",
         color=discord.Color.light_grey(),
     )
     embed.add_field(name="復元方法", value=f"`{restore_command}`", inline=False)
@@ -114,3 +114,13 @@ async def post_channel_record(
     except discord.HTTPException as e:
         logger.warning(f"Failed to post channel record: {e}")
         return None
+
+
+async def delete_record(message: discord.Message) -> bool:
+    """送った記録を消す。消せなかった場合はFalseを返す（例外は出さない）"""
+    try:
+        await message.delete()
+    except discord.HTTPException as e:
+        logger.warning(f"Failed to delete record: {e}")
+        return False
+    return True

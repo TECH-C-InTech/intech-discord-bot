@@ -7,6 +7,7 @@ from src.utils.records import (
     build_creation_embed,
     build_members_added_embed,
     build_restored_embed,
+    delete_record,
     post_channel_record,
 )
 
@@ -45,7 +46,7 @@ def creation_embed(**overrides: object) -> discord.Embed:
 def test_creation_record_says_who_started_which_channel() -> None:
     embed = creation_embed()
 
-    assert embed.title == "新しいイベント"
+    assert embed.title == "イベント作成"
     assert embed.description == "<@1> が <#10> を立てました"
 
 
@@ -68,6 +69,8 @@ def test_creation_record_tells_how_to_join() -> None:
     join = field(embed, "参加方法")
     assert join is not None
     assert "/add_event_role_member" in join
+    # 置き換える部分をコードの中に書かない（そのまま貼ると実行に失敗するため）
+    assert "@自分" not in join
     # 参加方法は対象のチャンネルを示す
     assert "<#10>" in join
 
@@ -79,21 +82,24 @@ def test_members_added_record_includes_actor_role_and_added_members() -> None:
         members=[mentionable("<@2>")],
     )
 
+    assert embed.title == "メンバー追加"
     assert embed.description == "<@1> が <@2> を <@&20> に加えました"
 
 
-def test_archive_notice_says_who_archives_and_how_to_restore() -> None:
+def test_archive_notice_says_who_archived_and_how_to_restore() -> None:
     embed = build_archive_notice_embed(
         actor=mentionable("<@1>"), restore_command="/restore_event_channel"
     )
 
-    assert embed.description == "<@1> がアーカイブします"
+    assert embed.title == "アーカイブ"
+    assert embed.description == "<@1> がこのチャンネルをアーカイブしました"
     assert field(embed, "復元方法") == "`/restore_event_channel`"
 
 
 def test_restored_record_says_who_restored() -> None:
     embed = build_restored_embed(actor=mentionable("<@1>"), channel=mentionable("<#10>"))
 
+    assert embed.title == "復元"
     assert embed.description == "<@1> が <#10> を復元しました"
 
 
@@ -144,3 +150,17 @@ async def test_channel_record_labels_mentions_so_notifications_make_sense() -> N
     await post_channel_record(channel, discord.Embed(title="x"), [invited], mention_label="参加者")
 
     assert channel.send.await_args.kwargs["content"] == "参加者: <@2>"
+
+
+async def test_deleting_record_reports_success() -> None:
+    message = MagicMock(spec=discord.Message)
+    message.delete = AsyncMock()
+
+    assert await delete_record(message) is True
+
+
+async def test_deleting_record_reports_failure_without_raising() -> None:
+    message = MagicMock(spec=discord.Message)
+    message.delete = AsyncMock(side_effect=http_error())
+
+    assert await delete_record(message) is False
