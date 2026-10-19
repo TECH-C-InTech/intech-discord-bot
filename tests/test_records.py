@@ -242,8 +242,6 @@ async def test_channel_record_labels_mentions_so_notifications_make_sense() -> N
     invited = MagicMock(spec=discord.Member)
     invited.mention = "<@2>"
 
-    await post_channel_record(
-        channel, discord.Embed(title="x"), [invited], mention_label="参加者"
-    )
+    await post_channel_record(channel, discord.Embed(title="x"), [invited], mention_label="参加者")
 
     assert channel.send.await_args.kwargs["content"] == "参加者: <@2>"
