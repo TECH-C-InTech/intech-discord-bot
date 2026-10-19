@@ -1,4 +1,4 @@
-"""チャンネル実行場所のバリデーション"""
+"""コマンド引数と対象のバリデーション"""
 
 from logging import getLogger
 import re
@@ -8,82 +8,6 @@ import discord
 from .message_utils import send_error_message
 
 logger = getLogger(__name__)
-
-
-async def validate_channel_restriction(
-    ctx: discord.Interaction,
-    allowed_channel_name: str,
-    must_be_in: bool = True,
-) -> bool:
-    """コマンドが特定のチャンネルで実行されているかを確認する
-
-    Args:
-        ctx: Discord Interaction
-        allowed_channel_name: 許可されたチャンネル名
-        must_be_in: Trueの場合そのチャンネルでのみ実行可能、
-                    Falseの場合そのチャンネル以外で実行可能
-
-    Returns:
-        バリデーションが成功した場合True、失敗した場合False
-    """
-    # ctx.channel が None または name 属性がない場合のチェック
-    if ctx.channel is None or not hasattr(ctx.channel, "name"):
-        await send_error_message(
-            ctx,
-            "このコマンドはテキストチャンネルでのみ実行できます。",
-        )
-        return False
-
-    is_in_channel = ctx.channel.name == allowed_channel_name
-
-    # 早期リターンでシンプルに
-    if is_in_channel == must_be_in:
-        logger.debug(
-            f"Channel validation passed: {ctx.channel.name} "
-            f"(required: {allowed_channel_name}, must_be_in: {must_be_in})"
-        )
-        return True
-
-    # エラーメッセージ用にチャンネルを取得
-    guild = ctx.guild
-    allowed_channel = None
-    if guild is not None:
-        allowed_channel = discord.utils.get(guild.text_channels, name=allowed_channel_name)
-
-    # チャンネルが見つかった場合はメンション、見つからない場合は名前のみ
-    channel_display = allowed_channel.mention if allowed_channel else f"`{allowed_channel_name}`"
-
-    # ctx.channel が None でないことを確認
-    if ctx.channel is None or not hasattr(ctx.channel, "name"):
-        await send_error_message(
-            ctx,
-            "このコマンドはテキストチャンネルでのみ実行できます。",
-        )
-        return False
-
-    # エラーメッセージ
-    if must_be_in:
-        await send_error_message(
-            ctx,
-            f"このコマンドは {channel_display} チャンネルでのみ実行できます。",
-            help_text=f"{channel_display} チャンネルに移動してから再度実行してください。",
-        )
-        logger.info(
-            f"Channel restriction failed: {ctx.user} tried to run command in "
-            f"#{ctx.channel.name} (required: #{allowed_channel_name})"
-        )
-    else:
-        await send_error_message(
-            ctx,
-            f"このコマンドは {channel_display} チャンネルでは実行できません。",
-            help_text="別のチャンネルで実行してください。",
-        )
-        logger.info(
-            f"Channel restriction failed: {ctx.user} tried to run command in "
-            f"#{ctx.channel.name} (forbidden: #{allowed_channel_name})"
-        )
-
-    return False
 
 
 async def validate_channel_in_category(

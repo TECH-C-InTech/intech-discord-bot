@@ -6,10 +6,8 @@ import re
 import discord
 from discord import app_commands
 
-from ..utils.approval_decorator import require_approval
 from ..utils.capacity import check_move_capacity
 from ..utils.channel_config import ChannelConfig
-from ..utils.channel_decorator import require_channel
 from ..utils.channel_utils import (
     get_next_event_index,
     resolve_target_text_channel,
@@ -501,16 +499,14 @@ def setup(tree: app_commands.CommandTree):
     デコレーターの順序（重要）:
     1. @command_meta() - メタデータの登録
     2. @tree.command() - コマンドの登録
-    3. @require_channel() - チャンネル制限（オプション）
-    4. @require_approval() - 承認ミドルウェア（オプション）
-    5. @app_commands.describe() - パラメータの説明
+    3. @app_commands.describe() - パラメータの説明
     """
 
     @command_meta(
         category="イベントチャンネル管理",
         icon="📅",
         short_description="イベント用のチャンネルとロールを作成",
-        restrictions="• イベントリクエストチャンネルでのみ実行可能",
+        restrictions="• どのチャンネル・スレッドからでも実行可能",
         examples=[
             "`/create_event_channel channel_name:おでん会`",
             "`/create_event_channel channel_name:忘年会 members:@user1 @user2`",
@@ -520,8 +516,6 @@ def setup(tree: app_commands.CommandTree):
         name="create_event_channel",
         description="新しいイベントチャンネルを作成します",
     )
-    @require_channel(channel_name_from_config="event_request_channel_name", must_be_in=True)
-    @require_approval(description="新しいイベントチャンネルを作成します")
     @app_commands.describe(
         channel_name="作成するイベントチャンネル名",
         members="ロールに追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
@@ -535,7 +529,7 @@ def setup(tree: app_commands.CommandTree):
         category="イベントチャンネル管理",
         icon="📅",
         short_description="イベントチャンネルをアーカイブに移動",
-        restrictions="• channel_name省略時はイベントカテゴリー内で実行",
+        restrictions="• channel_name省略時はイベントカテゴリー内（スレッド可）で実行",
         examples=[
             "`/archive_event_channel` (実行チャンネルをアーカイブ)",
             "`/archive_event_channel channel_name:#e001-おでん会`",
@@ -557,7 +551,7 @@ def setup(tree: app_commands.CommandTree):
         category="イベントチャンネル管理",
         icon="📅",
         short_description="アーカイブからイベントチャンネルを復元",
-        restrictions="• アーカイブカテゴリー内のチャンネルでのみ実行可能",
+        restrictions="• channel_name省略時はアーカイブカテゴリー内（スレッド可）で実行",
         examples=[
             "`/restore_event_channel` (実行チャンネルを復元)",
             "`/restore_event_channel channel_name:#e001-おでん会`",

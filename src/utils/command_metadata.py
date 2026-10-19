@@ -69,7 +69,7 @@ def command_meta(
             category="イベントチャンネル管理",
             icon="📅",
             short_description="イベント用のチャンネルを作成",
-            restrictions="イベントリクエストチャンネルでのみ実行可能",
+            restrictions="• channel_name省略時はイベントカテゴリー内で実行",
             examples=[
                 "/create_event_channel name:ハッカソン",
                 "/create_event_channel name:勉強会 members:@user1 @user2"

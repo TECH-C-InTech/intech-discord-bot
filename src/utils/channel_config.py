@@ -20,23 +20,17 @@ class ChannelConfig:
     Attributes:
         event_category_name: イベントチャンネルを作成するカテゴリー名
         archive_event_category_name: アーカイブ先のカテゴリー名
-        event_request_channel_name: チャンネル作成リクエストを受け付けるチャンネル名
         project_category_name: プロジェクトチャンネルを作成するカテゴリー名
         archive_project_category_name: プロジェクトのアーカイブ先カテゴリー名
-        project_request_channel_name: プロジェクト作成リクエストを受け付けるチャンネル名
         club_category_name: クラブチャンネルを作成するカテゴリー名
-        clubs_request_channel_name: クラブチャンネル作成リクエストを受け付けるチャンネル名
         log_channel_name: 記録を残すログチャンネル名
     """
 
     event_category_name: str
     archive_event_category_name: str
-    event_request_channel_name: str
     project_category_name: str
     archive_project_category_name: str
-    project_request_channel_name: str
     club_category_name: str
-    clubs_request_channel_name: str
     log_channel_name: str
 
     # クラス変数: シングルトンインスタンス
@@ -103,12 +97,9 @@ class ChannelConfig:
             f"ChannelConfig("
             f"event='{self.event_category_name}', "
             f"archive_event='{self.archive_event_category_name}', "
-            f"event_request='{self.event_request_channel_name}', "
             f"project='{self.project_category_name}', "
             f"archive_project='{self.archive_project_category_name}', "
-            f"project_request='{self.project_request_channel_name}', "
             f"club='{self.club_category_name}', "
-            f"clubs_request='{self.clubs_request_channel_name}', "
             f"log='{self.log_channel_name}')"
         )
 
@@ -117,12 +108,9 @@ class ChannelConfig:
 ENV_VARS = {
     "event_category_name": "EVENT_CATEGORY_NAME",
     "archive_event_category_name": "ARCHIVE_EVENT_CATEGORY_NAME",
-    "event_request_channel_name": "EVENT_REQUEST_CHANNEL_NAME",
     "project_category_name": "PROJECT_CATEGORY_NAME",
     "archive_project_category_name": "ARCHIVE_PROJECT_CATEGORY_NAME",
-    "project_request_channel_name": "PROJECT_REQUEST_CHANNEL_NAME",
     "club_category_name": "CLUB_CATEGORY_NAME",
-    "clubs_request_channel_name": "CLUBS_REQUEST_CHANNEL_NAME",
     "log_channel_name": "LOG_CHANNEL_NAME",
 }
 

@@ -9,12 +9,9 @@ from src.utils.channel_config import ChannelConfig
 REQUIRED_ENV = {
     "EVENT_CATEGORY_NAME": "events",
     "ARCHIVE_EVENT_CATEGORY_NAME": "archived",
-    "EVENT_REQUEST_CHANNEL_NAME": "event-request",
     "PROJECT_CATEGORY_NAME": "projects",
     "ARCHIVE_PROJECT_CATEGORY_NAME": "archived-projects",
-    "PROJECT_REQUEST_CHANNEL_NAME": "project-request",
     "CLUB_CATEGORY_NAME": "clubs",
-    "CLUBS_REQUEST_CHANNEL_NAME": "club-request",
     "LOG_CHANNEL_NAME": "bot-log",
 }
 
