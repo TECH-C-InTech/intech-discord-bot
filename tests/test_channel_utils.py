@@ -3,9 +3,7 @@ from unittest.mock import MagicMock
 import discord
 
 from src.utils.channel_utils import (
-    get_next_event_index,
     get_next_number,
-    get_next_project_index,
     resolve_target_text_channel,
 )
 from src.utils.kinds import CLUB, EVENT
@@ -57,26 +55,6 @@ def make_category(name: str, channel_names: list[str]) -> MagicMock:
         channels.append(channel)
     category.channels = channels
     return category
-
-
-def test_next_event_index_counts_both_event_and_archive_categories() -> None:
-    guild = MagicMock(spec=discord.Guild)
-    guild.categories = [
-        make_category("event", ["e001-a", "e004-b", "雑談"]),
-        make_category("archived", ["e007-c", "p009-d"]),
-    ]
-
-    assert get_next_event_index(guild, "event", "archived") == 8
-
-
-def test_next_project_index_counts_both_project_and_archive_categories() -> None:
-    guild = MagicMock(spec=discord.Guild)
-    guild.categories = [
-        make_category("project", ["p002-a"]),
-        make_category("archived-project", ["p005-b", "e009-c"]),
-    ]
-
-    assert get_next_project_index(guild, "project", "archived-project") == 6
 
 
 def make_role(name: str) -> MagicMock:

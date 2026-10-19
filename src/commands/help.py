@@ -110,7 +110,7 @@ async def docs_impl(
                 inline=False,
             )
 
-        embed.set_footer(text="例: /docs command:create_event_channel")
+        embed.set_footer(text="例: /docs command:create_channel")
 
     else:
         # 指定されたコマンドの詳細を表示
@@ -211,7 +211,7 @@ def setup(tree: app_commands.CommandTree):
         category="ヘルプ",
         icon="ℹ️",
         short_description="コマンドの詳細ドキュメントを表示",
-        examples=["`/docs`", "`/docs command:create_event_channel`"],
+        examples=["`/docs`", "`/docs command:create_channel`"],
     )
     @tree.command(
         name="docs",

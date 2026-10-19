@@ -7,6 +7,8 @@ from typing import ClassVar, Optional
 
 import discord
 
+from .kinds import CLUB, EVENT, Kind
+
 logger = getLogger(__name__)
 
 
@@ -90,6 +92,14 @@ class ChannelConfig:
 
         logger.debug(f"ChannelConfig loaded for user {ctx.user}")
         return config
+
+    def category_names(self, kind: Kind) -> tuple[str, str]:
+        """種類の (通常のカテゴリ名, アーカイブカテゴリ名) を返す"""
+        if kind is CLUB:
+            return self.club_category_name, self.archive_club_category_name
+        if kind is EVENT:
+            return self.event_category_name, self.archive_event_category_name
+        return self.project_category_name, self.archive_project_category_name
 
     def __str__(self) -> str:
         """文字列表現を返す（デバッグ用）"""

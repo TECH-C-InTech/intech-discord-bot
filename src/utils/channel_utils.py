@@ -42,50 +42,6 @@ def get_next_number(
     )
 
 
-def get_next_event_index(
-    guild: discord.Guild,
-    event_category_name: str,
-    archive_event_category_name: str,
-) -> int | None:
-    """イベントカテゴリーとアーカイブカテゴリーから次の番号を取得する
-
-    アーカイブされたチャンネルの番号も数え、番号が重ならないようにする。
-
-    Args:
-        guild: Discordサーバー
-        event_category_name: イベントカテゴリー名
-        archive_event_category_name: アーカイブカテゴリー名
-
-    Returns:
-        次の番号（最小値は1）。999まで使い切っていたらNone
-    """
-    return next_number(
-        "e", _channel_names_in(guild, event_category_name, archive_event_category_name)
-    )
-
-
-def get_next_project_index(
-    guild: discord.Guild,
-    project_category_name: str,
-    archive_project_category_name: str,
-) -> int | None:
-    """プロジェクトカテゴリーとアーカイブカテゴリーから次の番号を取得する
-
-    アーカイブされたチャンネルの番号も数え、番号が重ならないようにする。
-
-    Args:
-        guild: Discordサーバー
-        project_category_name: プロジェクトカテゴリー名
-        archive_project_category_name: アーカイブカテゴリー名
-
-    Returns:
-        次の番号（最小値は1）。999まで使い切っていたらNone
-    """
-    return next_number(
-        "p", _channel_names_in(guild, project_category_name, archive_project_category_name)
-    )
-
-
 async def validate_category_exists(
     ctx: discord.Interaction, guild: discord.Guild, category_name: str
 ) -> Optional[discord.CategoryChannel]:

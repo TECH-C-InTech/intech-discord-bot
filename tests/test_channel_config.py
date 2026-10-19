@@ -5,6 +5,7 @@ import discord
 import pytest
 
 from src.utils.channel_config import ChannelConfig
+from src.utils.kinds import CLUB, EVENT, PROJECT
 
 REQUIRED_ENV = {
     "EVENT_CATEGORY_NAME": "events",
@@ -50,3 +51,12 @@ def test_config_cannot_be_loaded_without_club_archive_category(
     monkeypatch.delenv("ARCHIVE_CLUB_CATEGORY_NAME")
 
     assert ChannelConfig.get_instance() is None
+
+
+def test_each_kind_has_its_own_and_archive_category() -> None:
+    config = ChannelConfig.get_instance()
+    assert config is not None
+
+    assert config.category_names(CLUB) == ("clubs", "archived-clubs")
+    assert config.category_names(EVENT) == ("events", "archived")
+    assert config.category_names(PROJECT) == ("projects", "archived-projects")

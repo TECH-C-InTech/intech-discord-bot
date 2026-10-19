@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import discord
 
 from src.utils.kinds import CLUB, EVENT, Kind
-from src.utils.linking import Linked, NotLinked, link_channel, link_role
+from src.utils.linking import Linked, Located, NotLinked, link_channel, link_role, locate_channel
 
 
 def make_channel(name: str, category_id: int) -> MagicMock:
@@ -131,3 +131,20 @@ def test_channel_without_role_is_not_linked() -> None:
 
     assert isinstance(linked, NotLinked)
     assert "ロールが見つかりません" in linked.reason
+
+
+def test_channel_in_archive_category_is_located_as_archived() -> None:
+    clubs = make_category(1, "c001-a")
+    archived = make_category(2, "c005-ラーメン")
+
+    located = locate_channel(archived.text_channels[0], categories({"club": [clubs, archived]}))
+
+    assert located == Located(kind=CLUB, archived=True)
+
+
+def test_channel_in_own_category_is_located_as_not_archived() -> None:
+    events = make_category(1, "e001-a")
+
+    located = locate_channel(events.text_channels[0], categories({"event": [events]}))
+
+    assert located == Located(kind=EVENT, archived=False)

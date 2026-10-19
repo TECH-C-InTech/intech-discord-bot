@@ -17,6 +17,12 @@ class Linked:
 
 
 @dataclass(frozen=True)
+class Located:
+    kind: Kind
+    archived: bool
+
+
+@dataclass(frozen=True)
 class NotLinked:
     reason: str
 
@@ -31,7 +37,7 @@ def link_role(
     Args:
         role: 対象のロール
         roles: サーバーのすべてのロール（番号の重なりを確かめる）
-        categories: 種類ごとの、チャンネルを置くカテゴリ
+        categories: 種類ごとの、チャンネルを置くカテゴリ（[通常, アーカイブ]の順）
     """
     kind = kind_of_role_name(role.name)
     if kind is None:
@@ -51,6 +57,25 @@ def link_role(
     return Linked(kind=kind, channel=channels[0], role=role)
 
 
+def locate_channel(
+    channel: discord.TextChannel,
+    categories: Mapping[Kind, Sequence[discord.CategoryChannel]],
+) -> Located | NotLinked:
+    """チャンネルのあるカテゴリから、種類とアーカイブ中かどうかを返す
+
+    Args:
+        channel: 対象のチャンネル
+        categories: 種類ごとの、チャンネルを置くカテゴリ（[通常, アーカイブ]の順）
+    """
+    for kind, kind_categories in categories.items():
+        for index, category in enumerate(kind_categories):
+            if category.id == channel.category_id:
+                return Located(kind=kind, archived=index > 0)
+    return NotLinked(
+        f"{channel.mention} はクラブ・イベント・プロジェクトのチャンネルではありません。"
+    )
+
+
 def link_channel(
     channel: discord.TextChannel,
     roles: Sequence[discord.Role],
@@ -63,18 +88,10 @@ def link_channel(
         roles: サーバーのすべてのロール
         categories: 種類ごとの、チャンネルを置くカテゴリ
     """
-    kind = next(
-        (
-            kind
-            for kind, kind_categories in categories.items()
-            if any(category.id == channel.category_id for category in kind_categories)
-        ),
-        None,
-    )
-    if kind is None:
-        return NotLinked(
-            f"{channel.mention} はクラブ・イベント・プロジェクトのチャンネルではありません。"
-        )
+    located = locate_channel(channel, categories)
+    if isinstance(located, NotLinked):
+        return located
+    kind = located.kind
     number = number_of(kind.prefix, channel.name)
     if number is None:
         return NotLinked(
