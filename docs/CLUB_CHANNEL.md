@@ -40,7 +40,7 @@ src/utils/
 ```bash
 # クラブチャンネル管理用の設定
 CLUB_CATEGORY_NAME="clubs"                    # クラブチャンネルを作成するカテゴリー名
-LOG_CHANNEL_NAME="bot-log"                    # 記録を残すログチャンネル名
+LOG_CHANNEL_NAME="discordbot-intech-log"      # 記録を残すログチャンネル名
 ```
 
 ## 💡 使い方

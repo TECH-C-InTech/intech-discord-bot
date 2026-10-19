@@ -53,7 +53,7 @@ ARCHIVE_EVENT_CATEGORY_NAME=archived
 PROJECT_CATEGORY_NAME=project
 ARCHIVE_PROJECT_CATEGORY_NAME=archived-project
 CLUB_CATEGORY_NAME=clubs
-LOG_CHANNEL_NAME=bot-log
+LOG_CHANNEL_NAME=discordbot-intech-log
 ```
 
 > **Note**: Bot Tokenは管理者（@KorRyu3 or @nka21）に問い合わせてください
@@ -70,7 +70,7 @@ LOG_CHANNEL_NAME=bot-log
 | `PROJECT_CATEGORY_NAME` | プロジェクトチャンネルを作成するカテゴリー名 | `project` |
 | `ARCHIVE_PROJECT_CATEGORY_NAME` | プロジェクトのアーカイブ先のカテゴリー名 | `archived-project` |
 | `CLUB_CATEGORY_NAME` | クラブチャンネルを作成するカテゴリー名 | `clubs` |
-| `LOG_CHANNEL_NAME` | 記録を残すログチャンネル名 | `bot-log` |
+| `LOG_CHANNEL_NAME` | 記録を残すログチャンネル名 | `discordbot-intech-log` |
 
 ## Discord サーバーの設定
 
@@ -86,7 +86,7 @@ LOG_CHANNEL_NAME=bot-log
 
 ### チャンネル
 
-1. `bot-log` - ログチャンネル。メンバー全員が閲覧でき、botが閲覧・送信・埋め込みリンクできるようにする
+1. `discordbot-intech-log` - ログチャンネル。メンバー全員が閲覧でき、botが閲覧・送信・埋め込みリンクできるようにする
 
 botは各カテゴリのチャンネルにも記録を投稿するため、上のカテゴリすべてでbotが閲覧・送信・埋め込みリンクできるようにしてください。起動時にログチャンネルの存在と権限を確認し、問題があればログにwarningを出します。
 
@@ -101,7 +101,7 @@ botは各カテゴリのチャンネルにも記録を投稿するため、上�
 └── # e003-終了したイベント
 
 📁 その他
-└── # bot-log
+└── # discordbot-intech-log
 ```
 
 ## 実行方法
