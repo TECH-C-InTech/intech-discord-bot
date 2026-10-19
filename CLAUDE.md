@@ -47,7 +47,7 @@ flyctl status                    # Check deployment status
   - デュアルサーバーアーキテクチャ
   - 自動コマンド登録システム
   - 設定管理（シングルトンパターン）
-  - イベントチャンネルのインデックス管理
+  - 番号の採番とロールの並び
 
 - **[docs/ADD_COMMAND.md](docs/ADD_COMMAND.md)** - コマンド追加の手順
   - デコレーター順序（**必読**: `@command_meta` が最上位）
@@ -63,8 +63,7 @@ flyctl status                    # Check deployment status
   - ロギングパターン
 
 - **[docs/CLUB_CHANNEL.md](docs/CLUB_CHANNEL.md)** - クラブチャンネル
-  - 名前でのチャンネルとロールの紐づけ
-  - 名前の衝突チェック
+  - 番号でのチャンネルとロールの紐づけ
 
 - **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** - 開発ワークフロー
   - 開発環境のセットアップ
@@ -150,8 +149,8 @@ async def command_cmd(...):
 - [src/utils/channel\_utils.py](src/utils/channel_utils.py) - Channel operations
 - [src/utils/capacity.py](src/utils/capacity.py) - Discord limits (channels, roles)
 - [src/utils/creation.py](src/utils/creation.py) - Serialized channel and role creation
-- [src/utils/channel\_name.py](src/utils/channel_name.py) - Channel name normalization
-- [src/utils/club\_name.py](src/utils/club_name.py) - Club name validation
+- [src/utils/numbering.py](src/utils/numbering.py) - Numbering (c001 / e001 / p001)
+- [src/utils/role\_order.py](src/utils/role_order.py) - Placement of created roles
 - [src/utils/role\_utils.py](src/utils/role_utils.py) - Role granting
 - [src/utils/records.py](src/utils/records.py) - In-channel records
 

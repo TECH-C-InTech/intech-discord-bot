@@ -271,20 +271,20 @@ if not channel:
 
 ## 作成と上限チェック
 
-### `create_channel_with_role(guild, category, *, decide_name, role_name_for, validate_created_name=..., lock=creation_lock)`
+### `create_channel_with_role(guild, category, *, decide_name, role_name_for, role_kind=None, lock=creation_lock)`
 
 **場所**: [src/utils/creation.py](../src/utils/creation.py)
 
 上限チェックから、チャンネルとロールの作成までをサーバー全体で1つのLockの中で行う。ロールの作成に失敗したらチャンネルを削除して元に戻す。
 
 **パラメータ**:
-- `decide_name(guild, category) -> str | Rejected` - チャンネル名を決める（event/projectは採番、clubは名前の衝突チェック）
+- `decide_name(guild, category) -> str | Rejected` - チャンネル名を決める（採番）
 - `role_name_for(channel) -> str` - 作成されたチャンネルからロール名を決める
-- `validate_created_name(guild, channel) -> str | None` - Discordが正規化した実際のチャンネル名を検証する（clubのみ）
+- `role_kind` - `club` / `event` / `project`。指定すると、作成したロールを同じ種類のロールの並びへ動かす
 
 **戻り値**:
 - `Created(channel, role)` - 作成できた
-- `Rejected(reason)` - 上限や名前の検証で拒否した（何も残らない）
+- `Rejected(reason)` - 上限などで拒否した（何も残らない）
 - `Failed(error, leftover_channel)` - Discordの操作に失敗した。ロールバックできなかったチャンネルがあれば`leftover_channel`に入る
 
 `Rejected`と`Failed`は`report_creation_problem(ctx, outcome, action)`（[src/utils/message_utils.py](../src/utils/message_utils.py)）で本人に返す。ロールバックできなかったチャンネルがあれば、管理者への削除依頼もあわせて伝える。設計は [ARCHITECTURE.md](./ARCHITECTURE.md#作成の直列化と上限チェック) を参照。
@@ -302,11 +302,17 @@ if reason is not None:
     return
 ```
 
-### `validate_club_name(name, *, existing_role_names, existing_channel_names)`
+### `next_number(prefix, names)` / `number_of(prefix, name)`
 
-**場所**: [src/utils/club_name.py](../src/utils/club_name.py)
+**場所**: [src/utils/numbering.py](../src/utils/numbering.py)
 
-クラブ名として使えない場合に理由を返す（番号の形式、既存のロール名、同じカテゴリの既存チャンネル名）。詳細は [CLUB_CHANNEL.md](./CLUB_CHANNEL.md#名前の衝突チェックの仕組み) を参照。
+番号の採番と読み取り。`next_number("c", names)`は、`cNNN-`で始まる名前の最大の番号に1を足す（欠番は埋めない）。`number_of("c", "c005-ラーメン")`は`5`を返し、番号がなければ`None`を返す。
+
+### `target_role_position(kind, roles)`
+
+**場所**: [src/utils/role_order.py](../src/utils/role_order.py)
+
+作成したロールを動かす先の位置を返す純粋関数。`roles`は作成したロール以外の`(名前, 位置)`。並べ方は [ARCHITECTURE.md](./ARCHITECTURE.md#ロールの並び) を参照。
 
 ### `grant_role(members, role)`
 
