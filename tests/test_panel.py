@@ -285,3 +285,18 @@ async def test_create_panel_offers_three_kinds_to_anyone() -> None:
 
     assert texts(view) == ["### チャンネルを作る\n誰でも作れます"]
     assert button_labels(view) == ["クラブを作る", "イベントを作る", "プロジェクトを作る"]
+
+
+async def test_show_all_button_is_found_again_from_posted_message() -> None:
+    # botの再起動後は、届いたメッセージの部品からボタンを作り直して処理する
+    from discord.components import _component_factory
+
+    view = channel_panel(make_channel(), [member(i) for i in range(21)], archived=False)
+    message = MagicMock(spec=discord.Message)
+    message.components = [_component_factory(data) for data in view.to_components()]
+
+    rebuilt = discord.ui.LayoutView.from_message(message)
+
+    assert "intech:channel:all:500" in [
+        getattr(item, "custom_id", None) for item in rebuilt.walk_children()
+    ]

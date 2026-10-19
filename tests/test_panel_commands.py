@@ -7,6 +7,7 @@ from src.commands.panel import (
     all_participants_text,
     choose_panel,
     handle_channel_press,
+    intech_impl,
     setup_panel_impl,
 )
 from src.utils.kinds import EVENT
@@ -246,3 +247,16 @@ async def test_setup_here_outside_kind_channel_explains_why(
     await setup_panel_impl(ctx, "here")
 
     assert "ではありません" in ctx.response.send_message.await_args.args[0]
+
+
+async def test_intech_channel_panel_does_not_notify_listed_participants(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ctx, channel = press_setup(monkeypatch, archived=False)
+    ctx.channel = channel
+    ctx.guild.roles[0].members = []
+
+    await intech_impl(ctx)
+
+    mentions = ctx.response.send_message.await_args.kwargs["allowed_mentions"]
+    assert (mentions.users, mentions.roles, mentions.everyone) == (False, False, False)

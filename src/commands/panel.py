@@ -24,6 +24,7 @@ from ..utils.message_utils import send_error_message
 from ..utils.numbering import NUMBERS_EXHAUSTED, number_of
 from ..utils.panel import (
     NO_MENTIONS,
+    RESTORE_ON_POST,
     ChannelAction,
     ChannelPanelButton,
     CreatePanelButton,
@@ -165,7 +166,7 @@ async def ask_to_archive(ctx: discord.Interaction, linked: Linked) -> None:
     await ctx.response.send_message(
         embed=discord.Embed(
             title=f"#{linked.channel.name} をアーカイブしますか？",
-            description="アーカイブ中も、このチャンネルでメッセージを送ると自動で戻ります。",
+            description=f"アーカイブ中も、{RESTORE_ON_POST}。",
         ),
         view=view,
         ephemeral=True,
