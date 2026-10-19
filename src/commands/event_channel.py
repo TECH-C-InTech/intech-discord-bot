@@ -105,6 +105,7 @@ async def create_event_channel_impl(
             decide_name=decide_name,
             # ロール名はチャンネル名の番号部分（e001）
             role_name_for=lambda channel: channel.name.split("-", 1)[0],
+            role_kind="event",
         )
     except Exception as e:
         await handle_command_error(ctx, e, "チャンネルの作成")

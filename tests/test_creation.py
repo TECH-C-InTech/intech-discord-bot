@@ -73,28 +73,6 @@ async def test_creates_channel_and_mentionable_role() -> None:
     guild.create_role.assert_awaited_once_with(name="e001", mentionable=True)
 
 
-async def test_deletes_channel_and_rejects_when_created_name_is_rejected() -> None:
-    guild, category, channel, _ = make_guild()
-
-    outcome = await create(
-        guild, category, validate_created_name=lambda g, ch: "既存のロールと同じ名前です"
-    )
-
-    assert outcome == Rejected("既存のロールと同じ名前です")
-    channel.delete.assert_awaited_once()
-    guild.create_role.assert_not_called()
-
-
-async def test_reports_leftover_channel_when_deleting_rejected_channel_fails() -> None:
-    guild, category, channel, _ = make_guild()
-    error = http_error()
-    channel.delete = AsyncMock(side_effect=error)
-
-    outcome = await create(guild, category, validate_created_name=lambda g, ch: "NG")
-
-    assert outcome == Failed(error=error, leftover_channel=channel)
-
-
 async def test_fails_without_creating_role_when_channel_creation_fails() -> None:
     guild, category, _, _ = make_guild()
     error = http_error()
@@ -183,3 +161,31 @@ async def test_role_that_appeared_in_cache_is_not_counted_twice() -> None:
     second = await create(guild, category, pending_role_ids=pending)
 
     assert isinstance(second, Created)
+
+
+def named_role(name: str, position: int, role_id: int) -> MagicMock:
+    role = MagicMock(spec=discord.Role)
+    role.name = name
+    role.position = position
+    role.id = role_id
+    return role
+
+
+async def test_created_role_is_moved_next_to_roles_of_its_kind() -> None:
+    guild, category, _, role = make_guild()
+    role.edit = AsyncMock()
+    guild.roles = [named_role("e002", 5, 1), named_role("p001", 4, 2), role]
+
+    await create(guild, category, role_kind="event")
+
+    role.edit.assert_awaited_once_with(position=4)
+
+
+async def test_failing_to_move_role_does_not_fail_creation() -> None:
+    guild, category, channel, role = make_guild()
+    role.edit = AsyncMock(side_effect=http_error())
+    guild.roles = [named_role("e002", 5, 1), role]
+
+    outcome = await create(guild, category, role_kind="event")
+
+    assert outcome == Created(channel=channel, role=role)

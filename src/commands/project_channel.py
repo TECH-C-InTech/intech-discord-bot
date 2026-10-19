@@ -105,6 +105,7 @@ async def create_project_channel_impl(
             decide_name=decide_name,
             # ロール名はチャンネル名の番号部分（p001）
             role_name_for=lambda channel: channel.name.split("-", 1)[0],
+            role_kind="project",
         )
     except Exception as e:
         await handle_command_error(ctx, e, "チャンネルの作成")
