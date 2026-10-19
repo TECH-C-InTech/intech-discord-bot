@@ -10,51 +10,6 @@ from .message_utils import send_error_message
 logger = getLogger(__name__)
 
 
-async def validate_channel_in_category(
-    ctx: discord.Interaction,
-    channel: discord.TextChannel,
-    category_name: str,
-) -> bool:
-    """チャンネルが特定のカテゴリーに属しているかを確認する
-
-    Args:
-        ctx: Discord Interaction
-        channel: 確認対象のチャンネル
-        category_name: カテゴリー名
-
-    Returns:
-        バリデーションが成功した場合True、失敗した場合False
-    """
-    if channel.category is None:
-        await send_error_message(
-            ctx,
-            f"チャンネル {channel.mention} はどのカテゴリーにも属していません。",
-            help_text=f"`{category_name}` カテゴリー配下のチャンネルでコマンドを実行してください。",
-        )
-        logger.info(
-            f"Category validation failed: "
-            f"{channel.name} has no category (required: {category_name})"
-        )
-        return False
-
-    if channel.category.name != category_name:
-        await send_error_message(
-            ctx,
-            f"チャンネル {channel.mention} は `{category_name}` カテゴリーに属していません。\n"
-            f"現在のカテゴリー: `{channel.category.name}`",
-            help_text=f"`{category_name}` カテゴリー配下のチャンネルでコマンドを実行するか、"
-            f"チャンネル名を指定してください。",
-        )
-        logger.info(
-            f"Category validation failed: "
-            f"{channel.name} is in '{channel.category.name}' (required: '{category_name}')"
-        )
-        return False
-
-    logger.debug(f"Category validation passed: {channel.name} is in '{category_name}'")
-    return True
-
-
 async def parse_member_mentions(
     ctx: discord.Interaction,
     members_str: str,

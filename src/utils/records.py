@@ -75,11 +75,22 @@ def build_creation_embed(
 def build_members_added_embed(
     *, actor: Mentionable, role: Mentionable, members: Sequence[Mentionable]
 ) -> discord.Embed:
-    """メンバー追加のチャンネル内の記録"""
+    """参加者の追加のチャンネル内の記録"""
     return discord.Embed(
-        title="メンバー追加",
+        title="参加者の追加",
         description=f"{actor.mention} が {_mentions(members)} を {role.mention} に加えました",
         color=discord.Color.green(),
+    )
+
+
+def build_members_removed_embed(
+    *, actor: Mentionable, role: Mentionable, members: Sequence[Mentionable]
+) -> discord.Embed:
+    """参加者の削除のチャンネル内の記録（外された人は通知しないので、Embedの中にだけ書く）"""
+    return discord.Embed(
+        title="参加者の削除",
+        description=f"{actor.mention} が {_mentions(members)} を {role.mention} から外しました",
+        color=discord.Color.light_grey(),
     )
 
 

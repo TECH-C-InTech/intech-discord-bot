@@ -7,6 +7,8 @@ from typing import ClassVar, Optional
 
 import discord
 
+from .kinds import CLUB, EVENT, PROJECT, Kind
+
 logger = getLogger(__name__)
 
 
@@ -23,6 +25,7 @@ class ChannelConfig:
         project_category_name: プロジェクトチャンネルを作成するカテゴリー名
         archive_project_category_name: プロジェクトのアーカイブ先カテゴリー名
         club_category_name: クラブチャンネルを作成するカテゴリー名
+        archive_club_category_name: クラブのアーカイブ先カテゴリー名
     """
 
     event_category_name: str
@@ -30,6 +33,7 @@ class ChannelConfig:
     project_category_name: str
     archive_project_category_name: str
     club_category_name: str
+    archive_club_category_name: str
 
     # クラス変数: シングルトンインスタンス
     _instance: ClassVar[Optional["ChannelConfig"]] = None
@@ -89,6 +93,14 @@ class ChannelConfig:
         logger.debug(f"ChannelConfig loaded for user {ctx.user}")
         return config
 
+    def category_names(self, kind: Kind) -> tuple[str, str]:
+        """種類の (通常のカテゴリ名, アーカイブカテゴリ名) を返す。知らない種類はKeyError"""
+        return {
+            CLUB.key: (self.club_category_name, self.archive_club_category_name),
+            EVENT.key: (self.event_category_name, self.archive_event_category_name),
+            PROJECT.key: (self.project_category_name, self.archive_project_category_name),
+        }[kind.key]
+
     def __str__(self) -> str:
         """文字列表現を返す（デバッグ用）"""
         return (
@@ -97,7 +109,8 @@ class ChannelConfig:
             f"archive_event='{self.archive_event_category_name}', "
             f"project='{self.project_category_name}', "
             f"archive_project='{self.archive_project_category_name}', "
-            f"club='{self.club_category_name}')"
+            f"club='{self.club_category_name}', "
+            f"archive_club='{self.archive_club_category_name}')"
         )
 
 
@@ -108,6 +121,7 @@ ENV_VARS = {
     "project_category_name": "PROJECT_CATEGORY_NAME",
     "archive_project_category_name": "ARCHIVE_PROJECT_CATEGORY_NAME",
     "club_category_name": "CLUB_CATEGORY_NAME",
+    "archive_club_category_name": "ARCHIVE_CLUB_CATEGORY_NAME",
 }
 
 

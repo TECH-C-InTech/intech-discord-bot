@@ -6,6 +6,7 @@ from src.utils.records import (
     build_archive_notice_embed,
     build_creation_embed,
     build_members_added_embed,
+    build_members_removed_embed,
     build_restored_embed,
     delete_record,
     post_channel_record,
@@ -82,8 +83,19 @@ def test_members_added_record_includes_actor_role_and_added_members() -> None:
         members=[mentionable("<@2>")],
     )
 
-    assert embed.title == "メンバー追加"
+    assert embed.title == "参加者の追加"
     assert embed.description == "<@1> が <@2> を <@&20> に加えました"
+
+
+def test_members_removed_record_includes_actor_role_and_removed_members() -> None:
+    embed = build_members_removed_embed(
+        actor=mentionable("<@1>"),
+        role=mentionable("<@&20>"),
+        members=[mentionable("<@2>")],
+    )
+
+    assert embed.title == "参加者の削除"
+    assert embed.description == "<@1> が <@2> を <@&20> から外しました"
 
 
 def test_archive_notice_says_who_archived_and_how_to_restore() -> None:

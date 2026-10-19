@@ -71,13 +71,13 @@ def command_meta(
             short_description="イベント用のチャンネルを作成",
             restrictions="• channel_name省略時はイベントカテゴリー内で実行",
             examples=[
-                "/create_event_channel name:ハッカソン",
-                "/create_event_channel name:勉強会 members:@user1 @user2"
+                "/create_channel category:イベント channel_name:ハッカソン",
+                "/create_channel category:イベント channel_name:勉強会 members:@user1 @user2"
             ]
         )
-        @tree.command(name="create_event_channel", ...)
+        @tree.command(name="create_channel", ...)
         @app_commands.describe(...)
-        async def create_event_channel_cmd(ctx, ...):
+        async def create_channel_cmd(ctx, ...):
             ...
     """
 

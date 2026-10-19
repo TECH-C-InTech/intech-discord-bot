@@ -8,7 +8,7 @@ import discord
 
 logger = getLogger(__name__)
 
-GRANT_FAILURE_HELP = (
+ROLE_FAILURE_HELP = (
     "サーバー管理者に、botのロールが対象のロールより上にあり（ロールの順位）、"
     "「ロールの管理」権限があるか確認してもらってください。"
 )
@@ -40,6 +40,32 @@ async def grant_role(members: Sequence[discord.Member], role: discord.Role) -> G
     return result
 
 
+@dataclass
+class RevokeResult:
+    """メンバーごとのロール削除の結果"""
+
+    revoked: list[discord.Member] = field(default_factory=list)
+    did_not_have: list[discord.Member] = field(default_factory=list)
+    failed: list[discord.Member] = field(default_factory=list)
+
+
+async def revoke_role(members: Sequence[discord.Member], role: discord.Role) -> RevokeResult:
+    """メンバーからロールを外す。失敗した人がいても残りの人からは外し続ける"""
+    result = RevokeResult()
+    for member in members:
+        if role not in member.roles:
+            result.did_not_have.append(member)
+            continue
+        try:
+            await member.remove_roles(role)
+        except discord.HTTPException as e:
+            logger.warning(f"Failed to remove role {role} from {member}: {e}")
+            result.failed.append(member)
+            continue
+        result.revoked.append(member)
+    return result
+
+
 def _mentions(members: Sequence[discord.Member]) -> str:
     return ", ".join(member.mention for member in members)
 
@@ -54,7 +80,22 @@ def describe_grant(result: GrantResult) -> str:
     if result.failed:
         parts.append(
             f"以下のメンバーにはロールを付与できませんでした:\n{_mentions(result.failed)}\n"
-            f"{GRANT_FAILURE_HELP}"
+            f"{ROLE_FAILURE_HELP}"
+        )
+    return "\n".join(parts)
+
+
+def describe_revoke(result: RevokeResult) -> str:
+    """削除の結果を、本人への返信に使う説明文にする"""
+    parts = []
+    if result.revoked:
+        parts.append(f"以下のメンバーからロールを外しました:\n{_mentions(result.revoked)}")
+    if result.did_not_have:
+        parts.append(f"以下のメンバーはロールを持っていません:\n{_mentions(result.did_not_have)}")
+    if result.failed:
+        parts.append(
+            f"以下のメンバーからはロールを外せませんでした:\n{_mentions(result.failed)}\n"
+            f"{ROLE_FAILURE_HELP}"
         )
     return "\n".join(parts)
 

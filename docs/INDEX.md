@@ -70,14 +70,14 @@ Claude Code用のガイダンス（AI開発アシスタント向け）
 - コマンドメタデータ
 - ロギングパターン
 
-#### [CLUB_CHANNEL.md](./CLUB_CHANNEL.md)
+#### [CHANNELS.md](./CHANNELS.md)
 
-クラブチャンネル管理システムの仕様と実装
+クラブ・イベント・プロジェクトのチャンネル管理の仕様と実装
 
-- クラブチャンネル作成機能の概要
-- チャンネルとロールの一括管理
-- メンバー管理とロール付与
-- イベントチャンネルとの比較
+- 5つのコマンドと種類ごとの違い
+- 番号によるチャンネルとロールの紐づけ
+- 採番、アーカイブ・復元
+- 参加者の追加・削除
 - 実装例とベストプラクティス
 
 #### [DEVELOPMENT.md](./DEVELOPMENT.md)
@@ -103,14 +103,14 @@ Claude Code用のガイダンス（AI開発アシスタント向け）
 1. [DEVELOPMENT.md](./DEVELOPMENT.md) で開発環境を構築
 2. [ADD_COMMAND.md](./ADD_COMMAND.md) で新機能追加
 3. [UTILITIES.md](./UTILITIES.md) でユーティリティを活用
-4. [CLUB_CHANNEL.md](./CLUB_CHANNEL.md) でクラブチャンネル管理を理解
+4. [CHANNELS.md](./CHANNELS.md) でチャンネル管理を理解
 
 ### 困った時
 
 - [SETUP.md](./SETUP.md) のトラブルシューティングを確認
 - [ARCHITECTURE.md](./ARCHITECTURE.md) で設計パターンを確認
 - [UTILITIES.md](./UTILITIES.md) でヘルパー関数の使い方を確認
-- [CLUB_CHANNEL.md](./CLUB_CHANNEL.md) でクラブチャンネルの使い方を確認
+- [CHANNELS.md](./CHANNELS.md) でチャンネル管理の使い方を確認
 
 ## 📚 ドキュメント間の関連
 
@@ -125,5 +125,5 @@ DEVELOPMENT.md (開発環境)
     ↓
 ADD_COMMAND.md (コマンド追加) ← UTILITIES.md (ヘルパー関数)
     ↓
-CLUB_CHANNEL.md (クラブチャンネル管理) ← (クラブ関連機能)
+CHANNELS.md (チャンネル管理) ← (クラブ・イベント・プロジェクト)
 ```

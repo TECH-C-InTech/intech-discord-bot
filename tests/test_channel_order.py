@@ -2,7 +2,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import discord
 
-from src.utils.channel_order import sort_category, sorted_channel_positions
+from src.utils.channel_order import move_channel, sort_category, sorted_channel_positions
+from src.utils.kinds import CLUB
 
 
 def test_numbered_channels_are_ordered_by_number() -> None:
@@ -92,3 +93,22 @@ async def test_unexpected_error_while_sorting_does_not_raise() -> None:
     guild._state.http.bulk_channel_update = AsyncMock(side_effect=AttributeError("changed"))
 
     await sort_category(guild, category_id=100, prefix="e")
+
+
+async def test_moved_channel_is_sorted_by_its_kind_number_in_destination() -> None:
+    # 移動してきたc009が、移動前の位置を持ち越してc001より上に入っている
+    moved = text_channel(9, "c009-ラーメン", 2, 300)
+    moved.edit = AsyncMock()
+    guild = make_guild([moved, text_channel(1, "c001-a", 5, 300)])
+    moved.guild = guild
+    destination = MagicMock(spec=discord.CategoryChannel)
+    destination.id = 300
+
+    await move_channel(moved, destination, CLUB)
+
+    moved.edit.assert_awaited_once_with(category=destination, sync_permissions=True)
+    payload = guild._state.http.bulk_channel_update.await_args.args[1]
+    assert sorted(payload, key=lambda d: d["id"]) == [
+        {"id": 1, "position": 2},
+        {"id": 9, "position": 3},
+    ]

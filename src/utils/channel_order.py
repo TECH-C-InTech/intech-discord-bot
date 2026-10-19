@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import discord
 
+from .kinds import Kind
 from .numbering import number_of
 
 if TYPE_CHECKING:
@@ -67,3 +68,14 @@ async def sort_category(guild: discord.Guild, *, category_id: int, prefix: str) 
     except Exception as e:
         # 並べ直しは移動のおまけなので、何が起きても移動は成功扱いにする
         logger.warning(f"Failed to sort channels in category {category_id}: {e}", exc_info=True)
+
+
+async def move_channel(
+    channel: discord.TextChannel, destination: discord.CategoryChannel, kind: Kind
+) -> None:
+    """チャンネルをカテゴリへ移し、移動先をその種類の番号順に並べ直す
+
+    移動に失敗したら例外を出す。並べ直しの失敗は移動の成否に影響しない。
+    """
+    await channel.edit(category=destination, sync_permissions=True)
+    await sort_category(channel.guild, category_id=destination.id, prefix=kind.prefix)

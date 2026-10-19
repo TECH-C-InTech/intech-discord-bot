@@ -1,14 +1,11 @@
 """作成したロールの置き場所（club > event > project の順に、種類ごとにまとめる）"""
 
 from collections.abc import Iterable
-import re
 
-KIND_ORDER = ["club", "event", "project"]
-KIND_PATTERNS = {
-    "club": re.compile(r"^c\d{3}-"),
-    "event": re.compile(r"^e\d{3}$"),
-    "project": re.compile(r"^p\d{3}$"),
-}
+from .kinds import KINDS
+
+KIND_ORDER = [kind.key for kind in KINDS]
+KIND_PATTERNS = {kind.key: kind.role_pattern for kind in KINDS}
 
 
 def target_role_position(kind: str, roles: Iterable[tuple[str, int]]) -> int | None:
