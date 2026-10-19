@@ -166,7 +166,7 @@ await ctx.response.send_message(embed=embed)
 
 ### `send_private_reply(ctx, embed)`
 
-操作した本人にだけ見える返信を送る。defer済みの前提で`followup`を使い、毎回`ephemeral=True`を指定する（2通目以降のfollowupはdeferの可視性を引き継がないため）。送信に失敗しても例外は出さない。
+操作した本人にだけ見える返信を送る。defer済みの前提で`followup`を使い、毎回`ephemeral=True`を指定する（2通目以降のfollowupはdeferの可視性を引き継がないため）。followupに失敗したら、deferで出た「考え中…」の応答を結果で書き換える。それにも失敗しても例外は出さない。
 
 ```python
 await ctx.response.defer(ephemeral=True, thinking=True)
@@ -240,6 +240,8 @@ channel_name = f"e{index:03d}-{event_name}"
 
 スレッドの親を対象にした場合は、そのことを本人への返信で伝える。
 
+コマンドからは、決められなければ本人にエラーを返す`resolve_target_text_channel_or_error(ctx)`と、返信に添える一文を作る`thread_target_note(channel, via_thread)`を使う。
+
 ### `find_event_channel_by_name(guild, partial_name, category_name)`
 
 部分一致でイベントチャンネルを検索。
@@ -285,7 +287,7 @@ if not channel:
 - `Rejected(reason)` - 上限や名前の検証で拒否した（何も残らない）
 - `Failed(error, leftover_channel)` - Discordの操作に失敗した。ロールバックできなかったチャンネルがあれば`leftover_channel`に入る
 
-`Rejected`と`Failed`は`report_creation_problem(ctx, outcome, action)`で本人に返す。設計は [ARCHITECTURE.md](./ARCHITECTURE.md#作成の直列化と上限チェック) を参照。
+`Rejected`と`Failed`は`report_creation_problem(ctx, outcome, action)`（[src/utils/message_utils.py](../src/utils/message_utils.py)）で本人に返す。ロールバックできなかったチャンネルがあれば、管理者への削除依頼もあわせて伝える。設計は [ARCHITECTURE.md](./ARCHITECTURE.md#作成の直列化と上限チェック) を参照。
 
 ### `check_creation_capacity(...)` / `check_move_capacity(...)`
 
@@ -311,6 +313,8 @@ if reason is not None:
 **場所**: [src/utils/role_utils.py](../src/utils/role_utils.py)
 
 メンバーにロールを付与し、`GrantResult(granted, already_had, failed)`を返す。失敗した人がいても残りの人への付与は続ける。
+
+`describe_grant(result)`は結果を本人への返信用の説明文にする。付与できなかった人がいれば、botのロールの順位と「ロールの管理」権限を確かめる案内も添える。メンバー追加で誰にも付与できなかった場合は、成功ではなくエラーとして返す。
 
 ## 記録
 

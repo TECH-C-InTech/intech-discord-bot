@@ -11,6 +11,8 @@ from typing import Protocol
 
 import discord
 
+from .channel_name import normalize_channel_name
+
 logger = getLogger(__name__)
 
 REQUIRED_LOG_PERMISSIONS = ("view_channel", "send_messages", "embed_links")
@@ -90,9 +92,14 @@ def build_restored_embed(*, actor: Mentionable, channel: Mentionable) -> discord
     )
 
 
+def _find_log_channel(guild: discord.Guild, log_channel_name: str) -> discord.TextChannel | None:
+    # 設定値の大文字・空白はDiscordが正規化した実際の名前とずれうるため、正規化して探す
+    return discord.utils.get(guild.text_channels, name=normalize_channel_name(log_channel_name))
+
+
 async def post_log(guild: discord.Guild, log_channel_name: str, embed: discord.Embed) -> None:
     """ログチャンネルに記録を送る。誰も通知しない"""
-    log_channel = discord.utils.get(guild.text_channels, name=log_channel_name)
+    log_channel = _find_log_channel(guild, log_channel_name)
     if log_channel is None:
         logger.warning(f"Log channel '{log_channel_name}' not found in guild {guild.name}")
         return
@@ -127,7 +134,7 @@ async def post_channel_record(
 
 def find_log_channel_problems(guild: discord.Guild, log_channel_name: str) -> list[str]:
     """ログチャンネルが無い、またはbotが送れない場合にその内容を返す"""
-    log_channel = discord.utils.get(guild.text_channels, name=log_channel_name)
+    log_channel = _find_log_channel(guild, log_channel_name)
     if log_channel is None:
         return [f"ログチャンネル '{log_channel_name}' がサーバー {guild.name} にありません"]
     permissions = log_channel.permissions_for(guild.me)

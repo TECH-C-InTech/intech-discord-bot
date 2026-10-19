@@ -193,3 +193,18 @@ def test_log_channel_with_required_permissions_has_no_problems() -> None:
     with_bot_permissions(log_channel, view_channel=True, send_messages=True, embed_links=True)
 
     assert find_log_channel_problems(guild, "bot-log") == []
+
+
+async def test_log_is_sent_when_configured_name_differs_only_in_case_and_spaces() -> None:
+    guild, log_channel = make_guild_with_log_channel(name="bot-log")
+
+    await post_log(guild, "Bot Log", discord.Embed(title="x"))
+
+    log_channel.send.assert_awaited_once()
+
+
+def test_log_channel_check_uses_normalized_name() -> None:
+    guild, log_channel = make_guild_with_log_channel(name="bot-log")
+    with_bot_permissions(log_channel, view_channel=True, send_messages=True, embed_links=True)
+
+    assert find_log_channel_problems(guild, "Bot Log") == []

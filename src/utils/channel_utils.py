@@ -203,3 +203,22 @@ def resolve_target_text_channel(
     if isinstance(channel, discord.Thread) and isinstance(channel.parent, discord.TextChannel):
         return channel.parent, True
     return None, False
+
+
+async def resolve_target_text_channel_or_error(
+    ctx: discord.Interaction,
+) -> tuple[discord.TextChannel | None, bool]:
+    """実行された場所から対象のテキストチャンネルを決め、決められなければ本人にエラーを返す"""
+    channel, via_thread = resolve_target_text_channel(ctx.channel)
+    if channel is None:
+        await send_error_message(
+            ctx, "このコマンドはテキストチャンネルかそのスレッドでのみ実行できます。"
+        )
+    return channel, via_thread
+
+
+def thread_target_note(channel: discord.TextChannel, via_thread: bool) -> str:
+    """スレッドの親チャンネルを対象にした場合に、本人への返信に添える一文"""
+    if not via_thread:
+        return ""
+    return f"\n（スレッドから実行したため、親チャンネル {channel.mention} を対象にしました）"

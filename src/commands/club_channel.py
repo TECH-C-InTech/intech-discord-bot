@@ -6,18 +6,18 @@ import discord
 from discord import app_commands
 
 from ..utils.channel_config import ChannelConfig
-from ..utils.channel_utils import resolve_target_text_channel, validate_category_exists
+from ..utils.channel_utils import (
+    resolve_target_text_channel_or_error,
+    thread_target_note,
+    validate_category_exists,
+)
 from ..utils.club_name import validate_club_name
 from ..utils.command_metadata import command_meta
-from ..utils.creation import (
-    Created,
-    Rejected,
-    create_channel_with_role,
-    report_creation_problem,
-)
+from ..utils.creation import Created, Rejected, create_channel_with_role
 from ..utils.message_utils import (
     create_success_embed,
     handle_command_error,
+    report_creation_problem,
     send_error_message,
     send_private_reply,
 )
@@ -27,7 +27,7 @@ from ..utils.records import (
     post_channel_record,
     post_log,
 )
-from ..utils.role_utils import grant_role
+from ..utils.role_utils import describe_grant, grant_role
 from ..utils.validation_utils import (
     parse_member_mentions,
     parse_role_mention,
@@ -120,22 +120,15 @@ async def create_club_channel_impl(
     channel, role = outcome.channel, outcome.role
     grant = await grant_role(member_objects, role)
 
-    description_parts = [f"{channel.mention} と {role.mention} を作成しました"]
-    if grant.granted:
-        description_parts.append(
-            f"\n以下のメンバーにロールを付与しました:\n"
-            f"{', '.join(m.mention for m in grant.granted)}"
-        )
-    if grant.failed:
-        description_parts.append(
-            f"\n以下のメンバーにはロールを付与できませんでした:\n"
-            f"{', '.join(m.mention for m in grant.failed)}"
-        )
+    description = f"{channel.mention} と {role.mention} を作成しました"
+    grant_description = describe_grant(grant)
+    if grant_description:
+        description += f"\n{grant_description}"
     await send_private_reply(
         ctx,
         create_success_embed(
             title="クラブチャンネル作成完了",
-            description="".join(description_parts),
+            description=description,
             チャンネル名=channel.name,
             ロール付与人数=len(grant.granted),
         ),
@@ -191,11 +184,8 @@ async def add_club_role_member_impl(
     via_thread = False
     # role_nameが省略された場合は実行チャンネル（スレッドなら親チャンネル）の名前を使用
     if role_name is None:
-        target_channel, via_thread = resolve_target_text_channel(ctx.channel)
+        target_channel, via_thread = await resolve_target_text_channel_or_error(ctx)
         if target_channel is None:
-            await send_error_message(
-                ctx, "このコマンドはテキストチャンネルかそのスレッドでのみ実行できます。"
-            )
             return
         # 対象チャンネルがCLUB_CATEGORY_NAMEカテゴリーに属しているか確認
         if target_channel.category_id != club_category.id:
@@ -243,32 +233,16 @@ async def add_club_role_member_impl(
 
     grant = await grant_role(member_objects, role)
 
-    description_parts = []
-    if grant.granted:
-        description_parts.append(
-            f"{role.mention} に以下のメンバーを追加しました:\n"
-            f"{', '.join(m.mention for m in grant.granted)}"
-        )
-    if grant.already_had:
-        description_parts.append(
-            f"以下のメンバーは既にロールを持っています:\n"
-            f"{', '.join(m.mention for m in grant.already_had)}"
-        )
-    if grant.failed:
-        description_parts.append(
-            f"以下のメンバーにはロールを付与できませんでした:\n"
-            f"{', '.join(m.mention for m in grant.failed)}"
-        )
-    note = (
-        f"\n（スレッドから実行したため、親チャンネル {club_channel.mention} を対象にしました）"
-        if via_thread
-        else ""
-    )
+    note = thread_target_note(club_channel, via_thread)
+    if not grant.granted and grant.failed:
+        # 誰にも付与できなかった場合は、成功として見せない
+        await send_error_message(ctx, describe_grant(grant) + note)
+        return
     await send_private_reply(
         ctx,
         create_success_embed(
             title="クラブロールメンバー追加完了",
-            description="\n".join(description_parts) + note,
+            description=describe_grant(grant) + note,
             クラブチャンネル=club_channel.mention,
             ロール=role.name,
             追加人数=len(grant.granted),

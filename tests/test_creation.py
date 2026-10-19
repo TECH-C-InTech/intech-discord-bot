@@ -38,7 +38,7 @@ async def create(
         "decide_name": lambda guild, category: "e001-おでん会",
         "role_name_for": lambda channel: "e001",
         "lock": asyncio.Lock(),
-        "role_cache_timeout": 0.05,
+        "pending_role_ids": {},
     }
     kwargs.update(overrides)
     return await create_channel_with_role(guild, category, **kwargs)
@@ -71,24 +71,6 @@ async def test_creates_channel_and_mentionable_role() -> None:
     assert outcome == Created(channel=channel, role=role)
     guild.create_text_channel.assert_awaited_once_with(name="e001-おでん会", category=category)
     guild.create_role.assert_awaited_once_with(name="e001", mentionable=True)
-
-
-async def test_waits_until_role_appears_in_cache() -> None:
-    guild, category, _, role = make_guild()
-    guild.get_role = MagicMock(side_effect=[None, None, role])
-
-    await create(guild, category, role_cache_timeout=1.0)
-
-    assert guild.get_role.call_count == 3
-
-
-async def test_returns_created_even_if_role_never_appears_in_cache() -> None:
-    guild, category, channel, role = make_guild()
-    guild.get_role = MagicMock(return_value=None)
-
-    outcome = await create(guild, category, role_cache_timeout=0.1)
-
-    assert outcome == Created(channel=channel, role=role)
 
 
 async def test_deletes_channel_and_rejects_when_created_name_is_rejected() -> None:
@@ -176,3 +158,28 @@ async def test_concurrent_creations_run_one_at_a_time() -> None:
     await asyncio.gather(first, second)
 
     assert names_decided == ["first", "second"]
+
+
+async def test_role_not_yet_in_cache_is_counted_by_next_capacity_check() -> None:
+    guild, category, _, _ = make_guild(guild_roles=249)
+    guild.get_role = MagicMock(return_value=None)
+    pending: dict[int, set[int]] = {}
+
+    first = await create(guild, category, pending_role_ids=pending)
+    second = await create(guild, category, pending_role_ids=pending)
+
+    assert isinstance(first, Created)
+    assert isinstance(second, Rejected)
+
+
+async def test_role_that_appeared_in_cache_is_not_counted_twice() -> None:
+    guild, category, _, role = make_guild(guild_roles=248)
+    pending: dict[int, set[int]] = {}
+    guild.get_role = MagicMock(return_value=role)
+
+    await create(guild, category, pending_role_ids=pending)
+    # 作成したロールがキャッシュ（guild.roles）に入った
+    guild.roles.append(role)
+    second = await create(guild, category, pending_role_ids=pending)
+
+    assert isinstance(second, Created)

@@ -12,12 +12,15 @@ from logging import getLogger
 import discord
 
 from .capacity import check_creation_capacity
-from .message_utils import handle_command_error, send_error_message
 
 logger = getLogger(__name__)
 
 creation_lock = asyncio.Lock()
-ROLE_CACHE_POLL_INTERVAL = 0.05
+
+# サーバーごとの、作成したがまだキャッシュに現れていないロールのID。
+# discord.pyはcreate_roleの戻り値をキャッシュに入れず、gatewayのイベントで入れるため、
+# その間の上限チェックでロール数を少なく数えないように覚えておく。
+pending_role_ids: dict[int, set[int]] = {}
 
 
 @dataclass(frozen=True)
@@ -49,7 +52,7 @@ async def create_channel_with_role(
         [discord.Guild, discord.TextChannel], str | None
     ] = lambda guild, channel: None,
     lock: asyncio.Lock = creation_lock,
-    role_cache_timeout: float = 5.0,
+    pending_role_ids: dict[int, set[int]] = pending_role_ids,
 ) -> "Created | Rejected | Failed":
     """上限を確かめてから、チャンネルとそれに紐づくロールを作る
 
@@ -63,14 +66,15 @@ async def create_channel_with_role(
         validate_created_name: Discordが正規化した実際のチャンネル名を検証する。
             使えない場合は理由を返す
         lock: 作成を直列化するLock（テストでは差し替える）
-        role_cache_timeout: 作成したロールがキャッシュに現れるのを待つ秒数。
-            次の作成の上限チェックでロール数を正しく数えるために待つ
+        pending_role_ids: サーバーごとの、作成したがまだキャッシュに現れていないロールのID
+            （テストでは差し替える）
     """
+    pending = pending_role_ids.setdefault(guild.id, set())
     async with lock:
         reason = check_creation_capacity(
             category_channels=len(category.channels),
             guild_channels=len(guild.channels),
-            guild_roles=len(guild.roles),
+            guild_roles=len(guild.roles) + _count_pending_roles(guild, pending),
         )
         if reason is not None:
             return Rejected(reason)
@@ -96,8 +100,14 @@ async def create_channel_with_role(
         except discord.HTTPException as e:
             delete_error = await _rollback_channel(channel)
             return Failed(error=e, leftover_channel=channel if delete_error else None)
-        await _wait_for_role_cache(guild, role, timeout=role_cache_timeout)
+        pending.add(role.id)
         return Created(channel=channel, role=role)
+
+
+def _count_pending_roles(guild: discord.Guild, pending: set[int]) -> int:
+    """まだキャッシュに現れていないロールの数を返す。現れたものは覚えておくのをやめる"""
+    pending.difference_update({role_id for role_id in pending if guild.get_role(role_id)})
+    return len(pending)
 
 
 async def _rollback_channel(channel: discord.TextChannel) -> discord.HTTPException | None:
@@ -108,29 +118,3 @@ async def _rollback_channel(channel: discord.TextChannel) -> discord.HTTPExcepti
         logger.error(f"Failed to roll back channel {channel.name}: {e}", exc_info=True)
         return e
     return None
-
-
-async def _wait_for_role_cache(guild: discord.Guild, role: discord.Role, *, timeout: float) -> None:
-    loop = asyncio.get_running_loop()
-    deadline = loop.time() + timeout
-    while guild.get_role(role.id) is None:
-        if loop.time() >= deadline:
-            logger.warning(f"Role {role.id} did not appear in cache within {timeout}s")
-            return
-        await asyncio.sleep(ROLE_CACHE_POLL_INTERVAL)
-
-
-async def report_creation_problem(
-    ctx: discord.Interaction, outcome: Rejected | Failed, action: str
-) -> None:
-    """作成できなかった理由を本人に返す"""
-    if isinstance(outcome, Rejected):
-        await send_error_message(ctx, outcome.reason)
-        return
-    await handle_command_error(ctx, outcome.error, action)
-    if outcome.leftover_channel is not None:
-        await send_error_message(
-            ctx,
-            f"作成途中の {outcome.leftover_channel.mention} を消せませんでした。"
-            "サーバー管理者に削除を依頼してください。",
-        )

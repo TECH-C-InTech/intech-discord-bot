@@ -150,6 +150,7 @@ async def command_cmd(...):
 - [src/utils/channel\_utils.py](src/utils/channel_utils.py) - Channel operations
 - [src/utils/capacity.py](src/utils/capacity.py) - Discord limits (channels, roles)
 - [src/utils/creation.py](src/utils/creation.py) - Serialized channel and role creation
+- [src/utils/channel\_name.py](src/utils/channel_name.py) - Channel name normalization
 - [src/utils/club\_name.py](src/utils/club_name.py) - Club name validation
 - [src/utils/role\_utils.py](src/utils/role_utils.py) - Role granting
 - [src/utils/records.py](src/utils/records.py) - Log channel and in-channel records

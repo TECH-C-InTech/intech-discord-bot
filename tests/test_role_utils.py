@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import discord
 
-from src.utils.role_utils import grant_role
+from src.utils.role_utils import GrantResult, describe_grant, grant_role
 
 
 def make_member(*roles: discord.Role) -> MagicMock:
@@ -45,3 +45,34 @@ async def test_failed_members_are_separated_and_others_still_get_role() -> None:
 
     assert result.failed == [failing]
     assert result.granted == [other]
+
+
+def mentioned(mention: str) -> MagicMock:
+    member = make_member()
+    member.mention = mention
+    return member
+
+
+def test_description_lists_granted_members() -> None:
+    result = GrantResult(granted=[mentioned("<@1>"), mentioned("<@2>")])
+
+    assert "<@1>, <@2>" in describe_grant(result)
+
+
+def test_description_lists_members_who_already_had_role() -> None:
+    result = GrantResult(already_had=[mentioned("<@3>")])
+
+    assert "既にロールを持っています" in describe_grant(result)
+    assert "<@3>" in describe_grant(result)
+
+
+def test_description_lists_failed_members_with_how_to_fix() -> None:
+    result = GrantResult(failed=[mentioned("<@4>")])
+
+    description = describe_grant(result)
+    assert "<@4>" in description
+    assert "ロールの順位" in description
+
+
+def test_description_is_empty_without_members() -> None:
+    assert describe_grant(GrantResult()) == ""
