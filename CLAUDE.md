@@ -157,6 +157,10 @@ async def command_cmd(...):
 - [src/utils/linking.py](src/utils/linking.py) - Linking channels and roles by number
 - [src/utils/auto\_restore.py](src/utils/auto_restore.py) - Restoring archived channels on posts
 - [src/utils/records.py](src/utils/records.py) - In-channel records
+- [src/utils/channel_actions.py](src/utils/channel_actions.py) - Create / archive / restore / participants, shared by commands and panels
+- [src/utils/panel.py](src/utils/panel.py) - Panels (buttons that keep working after restarts, finding and refreshing the pinned panel)
+- [src/utils/panel\_forms.py](src/utils/panel_forms.py) - Forms opened from panel buttons
+- [src/commands/panel.py](src/commands/panel.py) - `/intech`, `/setup_panel`, and button handling
 
 ## Workflow for Common Tasks
 
