@@ -14,6 +14,7 @@ class Linked:
     kind: Kind
     channel: discord.TextChannel
     role: discord.Role
+    archived: bool = False
 
 
 @dataclass(frozen=True)
@@ -87,14 +88,16 @@ def link_role(
     same_number_roles = _kind_roles_with_number(kind, number, roles)
     if len(same_number_roles) > 1:
         return NotLinked(_mismatch(kind, number, "ロール", len(same_number_roles)))
+    # (チャンネル, アーカイブ中か)。カテゴリは[通常, アーカイブ]の順
     channels = [
-        channel
-        for category in categories.get(kind, [])
+        (channel, index > 0)
+        for index, category in enumerate(categories.get(kind, []))
         for channel in with_number(kind.prefix, number, category.text_channels, _name)
     ]
     if len(channels) != 1:
         return NotLinked(_mismatch(kind, number, "チャンネル", len(channels)))
-    return Linked(kind=kind, channel=channels[0], role=role)
+    channel, archived = channels[0]
+    return Linked(kind=kind, channel=channel, role=role, archived=archived)
 
 
 def locate_channel(

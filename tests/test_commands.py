@@ -33,3 +33,7 @@ def test_channel_commands_are_unified_across_kinds() -> None:
         }
         & names
     )
+
+
+def test_panel_commands_are_registered() -> None:
+    assert {"intech", "setup_panel"} <= registered_command_names()
