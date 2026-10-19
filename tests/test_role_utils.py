@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import discord
 
-from src.utils.role_utils import GrantResult, describe_grant, grant_role
+from src.utils.role_utils import GrantResult, describe_grant, grant_role, with_creator
 
 
 def make_member(*roles: discord.Role) -> MagicMock:
@@ -76,3 +76,23 @@ def test_description_lists_failed_members_with_how_to_fix() -> None:
 
 def test_description_is_empty_without_members() -> None:
     assert describe_grant(GrantResult()) == ""
+
+
+def member_with_id(member_id: int) -> MagicMock:
+    member = make_member()
+    member.id = member_id
+    return member
+
+
+def test_creator_is_added_as_first_participant() -> None:
+    creator = member_with_id(1)
+    other = member_with_id(2)
+
+    assert with_creator([other], creator) == [creator, other]
+
+
+def test_creator_listed_in_members_is_not_duplicated() -> None:
+    creator = member_with_id(1)
+    other = member_with_id(2)
+
+    assert with_creator([other, member_with_id(1)], creator) == [creator, other]

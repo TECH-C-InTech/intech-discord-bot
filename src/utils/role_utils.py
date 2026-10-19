@@ -57,3 +57,10 @@ def describe_grant(result: GrantResult) -> str:
             f"{GRANT_FAILURE_HELP}"
         )
     return "\n".join(parts)
+
+
+def with_creator(
+    members: Sequence[discord.Member], creator: discord.Member
+) -> list[discord.Member]:
+    """作成者を先頭に加えた参加者の一覧を返す（作成者は立てた時点で参加者になる）"""
+    return [creator, *(member for member in members if member.id != creator.id)]

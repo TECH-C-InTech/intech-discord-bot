@@ -24,32 +24,55 @@ def text_of(embed: discord.Embed) -> str:
     return str(embed.to_dict())
 
 
-def test_creation_record_includes_actor_channel_role_and_invited_members() -> None:
-    embed = build_creation_embed(
-        kind="イベント",
-        actor=mentionable("<@1>"),
-        channel=mentionable("<#10>"),
-        role=mentionable("<@&20>"),
-        members=[mentionable("<@2>"), mentionable("<@3>")],
-        failed_members=[],
-    )
-
-    text = text_of(embed)
-    for mention in ["<@1>", "<#10>", "<@&20>", "<@2>", "<@3>"]:
-        assert mention in text
+def field(embed: discord.Embed, name: str) -> str | None:
+    for f in embed.fields:
+        if f.name == name:
+            return f.value
+    return None
 
 
-def test_creation_record_includes_members_who_could_not_get_role() -> None:
-    embed = build_creation_embed(
-        kind="イベント",
-        actor=mentionable("<@1>"),
-        channel=mentionable("<#10>"),
-        role=mentionable("<@&20>"),
-        members=[],
-        failed_members=[mentionable("<@9>")],
-    )
+def creation_embed(**overrides: object) -> discord.Embed:
+    kwargs: dict[str, object] = {
+        "kind": "イベント",
+        "actor": mentionable("<@1>"),
+        "channel": mentionable("<#10>"),
+        "role": mentionable("<@&20>"),
+        "members": [mentionable("<@1>"), mentionable("<@2>")],
+        "failed_members": [],
+        "join_command": "/add_event_role_member",
+    }
+    kwargs.update(overrides)
+    return build_creation_embed(**kwargs)  # type: ignore[arg-type]
 
-    assert "<@9>" in text_of(embed)
+
+def test_creation_record_says_who_started_which_channel() -> None:
+    embed = creation_embed()
+
+    assert embed.title == "新しいイベント"
+    assert embed.description == "<@1> が <#10> を立てました"
+
+
+def test_creation_record_lists_role_and_participants() -> None:
+    embed = creation_embed()
+
+    assert field(embed, "ロール") == "<@&20>"
+    assert field(embed, "参加者") == "<@1>, <@2>"
+
+
+def test_creation_record_lists_members_who_could_not_become_participants() -> None:
+    embed = creation_embed(failed_members=[mentionable("<@9>")])
+
+    assert field(embed, "参加者にできなかった人") == "<@9>"
+
+
+def test_creation_record_tells_how_to_join() -> None:
+    embed = creation_embed()
+
+    join = field(embed, "参加方法")
+    assert join is not None
+    assert "/add_event_role_member" in join
+    # ログチャンネルで読んでも対象が分かるよう、「このチャンネル」ではなくチャンネルを示す
+    assert "<#10>" in join
 
 
 def test_members_added_record_includes_actor_role_and_added_members() -> None:
@@ -59,35 +82,39 @@ def test_members_added_record_includes_actor_role_and_added_members() -> None:
         members=[mentionable("<@2>")],
     )
 
-    text = text_of(embed)
-    for mention in ["<@1>", "<@&20>", "<@2>"]:
-        assert mention in text
+    assert embed.description == "<@1> が <@2> を <@&20> に加えました"
 
 
-def test_archive_notice_includes_actor_and_how_to_restore() -> None:
+def test_archive_notice_says_who_archives_and_how_to_restore() -> None:
     embed = build_archive_notice_embed(
         actor=mentionable("<@1>"), restore_command="/restore_event_channel"
     )
 
-    text = text_of(embed)
-    assert "<@1>" in text
-    assert "/restore_event_channel" in text
+    assert embed.description == "<@1> がアーカイブします"
+    assert field(embed, "復元方法") == "`/restore_event_channel`"
 
 
-def test_archived_log_includes_actor_and_channel() -> None:
-    embed = build_archived_log_embed(actor=mentionable("<@1>"), channel=mentionable("<#10>"))
-
-    text = text_of(embed)
-    assert "<@1>" in text
-    assert "<#10>" in text
+def named_channel(mention: str, name: str) -> MagicMock:
+    channel = mentionable(mention)
+    channel.name = name
+    return channel
 
 
-def test_restored_record_includes_actor_and_channel() -> None:
+def test_archived_log_says_who_archived_and_how_to_restore_that_channel() -> None:
+    embed = build_archived_log_embed(
+        actor=mentionable("<@1>"),
+        channel=named_channel("<#10>", "e012-おでん会"),
+        restore_command="/restore_event_channel",
+    )
+
+    assert embed.description == "<@1> が <#10> をアーカイブしました"
+    assert field(embed, "復元方法") == "`/restore_event_channel channel_name:e012-おでん会`"
+
+
+def test_restored_record_says_who_restored() -> None:
     embed = build_restored_embed(actor=mentionable("<@1>"), channel=mentionable("<#10>"))
 
-    text = text_of(embed)
-    assert "<@1>" in text
-    assert "<#10>" in text
+    assert embed.description == "<@1> が <#10> を復元しました"
 
 
 def make_guild_with_log_channel(name: str = "bot-log") -> tuple[MagicMock, MagicMock]:

@@ -1,7 +1,7 @@
 """記録（ログチャンネルとチャンネル内の記録）の組み立てと送信
 
 記録は読み手ごとに残す。ログチャンネルはサーバー全体向けで誰も通知しない。
-チャンネル内の記録は対象チャンネルの参加者向けで、誘われた人・加えられた人だけを通知する。
+チャンネル内の記録は対象チャンネルの参加者向けで、参加者にした人・加えられた人だけを通知する。
 送信の失敗はコマンドを止めず、warningを出すだけにする。
 """
 
@@ -25,6 +25,13 @@ class Mentionable(Protocol):
     def mention(self) -> str: ...
 
 
+class NamedChannel(Mentionable, Protocol):
+    """メンションでき、名前を持つチャンネル"""
+
+    @property
+    def name(self) -> str: ...
+
+
 def _mentions(items: Sequence[Mentionable]) -> str:
     return ", ".join(item.mention for item in items)
 
@@ -37,20 +44,29 @@ def build_creation_embed(
     role: Mentionable,
     members: Sequence[Mentionable],
     failed_members: Sequence[Mentionable],
+    join_command: str,
 ) -> discord.Embed:
-    """作成の記録（ログチャンネルとチャンネル内の記録で共通）"""
+    """作成の記録（ログチャンネルとチャンネル内の記録で共通）
+
+    ログチャンネルは新しい活動の掲示板も兼ねるため、参加方法を添える。
+    """
     embed = discord.Embed(
-        title=f"{kind}が作成されました",
-        description=f"{channel.mention} と {role.mention}",
+        title=f"新しい{kind}",
+        description=f"{actor.mention} が {channel.mention} を立てました",
         color=discord.Color.green(),
     )
-    embed.add_field(name="作成した人", value=actor.mention, inline=False)
+    embed.add_field(name="ロール", value=role.mention, inline=False)
     if members:
-        embed.add_field(name="誘われた人", value=_mentions(members), inline=False)
+        embed.add_field(name="参加者", value=_mentions(members), inline=False)
     if failed_members:
         embed.add_field(
-            name="ロールを付与できなかった人", value=_mentions(failed_members), inline=False
+            name="参加者にできなかった人", value=_mentions(failed_members), inline=False
         )
+    embed.add_field(
+        name="参加方法",
+        value=f"{channel.mention} で `{join_command} members:@自分`",
+        inline=False,
+    )
     return embed
 
 
@@ -67,27 +83,40 @@ def build_members_added_embed(
 
 def build_archive_notice_embed(*, actor: Mentionable, restore_command: str) -> discord.Embed:
     """アーカイブのチャンネル内の記録（移動の前に投稿する）"""
-    return discord.Embed(
+    embed = discord.Embed(
         title="このチャンネルをアーカイブします",
-        description=f"{actor.mention} の操作です。`{restore_command}` で戻せます。",
+        description=f"{actor.mention} がアーカイブします",
         color=discord.Color.light_grey(),
     )
+    embed.add_field(name="復元方法", value=f"`{restore_command}`", inline=False)
+    return embed
 
 
-def build_archived_log_embed(*, actor: Mentionable, channel: Mentionable) -> discord.Embed:
-    """アーカイブのログ（移動の成功後に送る）"""
-    return discord.Embed(
-        title="チャンネルがアーカイブされました",
-        description=f"{channel.mention}（{actor.mention} がアーカイブ）",
+def build_archived_log_embed(
+    *, actor: Mentionable, channel: NamedChannel, restore_command: str
+) -> discord.Embed:
+    """アーカイブのログ（移動の成功後に送る）
+
+    ログチャンネルから復元するにはチャンネルの指定が要るため、復元方法に名前まで書く。
+    """
+    embed = discord.Embed(
+        title="アーカイブ",
+        description=f"{actor.mention} が {channel.mention} をアーカイブしました",
         color=discord.Color.light_grey(),
     )
+    embed.add_field(
+        name="復元方法",
+        value=f"`{restore_command} channel_name:{channel.name}`",
+        inline=False,
+    )
+    return embed
 
 
 def build_restored_embed(*, actor: Mentionable, channel: Mentionable) -> discord.Embed:
     """復元の記録（ログチャンネルとチャンネル内の記録で共通）"""
     return discord.Embed(
-        title="チャンネルが復元されました",
-        description=f"{channel.mention}（{actor.mention} が復元）",
+        title="復元",
+        description=f"{actor.mention} が {channel.mention} を復元しました",
         color=discord.Color.green(),
     )
 

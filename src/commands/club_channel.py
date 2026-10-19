@@ -27,7 +27,7 @@ from ..utils.records import (
     post_channel_record,
     post_log,
 )
-from ..utils.role_utils import describe_grant, grant_role
+from ..utils.role_utils import describe_grant, grant_role, with_creator
 from ..utils.validation_utils import (
     parse_member_mentions,
     parse_role_mention,
@@ -118,7 +118,13 @@ async def create_club_channel_impl(
         return
 
     channel, role = outcome.channel, outcome.role
-    grant = await grant_role(member_objects, role)
+    # 立てた人は、その時点で参加者になる
+    participants = (
+        with_creator(member_objects, ctx.user)
+        if isinstance(ctx.user, discord.Member)
+        else member_objects
+    )
+    grant = await grant_role(participants, role)
 
     description = f"{channel.mention} と {role.mention} を作成しました"
     grant_description = describe_grant(grant)
@@ -146,9 +152,12 @@ async def create_club_channel_impl(
             role=role,
             members=grant.granted,
             failed_members=grant.failed,
+            join_command="/add_club_role_member",
         )
 
-    await post_channel_record(channel, record(), mention_users=grant.granted)
+    # 立てた本人には通知しない
+    invited = [member for member in grant.granted if member.id != ctx.user.id]
+    await post_channel_record(channel, record(), mention_users=invited)
     await post_log(guild, config.log_channel_name, record())
 
 

@@ -314,6 +314,8 @@ if reason is not None:
 
 メンバーにロールを付与し、`GrantResult(granted, already_had, failed)`を返す。失敗した人がいても残りの人への付与は続ける。
 
+`with_creator(members, creator)`は作成者を先頭に加えた参加者の一覧を返す（重複は除く）。作成コマンドはこれを`grant_role`に渡し、立てた本人も参加者にする。
+
 `describe_grant(result)`は結果を本人への返信用の説明文にする。付与できなかった人がいれば、botのロールの順位と「ロールの管理」権限を確かめる案内も添える。メンバー追加で誰にも付与できなかった場合は、成功ではなくエラーとして返す。
 
 ## 記録
@@ -324,10 +326,10 @@ if reason is not None:
 
 ### 組み立て
 
-- `build_creation_embed(...)` - 作成（ログ・チャンネル内で共通）
+- `build_creation_embed(...)` - 作成（ログ・チャンネル内で共通。参加方法の項目つき）
 - `build_members_added_embed(...)` - メンバー追加（チャンネル内）
 - `build_archive_notice_embed(...)` - アーカイブ（チャンネル内、移動の前に投稿）
-- `build_archived_log_embed(...)` - アーカイブ（ログ、移動の成功後）
+- `build_archived_log_embed(...)` - アーカイブ（ログ、移動の成功後。チャンネル名つきの復元方法の項目つき）
 - `build_restored_embed(...)` - 復元（ログ・チャンネル内で共通）
 
 ### 送信
