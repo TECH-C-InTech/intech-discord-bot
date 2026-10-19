@@ -16,28 +16,6 @@
 
 **場所**: [src/utils/validation_utils.py](../src/utils/validation_utils.py)
 
-### `validate_channel_in_category(ctx, channel, category_name)`
-
-チャンネルが指定されたカテゴリーに属しているかチェック。
-
-**パラメータ**:
-- `ctx: discord.Interaction` - Discord インタラクション
-- `channel: discord.TextChannel` - チェックするチャンネル
-- `category_name: str` - カテゴリー名
-
-**戻り値**:
-- `bool` - チャンネルがカテゴリーに属しているか
-
-**使用例**:
-```python
-from src.utils.validation_utils import validate_channel_in_category
-
-valid = await validate_channel_in_category(ctx, ctx.channel, "event")
-if not valid:
-    # エラーメッセージは自動表示
-    return
-```
-
 ### `parse_member_mentions(ctx, members_str, guild)`
 
 メンション文字列を解析して`discord.Member`オブジェクトのリストに変換。
@@ -195,35 +173,20 @@ else:
 
 **場所**: [src/utils/channel_utils.py](../src/utils/channel_utils.py)
 
-### `get_next_event_index(guild, event_category_name, archive_event_category_name)`
+### `get_next_number(guild, kind, category_names)`
 
-次のイベントチャンネルのインデックスを取得。
+種類（`Kind`）の次の番号を返す。`category_names`は`config.category_names(kind)`（通常とアーカイブのカテゴリ名）。そのカテゴリのチャンネル名とすべてのロール名から番号を読み、最大＋1を返す。999を使い切っていたら`None`。
 
-**パラメータ**:
-- `guild: discord.Guild` - Discordサーバー
-- `event_category_name: str` - イベントカテゴリー名
-- `archive_event_category_name: str` - アーカイブカテゴリー名
-
-**戻り値**:
-- `int` - 次のインデックス番号（最小値: 1）
-
-**使用例**:
 ```python
-from src.utils.channel_utils import get_next_event_index
-from src.utils.channel_config import ChannelConfig
+from src.utils.channel_utils import get_next_number
 
-config = await ChannelConfig.load(ctx)
-index = get_next_event_index(ctx.guild, config.event_category_name, config.archive_event_category_name)
-channel_name = f"e{index:03d}-{event_name}"
+number = get_next_number(guild, kind, config.category_names(kind))
+if number is None:
+    return Rejected(NUMBERS_EXHAUSTED)
+channel_name = kind.channel_name(number, name)
 ```
 
-**アルゴリズム**:
-1. イベントカテゴリーとアーカイブカテゴリーの両方をスキャン
-2. 正規表現 `r"^e(\d{3})-"` でインデックスを抽出（3桁0埋め）
-3. 最大値 + 1 を返す（最小値は1）
-4. アーカイブ/復元操作間で衝突を回避
-
-詳細は [ARCHITECTURE.md](./ARCHITECTURE.md#イベントチャンネルのインデックス管理) を参照。
+詳細は [ARCHITECTURE.md](./ARCHITECTURE.md#採番) を参照。
 
 ### `resolve_target_text_channel(channel)`
 
@@ -302,17 +265,29 @@ if reason is not None:
     return
 ```
 
+### `Kind` / `kind_of_role_name(name)`
+
+**場所**: [src/utils/kinds.py](../src/utils/kinds.py)
+
+クラブ・イベント・プロジェクトの違い（頭文字、ラベル、ロール名の形、ロール名の付け方）をまとめた型と、その定数`CLUB` / `EVENT` / `PROJECT`。`kind.channel_name(5, "ラーメン")`は`c005-ラーメン`、`kind.role_name(チャンネル名)`は種類に応じたロール名を返す。`kind_of_role_name(name)`はロール名の形から種類を返す（どれでもなければ`None`）。
+
+### `link_role(role, roles, categories)` / `link_channel(channel, roles, categories)` / `locate_channel(channel, categories)`
+
+**場所**: [src/utils/linking.py](../src/utils/linking.py)
+
+番号でチャンネルとロールを結びつける。`categories`は種類ごとの`[通常のカテゴリ, アーカイブカテゴリ]`。結びつけば`Linked(kind, channel, role)`、できなければ本人に見せる理由つきの`NotLinked(reason)`を返す。`locate_channel`はチャンネルの種類とアーカイブ中かどうか（`Located(kind, archived)`）を返す。
+
 ### `next_number(prefix, names)` / `number_of(prefix, name)`
 
 **場所**: [src/utils/numbering.py](../src/utils/numbering.py)
 
 番号の採番と読み取り。`next_number("c", names)`は、`cNNN-`で始まる名前の最大の番号に1を足す（欠番は埋めない）。`number_of("c", "c005-ラーメン")`は`5`を返し、番号がなければ`None`を返す。
 
-### `sort_category(guild, *, category_id, prefix)` / `sorted_channel_positions(prefix, channels)`
+### `move_channel(channel, destination, kind)` / `sort_category(guild, *, category_id, prefix)` / `sorted_channel_positions(prefix, channels)`
 
 **場所**: [src/utils/channel_order.py](../src/utils/channel_order.py)
 
-カテゴリ内のテキストチャンネルを番号順に並べ直す。`sorted_channel_positions`は (ID, 名前, 位置) から変わる位置だけを返す純粋関数。並べ方は [ARCHITECTURE.md](./ARCHITECTURE.md#チャンネルの並び) を参照。
+`move_channel`はチャンネルをカテゴリへ移し（権限は移動先に同期）、移動先をその種類の番号順に並べ直す。移動の失敗は例外になり、並べ直しの失敗は無視する。`sort_category`はカテゴリ内のテキストチャンネルを番号順に並べ直す。`sorted_channel_positions`は (ID, 名前, 位置) から変わる位置だけを返す純粋関数。並べ方は [ARCHITECTURE.md](./ARCHITECTURE.md#チャンネルの並び) を参照。
 
 ### `target_role_position(kind, roles)`
 
@@ -320,7 +295,7 @@ if reason is not None:
 
 作成したロールを動かす先の位置を返す純粋関数。`roles`は作成したロール以外の`(名前, 位置)`。並べ方は [ARCHITECTURE.md](./ARCHITECTURE.md#ロールの並び) を参照。
 
-### `grant_role(members, role)`
+### `grant_role(members, role)` / `revoke_role(members, role)`
 
 **場所**: [src/utils/role_utils.py](../src/utils/role_utils.py)
 
@@ -328,7 +303,9 @@ if reason is not None:
 
 `with_creator(members, creator)`は作成者を先頭に加えた参加者の一覧を返す（重複は除く）。作成コマンドはこれを`grant_role`に渡し、立てた本人も参加者にする。
 
-`describe_grant(result)`は結果を本人への返信用の説明文にする。付与できなかった人がいれば、botのロールの順位と「ロールの管理」権限を確かめる案内も添える。メンバー追加で誰にも付与できなかった場合は、成功ではなくエラーとして返す。
+`describe_grant(result)`は結果を本人への返信用の説明文にする。付与できなかった人がいれば、botのロールの順位と「ロールの管理」権限を確かめる案内も添える。参加者の追加で誰にも付与できなかった場合は、成功ではなくエラーとして返す。
+
+`revoke_role(members, role)`はメンバーからロールを外し、`RevokeResult(revoked, did_not_have, failed)`を返す。説明文は`describe_revoke(result)`。
 
 ## 記録
 
@@ -338,8 +315,9 @@ if reason is not None:
 
 ### 組み立て
 
-- `build_creation_embed(...)` - 作成（ログ・チャンネル内で共通。参加方法の項目つき）
-- `build_members_added_embed(...)` - メンバー追加（チャンネル内）
+- `build_creation_embed(...)` - 作成（チャンネル内。参加方法の項目つき）
+- `build_members_added_embed(...)` - 参加者の追加（チャンネル内）
+- `build_members_removed_embed(...)` - 参加者の削除（チャンネル内。外された人は通知しないので`mention_users`を渡さない）
 - `build_archive_notice_embed(...)` - アーカイブ（チャンネル内、移動の前に投稿）
 - `build_restored_embed(...)` - 復元（チャンネル内、移動の後）
 
@@ -370,18 +348,18 @@ if reason is not None:
 from src.utils.command_metadata import command_meta
 
 @command_meta(
-    category="イベント管理",
-    icon="📅",
-    short_description="新しいイベントチャンネルを作成",
+    category="チャンネル管理",
+    icon="🏗️",
+    short_description="クラブ・イベント・プロジェクトのチャンネルとロールを作成",
     restrictions="• どのチャンネル・スレッドからでも実行可能",
     examples=[
-        "`/create_event_channel name:ハッカソン`",
-        "`/create_event_channel name:勉強会 members:@user1 @user2`",
+        "`/create_channel category:イベント channel_name:ハッカソン`",
+        "`/create_channel category:イベント channel_name:勉強会 members:@user1 @user2`",
     ],
     notes="チャンネル名は50文字以内で指定してください",
 )
-@tree.command(name="create_event_channel", description="イベントチャンネルを作成")
-async def create_event_channel_cmd(ctx: discord.Interaction, name: str, members: str = None):
+@tree.command(name="create_channel", description="チャンネルを作成")
+async def create_channel_cmd(ctx: discord.Interaction, category: str, channel_name: str):
     # コマンドの実装
 ```
 
@@ -406,6 +384,9 @@ event_category = config.event_category_name
 archive_category = config.archive_event_category_name
 project_category = config.project_category_name
 club_category = config.club_category_name
+
+# 種類から (通常のカテゴリ名, アーカイブカテゴリ名) を引く
+own_name, archive_name = config.category_names(kind)
 ```
 
 **プロパティ** (主要):
@@ -414,6 +395,7 @@ club_category = config.club_category_name
 - `project_category_name: str` - プロジェクトカテゴリー名
 - `archive_project_category_name: str` - プロジェクトアーカイブカテゴリー名
 - `club_category_name: str` - クラブカテゴリー名
+- `archive_club_category_name: str` - クラブアーカイブカテゴリー名
 
 **特徴**:
 - 非同期ロード (`await ChannelConfig.load(ctx)`)

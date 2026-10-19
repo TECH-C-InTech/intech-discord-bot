@@ -90,12 +90,11 @@ uv run bot.py
 |---------|------|
 | `/help` | コマンド一覧を表示 |
 | `/docs [command]` | コマンドの詳細ドキュメントを表示 |
-| `/create_event_channel <name> [members]` | イベントチャンネルとロールを作成 |
-| `/archive_event_channel [name]` | イベントチャンネルをアーカイブ |
-| `/restore_event_channel [name]` | アーカイブされたチャンネルを復元 |
-| `/add_event_role_member <members> [role_name]` | イベントロールにメンバーを追加 |
-| `/create_club_channel <name> [members]` | クラブチャンネルとロールを作成 |
-| `/add_club_role_member <members> [role_name]` | クラブロールにメンバーを追加 |
+| `/create_channel <category> <channel_name> [members]` | クラブ・イベント・プロジェクトのチャンネルとロールを作成 |
+| `/archive_channel [channel]` | チャンネルをアーカイブ |
+| `/restore_channel [channel]` | アーカイブされたチャンネルを復元 |
+| `/add_role_members <members> [role]` | ロールに参加者を追加 |
+| `/remove_role_members <members> [role]` | ロールから参加者を外す |
 | `/show_role_members <role_name> [visibility]` | ロールのメンバー一覧を表示 |
 
 > 💡 各コマンドの詳細は `/docs command:コマンド名` で確認できます
@@ -121,6 +120,7 @@ uv run bot.py
 ### クラブチャンネル管理
 
 - `CLUB_CATEGORY_NAME`: クラブカテゴリー名
+- `ARCHIVE_CLUB_CATEGORY_NAME`: クラブのアーカイブカテゴリー名
 
 ### 開発環境（任意）
 

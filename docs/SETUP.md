@@ -53,6 +53,7 @@ ARCHIVE_EVENT_CATEGORY_NAME=archived
 PROJECT_CATEGORY_NAME=project
 ARCHIVE_PROJECT_CATEGORY_NAME=archived-project
 CLUB_CATEGORY_NAME=clubs
+ARCHIVE_CLUB_CATEGORY_NAME=archived-clubs
 ```
 
 > **Note**: Bot Tokenは管理者（@KorRyu3 or @nka21）に問い合わせてください
@@ -69,6 +70,7 @@ CLUB_CATEGORY_NAME=clubs
 | `PROJECT_CATEGORY_NAME` | プロジェクトチャンネルを作成するカテゴリー名 | `project` |
 | `ARCHIVE_PROJECT_CATEGORY_NAME` | プロジェクトのアーカイブ先のカテゴリー名 | `archived-project` |
 | `CLUB_CATEGORY_NAME` | クラブチャンネルを作成するカテゴリー名 | `clubs` |
+| `ARCHIVE_CLUB_CATEGORY_NAME` | クラブのアーカイブ先のカテゴリー名 | `archived-clubs` |
 
 ## Discord サーバーの設定
 
@@ -81,8 +83,9 @@ CLUB_CATEGORY_NAME=clubs
 3. `project` - プロジェクトチャンネル用
 4. `archived-project` - プロジェクトのアーカイブ用
 5. `clubs` - クラブチャンネル用
+6. `archived-clubs` - クラブのアーカイブ用
 
-botは各カテゴリのチャンネルに記録を投稿するため、上のカテゴリすべてでbotが閲覧・送信・埋め込みリンクできるようにしてください。
+アーカイブ用のカテゴリは種類ごとに分けてください（アーカイブ後に種類の番号順で並べ直すため）。botは各カテゴリのチャンネルに記録を投稿するため、上のカテゴリすべてでbotが閲覧・送信・埋め込みリンクできるようにしてください。
 
 ### 構造例
 

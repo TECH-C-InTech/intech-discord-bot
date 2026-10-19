@@ -62,7 +62,7 @@ flyctl status                    # Check deployment status
   - 作成と上限チェック、記録
   - ロギングパターン
 
-- **[docs/CLUB_CHANNEL.md](docs/CLUB_CHANNEL.md)** - クラブチャンネル
+- **[docs/CHANNELS.md](docs/CHANNELS.md)** - チャンネル管理（クラブ・イベント・プロジェクト）
   - 番号でのチャンネルとロールの紐づけ
 
 - **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** - 開発ワークフロー
@@ -151,8 +151,10 @@ async def command_cmd(...):
 - [src/utils/creation.py](src/utils/creation.py) - Serialized channel and role creation
 - [src/utils/numbering.py](src/utils/numbering.py) - Numbering (c001 / e001 / p001)
 - [src/utils/role\_order.py](src/utils/role_order.py) - Placement of created roles
-- [src/utils/channel\_order.py](src/utils/channel_order.py) - Sorting channels in a category by number
-- [src/utils/role\_utils.py](src/utils/role_utils.py) - Role granting
+- [src/utils/channel\_order.py](src/utils/channel_order.py) - Moving channels and sorting a category by number
+- [src/utils/role\_utils.py](src/utils/role_utils.py) - Role granting and revoking
+- [src/utils/kinds.py](src/utils/kinds.py) - Differences between club / event / project
+- [src/utils/linking.py](src/utils/linking.py) - Linking channels and roles by number
 - [src/utils/records.py](src/utils/records.py) - In-channel records
 
 ## Workflow for Common Tasks
@@ -186,7 +188,7 @@ async def command_cmd(...):
    - Architecture changes → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
    - Utility changes → [docs/UTILITIES.md](docs/UTILITIES.md)
    - Command patterns → [docs/ADD_COMMAND.md](docs/ADD_COMMAND.md)
-   - Club channels → [docs/CLUB_CHANNEL.md](docs/CLUB_CHANNEL.md)
+   - Channel commands → [docs/CHANNELS.md](docs/CHANNELS.md)
    - Terms → [CONTEXT.md](CONTEXT.md)
    - Workflow changes → [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
 
