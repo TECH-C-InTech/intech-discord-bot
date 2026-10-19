@@ -101,7 +101,11 @@ def build_archive_notice_embed(*, actor: Mentionable, restore_command: str) -> d
         description=f"{actor.mention} がこのチャンネルをアーカイブしました",
         color=discord.Color.light_grey(),
     )
-    embed.add_field(name="復元方法", value=f"`{restore_command}`", inline=False)
+    embed.add_field(
+        name="復元方法",
+        value=f"このチャンネルに投稿すると自動で戻ります（手動なら`{restore_command}`）",
+        inline=False,
+    )
     return embed
 
 
@@ -110,6 +114,15 @@ def build_restored_embed(*, actor: Mentionable, channel: Mentionable) -> discord
     return discord.Embed(
         title="復元",
         description=f"{actor.mention} が {channel.mention} を復元しました",
+        color=discord.Color.green(),
+    )
+
+
+def build_restored_by_post_embed(*, author: Mentionable) -> discord.Embed:
+    """投稿をきっかけにした自動復元のチャンネル内の記録（投稿した本人はそこにいるので通知しない）"""
+    return discord.Embed(
+        title="復元",
+        description=f"{author.mention} の投稿で復元しました",
         color=discord.Color.green(),
     )
 

@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 
 from keep_alive import run_server_async
 from src.commands import setup_all_commands
+from src.utils.auto_restore import restore_on_post
+from src.utils.channel_config import ChannelConfig
 
 logger = getLogger(__name__)
 basicConfig(level="INFO")
@@ -64,6 +66,19 @@ async def on_ready():
 
     except Exception as e:
         logger.error(f"❌ Failed to sync commands: {e}")
+
+
+# チャンネルごとの、投稿をきっかけにした復元を直列化するLock
+auto_restore_locks: dict[int, asyncio.Lock] = {}
+
+
+@client.event
+async def on_message(message: discord.Message):
+    """アーカイブ中のチャンネルに人が投稿したら、元のカテゴリへ戻す"""
+    config = ChannelConfig.get_instance()
+    if config is None:
+        return
+    await restore_on_post(message, config.category_names, locks=auto_restore_locks)
 
 
 async def run_bot():
