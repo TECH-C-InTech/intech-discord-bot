@@ -240,7 +240,9 @@ async def archive_channel_impl(
     # アーカイブ先ではbotが送信できない可能性があるため、移動の前に記録を残す
     notice = await post_channel_record(
         target,
-        build_archive_notice_embed(actor=ctx.user, restore_command="/restore_channel"),
+        build_archive_notice_embed(
+            actor=ctx.user, restore_command="/restore_channel", restore_to=own_name
+        ),
     )
 
     try:

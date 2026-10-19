@@ -146,7 +146,9 @@ async def test_restore_is_recorded_without_notifying() -> None:
     sent = channel.send.await_args.kwargs
     assert sent["content"] is None
     assert sent["embed"].title == "復元"
-    assert sent["embed"].description == "<@7> の投稿で復元しました"
+    assert sent["embed"].description == (
+        "<@7> がメッセージを送ったので、`events` カテゴリーに戻しました"
+    )
 
 
 async def test_channel_already_restored_by_earlier_post_is_left_alone() -> None:
@@ -200,9 +202,10 @@ async def test_full_destination_keeps_channel_archived_and_replies_why() -> None
     await restore_on_post(message, names_of, locks={})
 
     channel.edit.assert_not_called()
-    reply = message.reply.await_args.args[0]
-    assert "上限" in reply
-    assert "管理者" in reply
+    assert message.reply.await_args.args[0] == (
+        "`events` カテゴリーがチャンネル数の上限（50）に達しているため、"
+        "このチャンネルを戻せませんでした。サーバー管理者に連絡してください。"
+    )
 
 
 async def test_failed_move_is_not_raised_or_recorded() -> None:

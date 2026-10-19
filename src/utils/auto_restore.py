@@ -6,7 +6,7 @@ from logging import getLogger
 
 import discord
 
-from .capacity import check_move_capacity
+from .capacity import CATEGORY_CHANNEL_LIMIT, check_move_capacity
 from .channel_order import move_channel
 from .channel_utils import resolve_target_text_channel
 from .kinds import Kind
@@ -81,8 +81,8 @@ async def restore_on_post(
             logger.warning(f"Could not restore {channel.name} on post: {reason}")
             await _reply_quietly(
                 message,
-                f"{reason}\nそのため、このチャンネルを{kind.label}カテゴリーに戻せませんでした。"
-                "サーバー管理者に連絡してください。",
+                f"`{own.name}` カテゴリーがチャンネル数の上限（{CATEGORY_CHANNEL_LIMIT}）に"
+                "達しているため、このチャンネルを戻せませんでした。サーバー管理者に連絡してください。",
             )
             return
         try:
@@ -91,7 +91,9 @@ async def restore_on_post(
             logger.warning(f"Failed to restore {channel.name} on post: {e}")
             return
     logger.info(f"Restored {kind.key} channel {channel.name} on post by {message.author}")
-    await post_channel_record(channel, build_restored_by_post_embed(author=message.author))
+    await post_channel_record(
+        channel, build_restored_by_post_embed(author=message.author, restored_to=own.name)
+    )
 
 
 async def _reply_quietly(message: discord.Message, text: str) -> None:
