@@ -153,7 +153,9 @@ async def create_event_channel_impl(
             join_command="/add_event_role_member",
         )
 
-    await post_channel_record(channel, record(), mention_users=grant.granted)
+    await post_channel_record(
+        channel, record(), mention_users=grant.granted, mention_label="参加者"
+    )
     await post_log(guild, config.log_channel_name, record())
 
 
@@ -461,6 +463,7 @@ async def add_event_role_member_impl(
             event_channel,
             build_members_added_embed(actor=ctx.user, role=role, members=grant.granted),
             mention_users=grant.granted,
+            mention_label="新しい参加者",
         )
 
 

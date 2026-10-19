@@ -155,7 +155,9 @@ async def create_club_channel_impl(
             join_command="/add_club_role_member",
         )
 
-    await post_channel_record(channel, record(), mention_users=grant.granted)
+    await post_channel_record(
+        channel, record(), mention_users=grant.granted, mention_label="参加者"
+    )
     await post_log(guild, config.log_channel_name, record())
 
 
@@ -265,6 +267,7 @@ async def add_club_role_member_impl(
             club_channel,
             build_members_added_embed(actor=ctx.user, role=role, members=grant.granted),
             mention_users=grant.granted,
+            mention_label="新しい参加者",
         )
 
 

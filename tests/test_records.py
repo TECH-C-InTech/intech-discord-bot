@@ -235,3 +235,15 @@ def test_log_channel_check_uses_normalized_name() -> None:
     with_bot_permissions(log_channel, view_channel=True, send_messages=True, embed_links=True)
 
     assert find_log_channel_problems(guild, "Bot Log") == []
+
+
+async def test_channel_record_labels_mentions_so_notifications_make_sense() -> None:
+    channel = make_channel()
+    invited = MagicMock(spec=discord.Member)
+    invited.mention = "<@2>"
+
+    await post_channel_record(
+        channel, discord.Embed(title="x"), [invited], mention_label="参加者"
+    )
+
+    assert channel.send.await_args.kwargs["content"] == "参加者: <@2>"

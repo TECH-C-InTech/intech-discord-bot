@@ -142,15 +142,21 @@ async def post_channel_record(
     channel: discord.abc.Messageable,
     embed: discord.Embed,
     mention_users: Sequence[discord.abc.User] = (),
+    *,
+    mention_label: str | None = None,
 ) -> discord.Message | None:
     """対象チャンネルに記録を送る
 
     Embed内のメンションは通知されないため、通知したい人は本文でメンションする。
+    プッシュ通知には本文だけが出るため、mention_labelで何の通知かを添える
+    （例: 「参加者: @a @b」）。
 
     Returns:
         送信したメッセージ（後で消せるように）。送れなかった場合はNone
     """
     content = " ".join(user.mention for user in mention_users) or None
+    if content is not None and mention_label:
+        content = f"{mention_label}: {content}"
     allowed_mentions = discord.AllowedMentions(
         everyone=False, users=list(mention_users), roles=False
     )
