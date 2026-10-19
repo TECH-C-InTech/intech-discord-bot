@@ -164,3 +164,19 @@ async def test_deleting_record_reports_failure_without_raising() -> None:
     message.delete = AsyncMock(side_effect=http_error())
 
     assert await delete_record(message) is False
+
+
+def long_mentions(count: int) -> list[MagicMock]:
+    # 18桁のIDのメンション（例: <@123456789012345678>）
+    return [mentionable(f"<@{100000000000000000 + i}>") for i in range(count)]
+
+
+def test_participant_fields_stay_within_discord_field_limit() -> None:
+    members = long_mentions(45)
+
+    embed = creation_embed(members=members)
+
+    participant_fields = [f for f in embed.fields if f.name and f.name.startswith("参加者")]
+    assert all(len(f.value or "") <= 1024 for f in participant_fields)
+    joined = ", ".join(f.value or "" for f in participant_fields)
+    assert all(m.mention in joined for m in members)

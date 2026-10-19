@@ -13,6 +13,8 @@ import discord
 
 logger = getLogger(__name__)
 
+EMBED_FIELD_VALUE_LIMIT = 1024
+
 
 class Mentionable(Protocol):
     """メンションできるもの（メンバー、チャンネル、ロール）"""
@@ -23,6 +25,23 @@ class Mentionable(Protocol):
 
 def _mentions(items: Sequence[Mentionable]) -> str:
     return ", ".join(item.mention for item in items)
+
+
+def _add_mention_fields(embed: discord.Embed, name: str, items: Sequence[Mentionable]) -> None:
+    """メンションの一覧を、Embedの項目の上限（1024文字）に収まるよう分けて足す"""
+    chunks: list[list[str]] = []
+    length = 0
+    for item in items:
+        mention = item.mention
+        if chunks and length + len(", ") + len(mention) <= EMBED_FIELD_VALUE_LIMIT:
+            chunks[-1].append(mention)
+            length += len(", ") + len(mention)
+        else:
+            chunks.append([mention])
+            length = len(mention)
+    for index, chunk in enumerate(chunks, start=1):
+        label = name if index == 1 else f"{name}（{index}）"
+        embed.add_field(name=label, value=", ".join(chunk), inline=False)
 
 
 def build_creation_embed(
@@ -42,12 +61,8 @@ def build_creation_embed(
         color=discord.Color.green(),
     )
     embed.add_field(name="ロール", value=role.mention, inline=False)
-    if members:
-        embed.add_field(name="参加者", value=_mentions(members), inline=False)
-    if failed_members:
-        embed.add_field(
-            name="参加者にできなかった人", value=_mentions(failed_members), inline=False
-        )
+    _add_mention_fields(embed, "参加者", members)
+    _add_mention_fields(embed, "参加者にできなかった人", failed_members)
     embed.add_field(
         name="参加方法",
         value=f"{channel.mention} で `{join_command}` を実行し、`members` に自分をメンションする",
