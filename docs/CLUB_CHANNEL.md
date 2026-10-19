@@ -9,9 +9,9 @@
 - **チャンネルとロールの一括作成**: 1つのコマンドでチャンネルとロールを同時に作成
 - **どこからでも作成**: 承認不要。どのチャンネル・スレッドからでも実行可能
 - **メンバー管理**: 作成時または後からメンバーをロールに追加可能
-- **名前の衝突チェック**: 同名チャンネル、既存ロール、番号の形式（`e001`など）、ログチャンネル名と衝突する名前を拒否
+- **名前の衝突チェック**: 同名チャンネル、既存ロール、番号の形式（`e001`など）と衝突する名前を拒否
 - **上限チェック**: カテゴリ・サーバーのチャンネル数やロール数が上限なら作成しない
-- **記録**: 作成はログチャンネルと対象チャンネルに、メンバー追加は対象チャンネルに残す（[ARCHITECTURE.md](./ARCHITECTURE.md#記録の出し先)）
+- **記録**: 作成とメンバー追加をクラブのチャンネル内に残す（[ARCHITECTURE.md](./ARCHITECTURE.md#記録の出し先)）
 
 ## 🏗️ アーキテクチャ
 
@@ -40,7 +40,6 @@ src/utils/
 ```bash
 # クラブチャンネル管理用の設定
 CLUB_CATEGORY_NAME="clubs"                    # クラブチャンネルを作成するカテゴリー名
-LOG_CHANNEL_NAME="discordbot-intech-log"      # 記録を残すログチャンネル名
 ```
 
 ## 💡 使い方
@@ -107,7 +106,7 @@ sequenceDiagram
     Note over Bot: Lockを解放
     Bot->>Discord: メンバーにロール付与
     Bot->>User: 結果（本人にだけ表示）
-    Bot->>Discord: チャンネル内とログチャンネルに記録
+    Bot->>Discord: チャンネル内に記録
 ```
 
 ### 名前の衝突チェックの仕組み
@@ -115,7 +114,6 @@ sequenceDiagram
 クラブはチャンネルとロールを**名前で**結びつけます。そのため、既存の権限つきロールと同じ名前のクラブを作れると、`/add_club_role_member`でそのロールを自分に付与できてしまいます。これを防ぐため、`validate_club_name`（`src/utils/club_name.py`）で次の名前を拒否します。
 
 - 番号の形式（`e001`、`c012-x`など）
-- ログチャンネル名
 - 既存のロール名
 - **clubsカテゴリ内**の同名チャンネル
 
@@ -211,7 +209,7 @@ async def add_club_role_member(
 | **記録** | ✅ | ✅ |
 | **アーカイブ機能** | ✅ | ❌ |
 | **復元機能** | ✅ | ❌ |
-| **名前の衝突チェック** | 番号で採番するため不要 | 同名チャンネル・既存ロール・番号形式・ログチャンネル名 |
+| **名前の衝突チェック** | 番号で採番するため不要 | 同名チャンネル・既存ロール・番号形式 |
 
 **設計思想の違い:**
 - **イベント**: 一時的な活動、インデックスで管理、アーカイブ可能
@@ -239,7 +237,6 @@ async def add_club_role_member(
    ```python
    reason = validate_club_name(
        name,
-       log_channel_name=config.log_channel_name,
        existing_role_names=[role.name for role in guild.roles],
        existing_channel_names=[ch.name for ch in category_channel.text_channels],
    )

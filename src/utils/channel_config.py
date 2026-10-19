@@ -23,7 +23,6 @@ class ChannelConfig:
         project_category_name: プロジェクトチャンネルを作成するカテゴリー名
         archive_project_category_name: プロジェクトのアーカイブ先カテゴリー名
         club_category_name: クラブチャンネルを作成するカテゴリー名
-        log_channel_name: 記録を残すログチャンネル名
     """
 
     event_category_name: str
@@ -31,7 +30,6 @@ class ChannelConfig:
     project_category_name: str
     archive_project_category_name: str
     club_category_name: str
-    log_channel_name: str
 
     # クラス変数: シングルトンインスタンス
     _instance: ClassVar[Optional["ChannelConfig"]] = None
@@ -99,8 +97,7 @@ class ChannelConfig:
             f"archive_event='{self.archive_event_category_name}', "
             f"project='{self.project_category_name}', "
             f"archive_project='{self.archive_project_category_name}', "
-            f"club='{self.club_category_name}', "
-            f"log='{self.log_channel_name}')"
+            f"club='{self.club_category_name}')"
         )
 
 
@@ -111,7 +108,6 @@ ENV_VARS = {
     "project_category_name": "PROJECT_CATEGORY_NAME",
     "archive_project_category_name": "ARCHIVE_PROJECT_CATEGORY_NAME",
     "club_category_name": "CLUB_CATEGORY_NAME",
-    "log_channel_name": "LOG_CHANNEL_NAME",
 }
 
 

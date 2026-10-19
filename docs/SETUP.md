@@ -53,7 +53,6 @@ ARCHIVE_EVENT_CATEGORY_NAME=archived
 PROJECT_CATEGORY_NAME=project
 ARCHIVE_PROJECT_CATEGORY_NAME=archived-project
 CLUB_CATEGORY_NAME=clubs
-LOG_CHANNEL_NAME=discordbot-intech-log
 ```
 
 > **Note**: Bot Tokenは管理者（@KorRyu3 or @nka21）に問い合わせてください
@@ -70,7 +69,6 @@ LOG_CHANNEL_NAME=discordbot-intech-log
 | `PROJECT_CATEGORY_NAME` | プロジェクトチャンネルを作成するカテゴリー名 | `project` |
 | `ARCHIVE_PROJECT_CATEGORY_NAME` | プロジェクトのアーカイブ先のカテゴリー名 | `archived-project` |
 | `CLUB_CATEGORY_NAME` | クラブチャンネルを作成するカテゴリー名 | `clubs` |
-| `LOG_CHANNEL_NAME` | 記録を残すログチャンネル名 | `discordbot-intech-log` |
 
 ## Discord サーバーの設定
 
@@ -84,11 +82,7 @@ LOG_CHANNEL_NAME=discordbot-intech-log
 4. `archived-project` - プロジェクトのアーカイブ用
 5. `clubs` - クラブチャンネル用
 
-### チャンネル
-
-1. `discordbot-intech-log` - ログチャンネル。メンバー全員が閲覧でき、botが閲覧・送信・埋め込みリンクできるようにする
-
-botは各カテゴリのチャンネルにも記録を投稿するため、上のカテゴリすべてでbotが閲覧・送信・埋め込みリンクできるようにしてください。起動時にログチャンネルの存在と権限を確認し、問題があればログにwarningを出します。
+botは各カテゴリのチャンネルに記録を投稿するため、上のカテゴリすべてでbotが閲覧・送信・埋め込みリンクできるようにしてください。
 
 ### 構造例
 
@@ -99,9 +93,6 @@ botは各カテゴリのチャンネルにも記録を投稿するため、上�
 
 📁 archived
 └── # e003-終了したイベント
-
-📁 その他
-└── # discordbot-intech-log
 ```
 
 ## 実行方法
@@ -145,18 +136,8 @@ Discordで `/` を入力するとコマンドが表示されます。
 
 **解決方法:**
 
-1. 表示された環境変数を `.env` に追加（`LOG_CHANNEL_NAME` の追加漏れに注意）
+1. 表示された環境変数を `.env` に追加
 2. Botを再起動
-
-### `ログチャンネル '...' がサーバー ... にありません` / `botにログチャンネル '...' の権限がありません`
-
-起動時にログに出る警告です。コマンドは動きますが、ログチャンネルへの記録が残りません。
-
-**解決方法:**
-
-1. `LOG_CHANNEL_NAME` と同じ名前のテキストチャンネルを作成
-2. botに閲覧・送信・埋め込みリンクの権限を付与
-3. Botを再起動
 
 ### `Botにチャンネルの作成する権限がありません`
 

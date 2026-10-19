@@ -51,10 +51,9 @@ ARCHIVE_EVENT_CATEGORY_NAME=archived
 PROJECT_CATEGORY_NAME=project
 ARCHIVE_PROJECT_CATEGORY_NAME=archived-project
 CLUB_CATEGORY_NAME=clubs
-LOG_CHANNEL_NAME=discordbot-intech-log
 ```
 
-必要な環境変数の一覧は [SETUP.md](./SETUP.md#3-環境変数の説明) を参照してください。`LOG_CHANNEL_NAME`が未設定だと、すべてのコマンドが設定エラーになります。
+必要な環境変数の一覧は [SETUP.md](./SETUP.md#3-環境変数の説明) を参照してください。
 
 **推奨構成**:
 
@@ -325,7 +324,6 @@ fly secrets set ARCHIVE_EVENT_CATEGORY_NAME="archived"
 fly secrets set PROJECT_CATEGORY_NAME="project"
 fly secrets set ARCHIVE_PROJECT_CATEGORY_NAME="archived-project"
 fly secrets set CLUB_CATEGORY_NAME="clubs"
-fly secrets set LOG_CHANNEL_NAME="discordbot-intech-log"
 
 # デプロイ
 fly deploy

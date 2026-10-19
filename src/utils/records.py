@@ -1,8 +1,7 @@
-"""記録（ログチャンネルとチャンネル内の記録）の組み立てと送信
+"""チャンネル内の記録の組み立てと送信
 
-記録は読み手ごとに残す。ログチャンネルはサーバー全体向けの、新しく立った活動の掲示板で
-誰も通知しない（作成だけを流す）。
-チャンネル内の記録は対象チャンネルの参加者向けで、参加者にした人・加えられた人だけを通知する。
+記録は対象チャンネルの参加者向けに、そのチャンネルの中に残す。
+参加者にした人・加えられた人だけを通知する。
 送信の失敗はコマンドを止めず、warningを出すだけにする。
 """
 
@@ -12,11 +11,7 @@ from typing import Protocol
 
 import discord
 
-from .channel_name import normalize_channel_name
-
 logger = getLogger(__name__)
-
-REQUIRED_LOG_PERMISSIONS = ("view_channel", "send_messages", "embed_links")
 
 
 class Mentionable(Protocol):
@@ -40,10 +35,7 @@ def build_creation_embed(
     failed_members: Sequence[Mentionable],
     join_command: str,
 ) -> discord.Embed:
-    """作成の記録（ログチャンネルとチャンネル内の記録で共通）
-
-    ログチャンネルは新しい活動の掲示板も兼ねるため、参加方法を添える。
-    """
+    """作成のチャンネル内の記録。あとから来た人のために参加方法を添える"""
     embed = discord.Embed(
         title=f"新しい{kind}",
         description=f"{actor.mention} が {channel.mention} を立てました",
@@ -95,23 +87,6 @@ def build_restored_embed(*, actor: Mentionable, channel: Mentionable) -> discord
     )
 
 
-def _find_log_channel(guild: discord.Guild, log_channel_name: str) -> discord.TextChannel | None:
-    # 設定値の大文字・空白はDiscordが正規化した実際の名前とずれうるため、正規化して探す
-    return discord.utils.get(guild.text_channels, name=normalize_channel_name(log_channel_name))
-
-
-async def post_log(guild: discord.Guild, log_channel_name: str, embed: discord.Embed) -> None:
-    """ログチャンネルに記録を送る。誰も通知しない"""
-    log_channel = _find_log_channel(guild, log_channel_name)
-    if log_channel is None:
-        logger.warning(f"Log channel '{log_channel_name}' not found in guild {guild.name}")
-        return
-    try:
-        await log_channel.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-    except discord.HTTPException as e:
-        logger.warning(f"Failed to post log to '{log_channel_name}': {e}")
-
-
 async def post_channel_record(
     channel: discord.abc.Messageable,
     embed: discord.Embed,
@@ -139,17 +114,3 @@ async def post_channel_record(
     except discord.HTTPException as e:
         logger.warning(f"Failed to post channel record: {e}")
         return None
-
-
-def find_log_channel_problems(guild: discord.Guild, log_channel_name: str) -> list[str]:
-    """ログチャンネルが無い、またはbotが送れない場合にその内容を返す"""
-    log_channel = _find_log_channel(guild, log_channel_name)
-    if log_channel is None:
-        return [f"ログチャンネル '{log_channel_name}' がサーバー {guild.name} にありません"]
-    permissions = log_channel.permissions_for(guild.me)
-    missing = [name for name in REQUIRED_LOG_PERMISSIONS if not getattr(permissions, name)]
-    if missing:
-        return [
-            f"botにログチャンネル '{log_channel_name}' の権限がありません: {', '.join(missing)}"
-        ]
-    return []

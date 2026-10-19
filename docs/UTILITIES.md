@@ -302,11 +302,11 @@ if reason is not None:
     return
 ```
 
-### `validate_club_name(name, *, log_channel_name, existing_role_names, existing_channel_names)`
+### `validate_club_name(name, *, existing_role_names, existing_channel_names)`
 
 **場所**: [src/utils/club_name.py](../src/utils/club_name.py)
 
-クラブ名として使えない場合に理由を返す（番号の形式、ログチャンネル名、既存のロール名、同じカテゴリの既存チャンネル名）。詳細は [CLUB_CHANNEL.md](./CLUB_CHANNEL.md#名前の衝突チェックの仕組み) を参照。
+クラブ名として使えない場合に理由を返す（番号の形式、既存のロール名、同じカテゴリの既存チャンネル名）。詳細は [CLUB_CHANNEL.md](./CLUB_CHANNEL.md#名前の衝突チェックの仕組み) を参照。
 
 ### `grant_role(members, role)`
 
@@ -333,14 +333,9 @@ if reason is not None:
 
 ### 送信
 
-- `post_log(guild, log_channel_name, embed)` - ログチャンネルへ送る（作成のみ）。誰も通知しない
 - `post_channel_record(channel, embed, mention_users=())` - 対象チャンネルへ送る。`mention_users`だけを本文のメンションで通知する。送信したメッセージ（送れなければ`None`）を返す
 
-どちらも送信に失敗しても例外は出さず、warningを出す。
-
-### `find_log_channel_problems(guild, log_channel_name)`
-
-ログチャンネルが無い、またはbotが閲覧・送信・埋め込みできない場合にその内容を返す。`on_ready`で使う。
+送信に失敗しても例外は出さず、warningを出す。
 
 ## コマンドメタデータ
 
@@ -398,7 +393,7 @@ config = await ChannelConfig.load(ctx)
 event_category = config.event_category_name
 archive_category = config.archive_event_category_name
 project_category = config.project_category_name
-log_channel = config.log_channel_name
+club_category = config.club_category_name
 ```
 
 **プロパティ** (主要):
@@ -407,7 +402,6 @@ log_channel = config.log_channel_name
 - `project_category_name: str` - プロジェクトカテゴリー名
 - `archive_project_category_name: str` - プロジェクトアーカイブカテゴリー名
 - `club_category_name: str` - クラブカテゴリー名
-- `log_channel_name: str` - ログチャンネル名
 
 **特徴**:
 - 非同期ロード (`await ChannelConfig.load(ctx)`)

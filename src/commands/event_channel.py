@@ -29,7 +29,6 @@ from ..utils.records import (
     build_members_added_embed,
     build_restored_embed,
     post_channel_record,
-    post_log,
 )
 from ..utils.role_utils import describe_grant, grant_role, with_creator
 from ..utils.validation_utils import (
@@ -141,8 +140,9 @@ async def create_event_channel_impl(
         f"with {len(grant.granted)} members by {ctx.user}"
     )
 
-    def record() -> discord.Embed:
-        return build_creation_embed(
+    await post_channel_record(
+        channel,
+        build_creation_embed(
             kind="イベント",
             actor=ctx.user,
             channel=channel,
@@ -150,12 +150,10 @@ async def create_event_channel_impl(
             members=grant.granted,
             failed_members=grant.failed,
             join_command="/add_event_role_member",
-        )
-
-    await post_channel_record(
-        channel, record(), mention_users=grant.granted, mention_label="参加者"
+        ),
+        mention_users=grant.granted,
+        mention_label="参加者",
     )
-    await post_log(guild, config.log_channel_name, record())
 
 
 async def archive_event_channel_impl(

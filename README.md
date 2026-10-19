@@ -122,10 +122,6 @@ uv run bot.py
 
 - `CLUB_CATEGORY_NAME`: クラブカテゴリー名
 
-### 記録
-
-- `LOG_CHANNEL_NAME`: 新しく立った活動を流すログチャンネル名
-
 ### 開発環境（任意）
 
 - `DEV_GUILD_ID`: 開発用サーバーのID（設定すると、このサーバーのみにコマンドを同期）

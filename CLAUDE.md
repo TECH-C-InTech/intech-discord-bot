@@ -101,7 +101,7 @@ async def command_cmd(...):
 - ユーティリティ使用時 → [docs/UTILITIES.md](docs/UTILITIES.md)
 - アーキテクチャ理解 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - 開発環境構築 → [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
-- 記録（ログチャンネル・チャンネル内の記録）を残す時 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#記録の出し先)
+- 記録（チャンネル内の記録・本人への返信）を残す時 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#記録の出し先)
 - 用語の確認 → [CONTEXT.md](CONTEXT.md)（目指す姿を含む用語集で、まだ実装されていない部分もある）
 
 ### 3. Development vs Production

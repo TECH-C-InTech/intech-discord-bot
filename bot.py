@@ -11,8 +11,6 @@ from dotenv import load_dotenv
 
 from keep_alive import run_server_async
 from src.commands import setup_all_commands
-from src.utils.channel_config import ChannelConfig
-from src.utils.records import find_log_channel_problems
 
 logger = getLogger(__name__)
 basicConfig(level="INFO")
@@ -66,15 +64,6 @@ async def on_ready():
 
     except Exception as e:
         logger.error(f"❌ Failed to sync commands: {e}")
-
-    # ログチャンネルの存在と権限を確認（問題があっても起動は続ける）
-    config = ChannelConfig.get_instance()
-    if config is None:
-        logger.warning("⚠️ ChannelConfig could not be loaded; skipped log channel check")
-    else:
-        for guild in client.guilds:
-            for problem in find_log_channel_problems(guild, config.log_channel_name):
-                logger.warning(f"⚠️ {problem}")
 
 
 async def run_bot():

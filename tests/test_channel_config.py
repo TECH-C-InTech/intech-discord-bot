@@ -12,7 +12,6 @@ REQUIRED_ENV = {
     "PROJECT_CATEGORY_NAME": "projects",
     "ARCHIVE_PROJECT_CATEGORY_NAME": "archived-projects",
     "CLUB_CATEGORY_NAME": "clubs",
-    "LOG_CHANNEL_NAME": "bot-log",
 }
 
 
@@ -25,14 +24,14 @@ def env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     ChannelConfig._instance = None
 
 
-def test_config_cannot_be_loaded_without_log_channel_name(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("LOG_CHANNEL_NAME")
+def test_config_cannot_be_loaded_without_required_variable(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CLUB_CATEGORY_NAME")
 
     assert ChannelConfig.get_instance() is None
 
 
 async def test_load_error_lists_only_missing_variables(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("LOG_CHANNEL_NAME")
+    monkeypatch.delenv("CLUB_CATEGORY_NAME")
     ctx = MagicMock(spec=discord.Interaction)
     ctx.response = MagicMock()
     ctx.response.send_message = AsyncMock()
@@ -40,5 +39,5 @@ async def test_load_error_lists_only_missing_variables(monkeypatch: pytest.Monke
     assert await ChannelConfig.load(ctx) is None
 
     message = ctx.response.send_message.await_args.args[0]
-    assert "LOG_CHANNEL_NAME" in message
+    assert "CLUB_CATEGORY_NAME" in message
     assert "EVENT_CATEGORY_NAME" not in message
