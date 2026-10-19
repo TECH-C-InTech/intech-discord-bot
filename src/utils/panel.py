@@ -17,17 +17,19 @@ logger = getLogger(__name__)
 SHOWN_PARTICIPANTS = 20
 
 
-def channel_panel_embed(channel_name: str, members: Sequence[Mentionable]) -> discord.Embed:
-    """チャンネルのパネルの表示。参加者の一覧を並べる"""
+# パネルは置いたまま何度も書き換えるので、並べた参加者のメンションでは鳴らさない
+NO_MENTIONS = discord.AllowedMentions.none()
+
+ARCHIVED_NOTE = "📦 アーカイブ中（このチャンネルでメッセージを送ると戻ります）"
+
+
+def _participants_text(members: Sequence[Mentionable]) -> str:
     shown = members[:SHOWN_PARTICIPANTS]
     mentions = ", ".join(member.mention for member in shown) or "まだいません"
     rest = len(members) - len(shown)
     if rest > 0:
         mentions += f" ほか{rest}人"
-    return discord.Embed(
-        title=f"#{channel_name}",
-        description=f"参加者（{len(members)}人）: {mentions}",
-    )
+    return f"参加者（{len(members)}人）\n{mentions}"
 
 
 class ChannelAction(StrEnum):
@@ -97,33 +99,31 @@ class ChannelPanelButton(
         await _channel_press_handler(interaction, self.action, self.channel_id)
 
 
-def channel_panel_view(channel_id: int, *, archived: bool, participants: int) -> discord.ui.View:
-    """チャンネルのパネルのボタン。全員に同じ表示なので、参加と抜けるは別のボタンにする"""
-    view = discord.ui.View(timeout=None)
-    if participants > SHOWN_PARTICIPANTS:
-        view.add_item(ChannelPanelButton(ChannelAction.SHOW_ALL, channel_id))
-    for action in (
-        ChannelAction.JOIN,
-        ChannelAction.LEAVE,
-        ChannelAction.ADD,
-        ChannelAction.REMOVE,
-    ):
-        view.add_item(ChannelPanelButton(action, channel_id))
-    view.add_item(
-        ChannelPanelButton(ChannelAction.RESTORE if archived else ChannelAction.ARCHIVE, channel_id)
-    )
-    return view
+def _custom_ids(components: Sequence[object]) -> list[str]:
+    """メッセージの部品をたどって、ボタンなどのcustom_idを集める
+
+    Components V2では、ボタンは枠（Container）や行（ActionRow）、
+    文字の横（Section.accessory）に入れ子で届く。
+    """
+    found: list[str] = []
+    for component in components:
+        if isinstance(component, (discord.ActionRow, discord.Container)):
+            found.extend(_custom_ids(component.children))
+        elif isinstance(component, discord.SectionComponent):
+            found.extend(_custom_ids([*component.children, component.accessory]))
+        else:
+            custom_id = getattr(component, "custom_id", None)
+            if isinstance(custom_id, str):
+                found.append(custom_id)
+    return found
 
 
 def _is_channel_panel(message: discord.Message, bot_id: int) -> bool:
     if message.author.id != bot_id:
         return False
     return any(
-        ChannelPanelButton.__discord_ui_compiled_template__.match(
-            getattr(child, "custom_id", None) or ""
-        )
-        for row in message.components
-        for child in getattr(row, "children", [])
+        ChannelPanelButton.__discord_ui_compiled_template__.match(custom_id)
+        for custom_id in _custom_ids(message.components)
     )
 
 
@@ -140,12 +140,44 @@ async def find_panel(channel: discord.TextChannel, bot_id: int) -> discord.Messa
 
 def channel_panel(
     channel: discord.TextChannel, members: Sequence[Mentionable], *, archived: bool
-) -> tuple[discord.Embed, discord.ui.View]:
-    """チャンネルのパネルの中身（ピン留めと /intech で共通）"""
-    return (
-        channel_panel_embed(channel.name, members),
-        channel_panel_view(channel.id, archived=archived, participants=len(members)),
+) -> discord.ui.LayoutView:
+    """チャンネルのパネル（ピン留めと /intech で共通）
+
+    上に参加者の一覧、下にボタン。ボタンは自分のこと（参加する・抜ける）と、
+    みんなのこと（追加・外す・アーカイブ）で行を分ける。
+    全員に同じ表示しか出せないので、参加と抜けるは別のボタンにする。
+    """
+
+    def button(action: ChannelAction) -> ChannelPanelButton:
+        return ChannelPanelButton(action, channel.id)
+
+    participants = _participants_text(members)
+    container: discord.ui.Container[discord.ui.LayoutView] = discord.ui.Container(
+        accent_colour=discord.Colour.light_grey() if archived else discord.Colour.blurple()
     )
+    container.add_item(discord.ui.TextDisplay(f"### #{channel.name}"))
+    if archived:
+        container.add_item(discord.ui.TextDisplay(ARCHIVED_NOTE))
+    if len(members) > SHOWN_PARTICIPANTS:
+        container.add_item(
+            discord.ui.Section(participants, accessory=button(ChannelAction.SHOW_ALL))
+        )
+    else:
+        container.add_item(discord.ui.TextDisplay(participants))
+    container.add_item(discord.ui.Separator())
+    container.add_item(
+        discord.ui.ActionRow(button(ChannelAction.JOIN), button(ChannelAction.LEAVE))
+    )
+    container.add_item(
+        discord.ui.ActionRow(
+            button(ChannelAction.ADD),
+            button(ChannelAction.REMOVE),
+            button(ChannelAction.RESTORE if archived else ChannelAction.ARCHIVE),
+        )
+    )
+    view = discord.ui.LayoutView(timeout=None)
+    view.add_item(container)
+    return view
 
 
 async def refresh_panel(
@@ -168,11 +200,11 @@ async def refresh_panel(
     panel = await find_panel(channel, channel.guild.me.id)
     if panel is None:
         return
-    embed, view = channel_panel(
+    view = channel_panel(
         channel, current_participants(role, joined=joined, left=left), archived=archived
     )
     try:
-        await panel.edit(embed=embed, view=view)
+        await panel.edit(view=view, allowed_mentions=NO_MENTIONS)
     except discord.HTTPException as e:
         logger.warning(f"Failed to refresh panel in {channel.name}: {e}")
 
@@ -216,11 +248,9 @@ async def place_panel(
     """
     if not new_channel and await find_panel(channel, channel.guild.me.id) is not None:
         return False
-    embed, view = channel_panel(
-        channel, current_participants(role, joined=joined), archived=archived
-    )
+    view = channel_panel(channel, current_participants(role, joined=joined), archived=archived)
     try:
-        message = await channel.send(embed=embed, view=view)
+        message = await channel.send(view=view, allowed_mentions=NO_MENTIONS)
     except discord.HTTPException as e:
         logger.warning(f"Failed to post panel in {channel.name}: {e}")
         return False
@@ -307,9 +337,14 @@ class CreatePanelButton(
         await _create_press_handler(interaction, self.kind)
 
 
-def create_panel() -> tuple[discord.Embed, discord.ui.View]:
-    """作るパネルの中身（案内チャンネルと、チャンネルの外での /intech で共通）"""
-    view = discord.ui.View(timeout=None)
-    for kind in KINDS:
-        view.add_item(CreatePanelButton(kind))
-    return discord.Embed(title="チャンネルを作る", description="誰でも作れます"), view
+def create_panel() -> discord.ui.LayoutView:
+    """作るパネル（案内チャンネルと、チャンネルの外での /intech で共通）"""
+    view = discord.ui.LayoutView(timeout=None)
+    view.add_item(
+        discord.ui.Container(
+            discord.ui.TextDisplay("### チャンネルを作る\n誰でも作れます"),
+            discord.ui.ActionRow(*(CreatePanelButton(kind) for kind in KINDS)),
+            accent_colour=discord.Colour.blurple(),
+        )
+    )
+    return view

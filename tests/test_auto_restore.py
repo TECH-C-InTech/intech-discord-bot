@@ -6,6 +6,7 @@ import pytest
 
 from src.utils.auto_restore import restore_on_post, restore_target
 from src.utils.kinds import CLUB, EVENT, PROJECT, Kind
+from tests.ui_helpers import button_labels
 
 EVENTS_ID, ARCHIVED_ID = 1, 2
 
@@ -267,7 +268,9 @@ async def test_restore_on_post_switches_panel_back_to_archive() -> None:
     guild.me.id = 900
     panel = MagicMock(spec=discord.Message)
     panel.author = MagicMock(id=900)
-    panel.components = [MagicMock(children=[MagicMock(custom_id="intech:channel:restore:500")])]
+    row = MagicMock(spec=discord.ActionRow)
+    row.children = [MagicMock(custom_id="intech:channel:restore:500")]
+    panel.components = [row]
     panel.edit = AsyncMock()
 
     async def pins(**_: object):  # type: ignore[no-untyped-def]
@@ -279,5 +282,4 @@ async def test_restore_on_post_switches_panel_back_to_archive() -> None:
 
     await restore_on_post(message, names_of, locks={})
 
-    view = panel.edit.await_args.kwargs["view"]
-    assert view.children[-1].item.label == "アーカイブ"
+    assert button_labels(panel.edit.await_args.kwargs["view"])[-1] == "アーカイブ"

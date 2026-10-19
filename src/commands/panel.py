@@ -23,6 +23,7 @@ from ..utils.linking import (
 from ..utils.message_utils import send_error_message
 from ..utils.numbering import NUMBERS_EXHAUSTED, number_of
 from ..utils.panel import (
+    NO_MENTIONS,
     ChannelAction,
     ChannelPanelButton,
     CreatePanelButton,
@@ -90,12 +91,12 @@ async def intech_impl(ctx: discord.Interaction) -> None:
         await send_error_message(ctx, explain_not_linked(chosen, missing))
         return
     if chosen is None:
-        embed, view = create_panel()
+        view = create_panel()
     else:
-        embed, view = channel_panel(
+        view = channel_panel(
             chosen.channel, current_participants(chosen.role), archived=chosen.archived
         )
-    await ctx.response.send_message(embed=embed, view=view, ephemeral=True)
+    await ctx.response.send_message(view=view, ephemeral=True, allowed_mentions=NO_MENTIONS)
 
 
 async def handle_create_press(ctx: discord.Interaction, kind: Kind) -> None:
@@ -211,12 +212,12 @@ async def setup_panel_impl(ctx: discord.Interaction, panel: str) -> None:
     categories, missing = collect_kind_categories(guild.categories, config.category_names)
 
     if panel == "create":
-        embed, view = create_panel()
+        view = create_panel()
         if not isinstance(ctx.channel, discord.abc.Messageable):
             await send_error_message(ctx, "ここには置けません。")
             return
         await ctx.response.defer(ephemeral=True, thinking=True)
-        await ctx.channel.send(embed=embed, view=view)
+        await ctx.channel.send(view=view)
         await ctx.followup.send("作るパネルを置きました。", ephemeral=True)
         return
 

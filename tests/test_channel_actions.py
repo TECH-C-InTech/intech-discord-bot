@@ -13,6 +13,7 @@ from src.utils.channel_actions import (
 )
 from src.utils.kinds import EVENT
 from src.utils.linking import Linked
+from tests.ui_helpers import button_labels, texts
 
 BOT_ID = 900
 
@@ -80,6 +81,11 @@ def make_ctx(user: MagicMock) -> MagicMock:
     return ctx
 
 
+def panel_text(panel: MagicMock) -> str:
+    """書き換えたパネルの参加者の一覧"""
+    return texts(panel.edit.await_args.kwargs["view"])[-1]
+
+
 def record_of(linked: Linked) -> discord.Embed:
     return linked.channel.send.await_args.kwargs["embed"]  # type: ignore[attr-defined]
 
@@ -94,7 +100,7 @@ async def test_join_makes_user_a_participant_and_records_it_quietly() -> None:
     user.add_roles.assert_awaited_once_with(linked.role)
     assert record_of(linked).description == "<@1> が <@&20> に参加しました"
     assert linked.channel.send.await_args.kwargs["content"] is None  # type: ignore[attr-defined]
-    assert panel.edit.await_args.kwargs["embed"].description == "参加者（1人）: <@1>"
+    assert panel_text(panel) == "参加者（1人）\n<@1>"
 
 
 def private_text(ctx: MagicMock) -> str:
@@ -132,7 +138,7 @@ async def test_leave_removes_user_and_records_it_quietly() -> None:
     user.remove_roles.assert_awaited_once_with(linked.role)
     assert record_of(linked).description == "<@1> が <@&20> から抜けました"
     assert linked.channel.send.await_args.kwargs["content"] is None  # type: ignore[attr-defined]
-    assert panel.edit.await_args.kwargs["embed"].description == "参加者（1人）: <@2>"
+    assert panel_text(panel) == "参加者（1人）\n<@2>"
 
 
 async def test_leave_tells_non_participant_they_have_not_joined() -> None:
@@ -153,7 +159,7 @@ async def test_adding_participants_refreshes_panel() -> None:
 
     await add_participants(make_ctx(make_member(1)), linked, [make_member(2)])
 
-    assert panel.edit.await_args.kwargs["embed"].description == "参加者（2人）: <@1>, <@2>"
+    assert panel_text(panel) == "参加者（2人）\n<@1>, <@2>"
 
 
 async def test_removing_participants_refreshes_panel() -> None:
@@ -164,7 +170,7 @@ async def test_removing_participants_refreshes_panel() -> None:
 
     await remove_participants(make_ctx(make_member(1)), linked, [removed])
 
-    assert panel.edit.await_args.kwargs["embed"].description == "参加者（1人）: <@1>"
+    assert panel_text(panel) == "参加者（1人）\n<@1>"
 
 
 EVENTS_ID, ARCHIVED_ID = 1, 2
@@ -216,11 +222,7 @@ async def test_archiving_switches_panel_to_restore() -> None:
 
     await archive(ctx_in(guild), make_config(), linked.channel)
 
-    assert labels(panel.edit.await_args.kwargs["view"])[-1] == "復元"
-
-
-def labels(view: discord.ui.View) -> list[str]:
-    return [item.item.label for item in view.children]  # type: ignore[attr-defined]
+    assert button_labels(panel.edit.await_args.kwargs["view"])[-1] == "復元"
 
 
 async def test_restoring_switches_panel_back_to_archive() -> None:
@@ -230,7 +232,7 @@ async def test_restoring_switches_panel_back_to_archive() -> None:
 
     await restore(ctx_in(guild), make_config(), linked.channel)
 
-    assert labels(panel.edit.await_args.kwargs["view"])[-1] == "アーカイブ"
+    assert button_labels(panel.edit.await_args.kwargs["view"])[-1] == "アーカイブ"
 
 
 def guild_to_create_in() -> tuple[MagicMock, MagicMock, MagicMock]:
@@ -265,7 +267,7 @@ async def test_creation_places_panel_and_tells_how_others_join() -> None:
     await create(ctx, make_config(), EVENT, "おでん会", [])
 
     panel = channel.send.await_args_list[-1].kwargs
-    assert panel["embed"].title == "#e003-おでん会"
+    assert texts(panel["view"])[0] == "### #e003-おでん会"
     channel.send.return_value.pin.assert_awaited_once()
     assert (
         "参加したい人には、このチャンネルを伝えてください。チャンネルのピン留めから参加できます。"

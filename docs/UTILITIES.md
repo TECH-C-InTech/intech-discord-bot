@@ -343,7 +343,8 @@ if reason is not None:
 
 **場所**: [src/utils/panel.py](../src/utils/panel.py)、[src/utils/panel\_forms.py](../src/utils/panel_forms.py)
 
-- `channel_panel(channel, members, *, archived)` / `create_panel()` - パネルの中身（Embedとボタン）。ピン留めと`/intech`で共通
+- `channel_panel(channel, members, *, archived)` / `create_panel()` - パネルの中身（Components V2の`LayoutView`）。ピン留めと`/intech`で共通
+- `NO_MENTIONS` - パネルを送る・書き換えるときに渡す。一覧のメンションで鳴らさない
 - `place_panel(channel, role, *, archived, new_channel=False)` - チャンネルにパネルを投稿してピン留めする。すでにあれば置かない。ピン留めできなければ投稿を取り下げる
 - `refresh_panel(channel, role, *, archived, joined=(), left=())` - ピン留めのパネルを書き換える。`joined`・`left`は直前に付け外しした人（キャッシュに反映される前）
 - `refresh_channel_panel(guild, names_of, channel, *, archived)` - ロールを紐づけてから`refresh_panel`する（移動の後など）

@@ -5,13 +5,13 @@ import discord
 from src.utils.panel import (
     ChannelAction,
     ChannelPanelButton,
-    channel_panel_embed,
-    channel_panel_view,
+    channel_panel,
     create_panel,
     find_panel,
     place_panel,
     refresh_panel,
 )
+from tests.ui_helpers import button_labels, custom_ids, texts
 
 
 def member(user_id: int) -> MagicMock:
@@ -20,51 +20,65 @@ def member(user_id: int) -> MagicMock:
     return obj
 
 
-def test_channel_panel_shows_channel_name_and_participants() -> None:
-    embed = channel_panel_embed("e003-おでん会", [member(1), member(2)])
-
-    assert embed.title == "#e003-おでん会"
-    assert embed.description == "参加者（2人）: <@1>, <@2>"
-
-
-def test_channel_panel_says_no_participants_yet() -> None:
-    embed = channel_panel_embed("e003-おでん会", [])
-
-    assert embed.description == "参加者（0人）: まだいません"
+def make_channel(name: str = "e003-おでん会", channel_id: int = 500) -> MagicMock:
+    channel = MagicMock(spec=discord.TextChannel)
+    channel.name = name
+    channel.id = channel_id
+    return channel
 
 
-def test_channel_panel_shows_first_twenty_and_how_many_more() -> None:
-    embed = channel_panel_embed("c005-ラーメン", [member(i) for i in range(1, 24)])
+async def test_channel_panel_shows_channel_name_and_participants() -> None:
+    view = channel_panel(make_channel(), [member(1), member(2)], archived=False)
+
+    assert texts(view) == ["### #e003-おでん会", "参加者（2人）\n<@1>, <@2>"]
+
+
+async def test_channel_panel_says_no_participants_yet() -> None:
+    view = channel_panel(make_channel(), [], archived=False)
+
+    assert texts(view)[-1] == "参加者（0人）\nまだいません"
+
+
+async def test_channel_panel_shows_first_twenty_and_how_many_more() -> None:
+    view = channel_panel(
+        make_channel("c005-ラーメン"), [member(i) for i in range(1, 24)], archived=False
+    )
 
     shown = ", ".join(f"<@{i}>" for i in range(1, 21))
-    assert embed.description == f"参加者（23人）: {shown} ほか3人"
+    assert texts(view)[-1] == f"参加者（23人）\n{shown} ほか3人"
 
 
-def labels(view: object) -> list[str]:
-    return [item.item.label for item in view.children]  # type: ignore[attr-defined]
+async def test_channel_panel_separates_own_and_shared_actions() -> None:
+    view = channel_panel(make_channel(), [member(1)], archived=False)
+
+    rows = [
+        [item.item.label for item in row.children]  # type: ignore[attr-defined]
+        for row in view.walk_children()
+        if isinstance(row, discord.ui.ActionRow)
+    ]
+    assert rows == [["参加する", "抜ける"], ["参加者を追加", "参加者を外す", "アーカイブ"]]
 
 
-async def test_channel_panel_buttons() -> None:
-    view = channel_panel_view(500, archived=False, participants=3)
+async def test_archived_channel_panel_says_so_and_offers_restore() -> None:
+    view = channel_panel(make_channel(), [], archived=True)
 
-    assert labels(view) == ["参加する", "抜ける", "参加者を追加", "参加者を外す", "アーカイブ"]
-
-
-async def test_archived_channel_panel_offers_restore_instead_of_archive() -> None:
-    view = channel_panel_view(500, archived=True, participants=3)
-
-    assert labels(view)[-1] == "復元"
-    assert "アーカイブ" not in labels(view)
+    assert "📦 アーカイブ中（このチャンネルでメッセージを送ると戻ります）" in texts(view)
+    assert button_labels(view)[-1] == "復元"
+    assert "アーカイブ" not in button_labels(view)
 
 
-async def test_channel_panel_offers_show_all_when_participants_overflow() -> None:
-    assert "全員を見る" not in labels(channel_panel_view(500, archived=False, participants=20))
-    assert "全員を見る" in labels(channel_panel_view(500, archived=False, participants=21))
+async def test_channel_panel_offers_show_all_beside_list_when_participants_overflow() -> None:
+    few = channel_panel(make_channel(), [member(i) for i in range(20)], archived=False)
+    many = channel_panel(make_channel(), [member(i) for i in range(21)], archived=False)
+
+    assert "全員を見る" not in button_labels(few)
+    sections = [item for item in many.walk_children() if isinstance(item, discord.ui.Section)]
+    assert [section.accessory.item.label for section in sections] == ["全員を見る"]  # type: ignore[attr-defined]
 
 
 async def test_channel_panel_button_is_restored_from_custom_id() -> None:
-    button = channel_panel_view(500, archived=False, participants=0).children[0]
-    match = ChannelPanelButton.__discord_ui_compiled_template__.match(button.custom_id)  # type: ignore[attr-defined]
+    custom_id = custom_ids(channel_panel(make_channel(), [], archived=False))[0]
+    match = ChannelPanelButton.__discord_ui_compiled_template__.match(custom_id)
     assert match is not None
 
     restored = await ChannelPanelButton.from_custom_id(MagicMock(), MagicMock(), match)
@@ -114,6 +128,21 @@ async def test_find_panel_picks_bots_channel_panel_among_pins() -> None:
     assert await find_panel(channel, BOT_ID) is panel
 
 
+async def test_find_panel_finds_buttons_nested_in_layout() -> None:
+    # Components V2では、ボタンは枠（Container）や行の中に入れ子で届く
+    button = MagicMock(spec=discord.Button)
+    button.custom_id = "intech:channel:all:500"
+    section = MagicMock(spec=discord.SectionComponent)
+    section.children = []
+    section.accessory = button
+    container = MagicMock(spec=discord.Container)
+    container.children = [section]
+    panel = pinned(BOT_ID, [])
+    panel.components = [container]
+
+    assert await find_panel(channel_with_pins(panel), BOT_ID) is panel
+
+
 async def test_find_panel_returns_none_without_panel() -> None:
     assert await find_panel(channel_with_pins(pinned(1, [])), BOT_ID) is None
 
@@ -155,8 +184,19 @@ async def test_refresh_panel_rewrites_participants_and_buttons() -> None:
     await refresh_panel(channel, role_with(guild_member(1)), archived=True)
 
     sent = panel.edit.await_args.kwargs
-    assert sent["embed"].description == "参加者（1人）: <@1>"
-    assert labels(sent["view"])[-1] == "復元"
+    assert "参加者（1人）\n<@1>" in texts(sent["view"])
+    assert button_labels(sent["view"])[-1] == "復元"
+
+
+async def test_panel_never_notifies_listed_participants() -> None:
+    # パネルの一覧はメンションで並べるが、書き換えるたびに鳴らさない
+    panel = pinned(BOT_ID, ["intech:channel:join:500"])
+    channel = channel_with_panel(panel)
+
+    await refresh_panel(channel, role_with(guild_member(1)), archived=False)
+
+    mentions = panel.edit.await_args.kwargs["allowed_mentions"]
+    assert (mentions.users, mentions.roles, mentions.everyone) == (False, False, False)
 
 
 async def test_refresh_panel_reflects_members_changed_just_now() -> None:
@@ -173,7 +213,7 @@ async def test_refresh_panel_reflects_members_changed_just_now() -> None:
         left=[leaves],
     )
 
-    assert panel.edit.await_args.kwargs["embed"].description == "参加者（2人）: <@1>, <@3>"
+    assert "参加者（2人）\n<@1>, <@3>" in texts(panel.edit.await_args.kwargs["view"])
 
 
 async def test_refresh_panel_does_not_raise_when_edit_fails() -> None:
@@ -202,7 +242,9 @@ async def test_place_panel_posts_and_pins_it() -> None:
     placed = await place_panel(channel, role_with(guild_member(1)), archived=False)
 
     assert placed is True
-    assert channel.send.await_args.kwargs["embed"].title == "#e003-おでん会"
+    sent = channel.send.await_args.kwargs
+    assert texts(sent["view"])[0] == "### #e003-おでん会"
+    assert sent["allowed_mentions"].users is False
     posted.pin.assert_awaited_once()
 
 
@@ -239,8 +281,7 @@ async def test_place_panel_returns_false_when_post_fails() -> None:
 
 
 async def test_create_panel_offers_three_kinds_to_anyone() -> None:
-    embed, view = create_panel()
+    view = create_panel()
 
-    assert embed.title == "チャンネルを作る"
-    assert embed.description == "誰でも作れます"
-    assert labels(view) == ["クラブを作る", "イベントを作る", "プロジェクトを作る"]
+    assert texts(view) == ["### チャンネルを作る\n誰でも作れます"]
+    assert button_labels(view) == ["クラブを作る", "イベントを作る", "プロジェクトを作る"]
