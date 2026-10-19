@@ -180,3 +180,22 @@ def test_participant_fields_stay_within_discord_field_limit() -> None:
     assert all(len(f.value or "") <= 1024 for f in participant_fields)
     joined = ", ".join(f.value or "" for f in participant_fields)
     assert all(m.mention in joined for m in members)
+
+
+async def test_channel_record_splits_mentions_over_message_limit() -> None:
+    channel = make_channel()
+    users = long_mentions(100)
+
+    message = await post_channel_record(
+        channel, discord.Embed(title="x"), users, mention_label="参加者"
+    )
+
+    calls = channel.send.await_args_list
+    assert len(calls) > 1
+    assert all(len(call.kwargs["content"]) <= 2000 for call in calls)
+    # 記録のEmbedは1通目だけに付け、それを返す（あとで消せるように）
+    assert calls[0].kwargs["embed"] is not None
+    assert all("embed" not in call.kwargs for call in calls[1:])
+    assert message is channel.send.return_value
+    sent = " ".join(call.kwargs["content"] for call in calls)
+    assert all(u.mention in sent for u in users)

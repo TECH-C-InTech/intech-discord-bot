@@ -14,6 +14,7 @@ import discord
 logger = getLogger(__name__)
 
 EMBED_FIELD_VALUE_LIMIT = 1024
+MESSAGE_CONTENT_LIMIT = 2000
 
 
 class Mentionable(Protocol):
@@ -118,17 +119,49 @@ async def post_channel_record(
     Returns:
         送信したメッセージ（後で消せるように）。送れなかった場合はNone
     """
-    content = " ".join(user.mention for user in mention_users) or None
-    if content is not None and mention_label:
-        content = f"{mention_label}: {content}"
-    allowed_mentions = discord.AllowedMentions(
-        everyone=False, users=list(mention_users), roles=False
-    )
+    prefix = f"{mention_label}: " if mention_label else ""
+    chunks = _chunk_users(mention_users, MESSAGE_CONTENT_LIMIT - len(prefix))
     try:
-        return await channel.send(content=content, embed=embed, allowed_mentions=allowed_mentions)
+        first = await channel.send(
+            content=_mention_content(prefix, chunks[0]) if chunks else None,
+            embed=embed,
+            allowed_mentions=_only_users(chunks[0] if chunks else []),
+        )
     except discord.HTTPException as e:
         logger.warning(f"Failed to post channel record: {e}")
         return None
+    # 本文の上限を超える分は、続くメッセージでメンションする
+    for chunk in chunks[1:]:
+        try:
+            await channel.send(
+                content=_mention_content(prefix, chunk), allowed_mentions=_only_users(chunk)
+            )
+        except discord.HTTPException as e:
+            logger.warning(f"Failed to post remaining mentions: {e}")
+            break
+    return first
+
+
+def _chunk_users(users: Sequence[discord.abc.User], limit: int) -> list[list[discord.abc.User]]:
+    """メンションをスペース区切りで並べたときに、limit文字に収まるよう分ける"""
+    chunks: list[list[discord.abc.User]] = []
+    length = 0
+    for user in users:
+        if chunks and length + 1 + len(user.mention) <= limit:
+            chunks[-1].append(user)
+            length += 1 + len(user.mention)
+        else:
+            chunks.append([user])
+            length = len(user.mention)
+    return chunks
+
+
+def _mention_content(prefix: str, users: Sequence[discord.abc.User]) -> str:
+    return prefix + " ".join(user.mention for user in users)
+
+
+def _only_users(users: Sequence[discord.abc.User]) -> discord.AllowedMentions:
+    return discord.AllowedMentions(everyone=False, users=list(users), roles=False)
 
 
 async def delete_record(message: discord.Message) -> bool:
