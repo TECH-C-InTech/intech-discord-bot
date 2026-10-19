@@ -5,12 +5,12 @@
 """
 
 from logging import getLogger
-import re
 from typing import TYPE_CHECKING, Optional
 
 import discord
 
 from .message_utils import send_error_message
+from .numbering import next_number
 
 if TYPE_CHECKING:
     from discord.interactions import InteractionChannel
@@ -18,18 +18,23 @@ if TYPE_CHECKING:
 logger = getLogger(__name__)
 
 
+def _channel_names_in(guild: discord.Guild, *category_names: str) -> list[str]:
+    names: list[str] = []
+    for category_name in category_names:
+        category = discord.utils.get(guild.categories, name=category_name)
+        if category:
+            names.extend(channel.name for channel in category.channels)
+    return names
+
+
 def get_next_event_index(
     guild: discord.Guild,
     event_category_name: str,
     archive_event_category_name: str,
-) -> int:
-    """イベントカテゴリーとアーカイブカテゴリーから次のインデックス番号を取得する
+) -> int | None:
+    """イベントカテゴリーとアーカイブカテゴリーから次の番号を取得する
 
-    チャンネル名のパターン: e{index}-{name}
-    例: e001-新歓イベント, e002-ハッカソン
-
-    両方のカテゴリーのチャンネルから最大のインデックス番号を見つけて+1した値を返す。
-    これにより、アーカイブされたチャンネルも考慮した連番を維持できる。
+    アーカイブされたチャンネルの番号も数え、番号が重ならないようにする。
 
     Args:
         guild: Discordサーバー
@@ -37,48 +42,21 @@ def get_next_event_index(
         archive_event_category_name: アーカイブカテゴリー名
 
     Returns:
-        次のインデックス番号（最小値は1）
+        次の番号（最小値は1）。999まで使い切っていたらNone
     """
-    max_index = 0
-    pattern = re.compile(r"^e(\d{3})-")
-
-    # イベントカテゴリーのチャンネルをチェック
-    event_category = discord.utils.get(guild.categories, name=event_category_name)
-    if event_category:
-        for channel in event_category.channels:
-            match = pattern.match(channel.name)
-            if match:
-                index = int(match.group(1))
-                max_index = max(max_index, index)
-                logger.debug(f"Found event channel: {channel.name} with index {index}")
-
-    # アーカイブカテゴリーのチャンネルをチェック
-    archive_category = discord.utils.get(guild.categories, name=archive_event_category_name)
-    if archive_category:
-        for channel in archive_category.channels:
-            match = pattern.match(channel.name)
-            if match:
-                index = int(match.group(1))
-                max_index = max(max_index, index)
-                logger.debug(f"Found archived channel: {channel.name} with index {index}")
-
-    next_index = max_index + 1
-    logger.info(f"Next event index: {next_index} (max found: {max_index}) in guild '{guild.name}'")
-    return next_index
+    return next_number(
+        "e", _channel_names_in(guild, event_category_name, archive_event_category_name)
+    )
 
 
 def get_next_project_index(
     guild: discord.Guild,
     project_category_name: str,
     archive_project_category_name: str,
-) -> int:
-    """プロジェクトカテゴリーとアーカイブカテゴリーから次のインデックス番号を取得する
+) -> int | None:
+    """プロジェクトカテゴリーとアーカイブカテゴリーから次の番号を取得する
 
-    チャンネル名のパターン: p{index}-{name}
-    例: p001-新規プロジェクト, p002-研究開発
-
-    両方のカテゴリーのチャンネルから最大のインデックス番号を見つけて+1した値を返す。
-    これにより、アーカイブされたチャンネルも考慮した連番を維持できる。
+    アーカイブされたチャンネルの番号も数え、番号が重ならないようにする。
 
     Args:
         guild: Discordサーバー
@@ -86,36 +64,11 @@ def get_next_project_index(
         archive_project_category_name: アーカイブカテゴリー名
 
     Returns:
-        次のインデックス番号（最小値は1）
+        次の番号（最小値は1）。999まで使い切っていたらNone
     """
-    max_index = 0
-    pattern = re.compile(r"^p(\d{3})-")
-
-    # プロジェクトカテゴリーのチャンネルをチェック
-    project_category = discord.utils.get(guild.categories, name=project_category_name)
-    if project_category:
-        for channel in project_category.channels:
-            match = pattern.match(channel.name)
-            if match:
-                index = int(match.group(1))
-                max_index = max(max_index, index)
-                logger.debug(f"Found project channel: {channel.name} with index {index}")
-
-    # アーカイブカテゴリーのチャンネルをチェック
-    archive_category = discord.utils.get(guild.categories, name=archive_project_category_name)
-    if archive_category:
-        for channel in archive_category.channels:
-            match = pattern.match(channel.name)
-            if match:
-                index = int(match.group(1))
-                max_index = max(max_index, index)
-                logger.debug(f"Found archived project channel: {channel.name} with index {index}")
-
-    next_index = max_index + 1
-    logger.info(
-        f"Next project index: {next_index} (max found: {max_index}) in guild '{guild.name}'"
+    return next_number(
+        "p", _channel_names_in(guild, project_category_name, archive_project_category_name)
     )
-    return next_index
 
 
 async def validate_category_exists(

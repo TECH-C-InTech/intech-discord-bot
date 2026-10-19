@@ -11,7 +11,6 @@ from ..utils.channel_utils import (
     thread_target_note,
     validate_category_exists,
 )
-from ..utils.club_name import validate_club_name
 from ..utils.command_metadata import command_meta
 from ..utils.creation import Created, Rejected, create_channel_with_role
 from ..utils.message_utils import (
@@ -21,6 +20,7 @@ from ..utils.message_utils import (
     send_error_message,
     send_private_reply,
 )
+from ..utils.numbering import NUMBERS_EXHAUSTED, next_number, number_of, with_number
 from ..utils.records import (
     build_creation_embed,
     build_members_added_embed,
@@ -34,6 +34,16 @@ from ..utils.validation_utils import (
 )
 
 logger = getLogger(__name__)
+
+
+def _number_mismatch_message(kind: str, number: int, count: int) -> str:
+    if count == 0:
+        return f"番号 `c{number:03d}` の{kind}が見つかりません。"
+    # 手作業の移行などで同じ番号が重なった場合は、どれを使うか決められないので止める
+    return (
+        f"番号 `c{number:03d}` の{kind}が{count}個あります。"
+        "サーバー管理者に番号の重なりを直してもらってください。"
+    )
 
 
 # ==================== コマンド実装関数 ====================
@@ -77,35 +87,25 @@ async def create_club_channel_impl(
     if not ctx.response.is_done():
         await ctx.response.defer(ephemeral=True, thinking=True)
 
-    # クラブはチャンネルとロールを名前で結びつけるため、既存のロールや番号と衝突する名前を拒否する
-    def validate(
-        guild: discord.Guild, name: str, *, exclude: discord.TextChannel | None = None
-    ) -> str | None:
-        return validate_club_name(
-            name,
-            existing_role_names=[role.name for role in guild.roles],
-            existing_channel_names=[
-                ch.name
-                for ch in category_channel.text_channels
-                if exclude is None or ch.id != exclude.id
-            ],
-        )
-
     def decide_name(guild: discord.Guild, category: discord.CategoryChannel) -> str | Rejected:
-        reason = validate(guild, channel_name)
-        return Rejected(reason) if reason is not None else channel_name
+        # 採番はLockの中で行い、並行した作成で番号が重ならないようにする。
+        # チャンネルだけ消されてロールが残っている番号も、再利用しないよう避ける
+        number = next_number(
+            "c", [*(ch.name for ch in category.channels), *(r.name for r in guild.roles)]
+        )
+        if number is None:
+            return Rejected(NUMBERS_EXHAUSTED)
+        # チャンネル名を c{number:03d}-{name} の形式で構築（3桁0埋め）
+        return f"c{number:03d}-{channel_name}"
 
     try:
         outcome = await create_channel_with_role(
             guild,
             category_channel,
             decide_name=decide_name,
-            # Discordが正規化した実際の名前で検証し直す（作成したチャンネル自身は除く）
-            validate_created_name=lambda guild, channel: validate(
-                guild, channel.name, exclude=channel
-            ),
-            # ロールはチャンネルの実際の名前で作り、名前の紐づけがずれないようにする
+            # clubのロールは、メンションしたときに何のクラブか分かるよう番号＋名前にする
             role_name_for=lambda channel: channel.name,
+            role_kind="club",
         )
     except Exception as e:
         await handle_command_error(ctx, e, "クラブチャンネルの作成")
@@ -195,26 +195,51 @@ async def add_club_role_member_impl(
                 f"このコマンドは {config.club_category_name} カテゴリー内でのみ実行できます。",
             )
             return
-        role_name = target_channel.name
-        # ロールを名前で検索
-        role = discord.utils.get(guild.roles, name=role_name)
-        if not role:
-            await send_error_message(ctx, f"ロール `{role_name}` が見つかりません。")
+        number = number_of("c", target_channel.name)
+        if number is None:
+            await send_error_message(
+                ctx, "このチャンネルはクラブチャンネルの形式（c001-xxx）ではありません。"
+            )
             return
+        # チャンネルと同じ番号のロールを探す
+        roles = with_number("c", number, guild.roles, name=lambda r: r.name)
+        if len(roles) != 1:
+            await send_error_message(ctx, _number_mismatch_message("ロール", number, len(roles)))
+            return
+        role = roles[0]
     else:
         # role_nameが指定された場合、パース関数でロールを取得
-        role = await parse_role_mention(ctx, role_name, guild)
-        if not role:
+        parsed_role = await parse_role_mention(ctx, role_name, guild)
+        if not parsed_role:
             return
-        role_name = role.name
+        role = parsed_role
 
     # ロールの安全性チェック
     if not await validate_role_safety(ctx, role):
         return
 
-    # 同名のチャンネルがCLUB_CATEGORY_NAMEカテゴリーに存在するか確認
-    channel_dict = {ch.name: ch for ch in club_category.text_channels}
-    club_channel = channel_dict.get(role_name)
+    # ロールと同じ番号のチャンネルがCLUB_CATEGORY_NAMEカテゴリーに存在するか確認
+    role_number = number_of("c", role.name)
+    # role_nameを明示した場合も、同じ番号のロールが重なっていれば紐づけが決まらないので止める
+    if role_number is not None:
+        same_number_roles = with_number("c", role_number, guild.roles, name=lambda r: r.name)
+        if len(same_number_roles) > 1:
+            await send_error_message(
+                ctx, _number_mismatch_message("ロール", role_number, len(same_number_roles))
+            )
+            return
+    channels = (
+        with_number("c", role_number, club_category.text_channels, name=lambda ch: ch.name)
+        if role_number is not None
+        else []
+    )
+    if len(channels) > 1:
+        assert role_number is not None
+        await send_error_message(
+            ctx, _number_mismatch_message("チャンネル", role_number, len(channels))
+        )
+        return
+    club_channel = channels[0] if channels else None
     if not club_channel:
         await send_error_message(
             ctx,
@@ -281,8 +306,8 @@ def setup(tree: app_commands.CommandTree):
         short_description="クラブ用のチャンネルとロールを作成",
         restrictions="• どのチャンネル・スレッドからでも実行可能",
         examples=[
-            "`/create_club_channel channel_name:プログラミング部`",
-            "`/create_club_channel channel_name:ロボット研究会 members:@user1 @user2`",
+            "`/create_club_channel channel_name:ラーメン`",
+            "`/create_club_channel channel_name:ボドゲ members:@user1 @user2`",
         ],
     )
     @tree.command(
@@ -314,7 +339,9 @@ def setup(tree: app_commands.CommandTree):
     )
     @app_commands.describe(
         members="追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
-        role_name="対象のロール（@ロール形式で指定。例: @club 省略時は実行チャンネルのロール）",
+        role_name=(
+            "対象のロール（@ロール形式で指定。例: @c001-ラーメン 省略時は実行チャンネルのロール）"
+        ),
     )
     async def add_club_role_member(
         ctx: discord.Interaction, members: str, role_name: str | None = None

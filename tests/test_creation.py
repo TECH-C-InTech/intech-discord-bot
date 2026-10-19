@@ -73,28 +73,6 @@ async def test_creates_channel_and_mentionable_role() -> None:
     guild.create_role.assert_awaited_once_with(name="e001", mentionable=True)
 
 
-async def test_deletes_channel_and_rejects_when_created_name_is_rejected() -> None:
-    guild, category, channel, _ = make_guild()
-
-    outcome = await create(
-        guild, category, validate_created_name=lambda g, ch: "既存のロールと同じ名前です"
-    )
-
-    assert outcome == Rejected("既存のロールと同じ名前です")
-    channel.delete.assert_awaited_once()
-    guild.create_role.assert_not_called()
-
-
-async def test_reports_leftover_channel_when_deleting_rejected_channel_fails() -> None:
-    guild, category, channel, _ = make_guild()
-    error = http_error()
-    channel.delete = AsyncMock(side_effect=error)
-
-    outcome = await create(guild, category, validate_created_name=lambda g, ch: "NG")
-
-    assert outcome == Failed(error=error, leftover_channel=channel)
-
-
 async def test_fails_without_creating_role_when_channel_creation_fails() -> None:
     guild, category, _, _ = make_guild()
     error = http_error()
@@ -183,3 +161,71 @@ async def test_role_that_appeared_in_cache_is_not_counted_twice() -> None:
     second = await create(guild, category, pending_role_ids=pending)
 
     assert isinstance(second, Created)
+
+
+def named_role(name: str, position: int, role_id: int) -> MagicMock:
+    role = MagicMock(spec=discord.Role)
+    role.name = name
+    role.position = position
+    role.id = role_id
+    return role
+
+
+async def test_created_role_is_moved_using_fresh_roles_even_if_not_cached() -> None:
+    guild, category, _, role = make_guild()
+    role.position = 1
+    # キャッシュ（guild.roles）には新しいロールがない。最新の一覧は取得し直して使う
+    guild.roles = [named_role("e002", 4, 1), named_role("p001", 3, 2)]
+    guild.fetch_roles = AsyncMock(
+        return_value=[
+            named_role("@everyone", 0, 0),
+            named_role("e002", 3, 1),
+            named_role("p001", 2, 2),
+            role,
+        ]
+    )
+    role.name = "e003"
+    guild.edit_role_positions = AsyncMock()
+
+    await create(guild, category, role_kind="event")
+
+    # e002（3）のすぐ下＝位置2へ。p001は1つ下がる
+    sent = guild.edit_role_positions.await_args.args[0]
+    assert {obj.id: position for obj, position in sent.items()} == {2: 1, 42: 2}
+
+
+async def test_failing_to_move_role_does_not_fail_creation() -> None:
+    guild, category, channel, role = make_guild()
+    role.position = 1
+    role.name = "e003"
+    guild.fetch_roles = AsyncMock(
+        return_value=[named_role("@everyone", 0, 0), named_role("e002", 2, 1), role]
+    )
+    guild.edit_role_positions = AsyncMock(side_effect=http_error())
+
+    outcome = await create(guild, category, role_kind="event")
+
+    assert outcome == Created(channel=channel, role=role)
+
+
+async def test_created_role_is_moved_even_when_it_shares_a_position_with_another_role() -> None:
+    # 実際のサーバーでは、作成直後のロールが既存の一番下のロールと同じ位置1で返ってくる
+    guild, category, _, role = make_guild()
+    role.position = 1
+    role.name = "c005-asdf"
+    guild.fetch_roles = AsyncMock(
+        return_value=[
+            named_role("@everyone", 0, 0),
+            named_role("p273", 1, 10),
+            role,  # id=42, position=1
+            named_role("e001", 2, 20),
+            named_role("c004-asdf", 3, 30),
+        ]
+    )
+    guild.edit_role_positions = AsyncMock()
+
+    await create(guild, category, role_kind="club")
+
+    # c004-asdf のすぐ下へ。p273とe001は1つずつ下がる
+    sent = guild.edit_role_positions.await_args.args[0]
+    assert {obj.id: position for obj, position in sent.items()} == {10: 1, 20: 2, 42: 3}

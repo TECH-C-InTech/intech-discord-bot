@@ -12,6 +12,7 @@ from logging import getLogger
 import discord
 
 from .capacity import check_creation_capacity
+from .role_order import display_ranks, role_positions_after_move, target_role_position
 
 logger = getLogger(__name__)
 
@@ -48,11 +49,9 @@ async def create_channel_with_role(
     *,
     decide_name: Callable[[discord.Guild, discord.CategoryChannel], "str | Rejected"],
     role_name_for: Callable[[discord.TextChannel], str],
-    validate_created_name: Callable[
-        [discord.Guild, discord.TextChannel], str | None
-    ] = lambda guild, channel: None,
     lock: asyncio.Lock = creation_lock,
     pending_role_ids: dict[int, set[int]] = pending_role_ids,
+    role_kind: str | None = None,
 ) -> "Created | Rejected | Failed":
     """上限を確かめてから、チャンネルとそれに紐づくロールを作る
 
@@ -63,11 +62,11 @@ async def create_channel_with_role(
         category: 作成先のカテゴリ
         decide_name: チャンネル名を決める（採番など）。使えない場合はRejectedを返す
         role_name_for: 作成されたチャンネルからロール名を決める
-        validate_created_name: Discordが正規化した実際のチャンネル名を検証する。
-            使えない場合は理由を返す
         lock: 作成を直列化するLock（テストでは差し替える）
         pending_role_ids: サーバーごとの、作成したがまだキャッシュに現れていないロールのID
             （テストでは差し替える）
+        role_kind: ロールの種類（club / event / project）。指定すると、同じ種類のロールの
+            並びに合わせて動かす
     """
     pending = pending_role_ids.setdefault(guild.id, set())
     async with lock:
@@ -88,19 +87,14 @@ async def create_channel_with_role(
         except discord.HTTPException as e:
             return Failed(error=e, leftover_channel=None)
 
-        created_name_reason = validate_created_name(guild, channel)
-        if created_name_reason is not None:
-            delete_error = await _rollback_channel(channel)
-            if delete_error is not None:
-                return Failed(error=delete_error, leftover_channel=channel)
-            return Rejected(created_name_reason)
-
         try:
             role = await guild.create_role(name=role_name_for(channel), mentionable=True)
         except discord.HTTPException as e:
             delete_error = await _rollback_channel(channel)
             return Failed(error=e, leftover_channel=channel if delete_error else None)
         pending.add(role.id)
+        if role_kind is not None:
+            await _place_role(guild, role, role_kind)
         return Created(channel=channel, role=role)
 
 
@@ -108,6 +102,32 @@ def _count_pending_roles(guild: discord.Guild, pending: set[int]) -> int:
     """まだキャッシュに現れていないロールの数を返す。現れたものは覚えておくのをやめる"""
     pending.difference_update({role_id for role_id in pending if guild.get_role(role_id)})
     return len(pending)
+
+
+async def _place_role(guild: discord.Guild, role: discord.Role, kind: str) -> None:
+    """作成したロールを、同じ種類のロールの並びに動かす。動かせなくても作成は成功扱いにする
+
+    作成直後のロールはキャッシュになく、他のロールの位置もずれる前のままなので、
+    最新のロールの一覧を取得してから位置を決める。作成直後のロールは既存のロールと
+    同じ位置で返ってくるので、画面上の並びどおりの順位に振り直して扱う。
+    """
+    try:
+        roles = await guild.fetch_roles()
+        # 位置は重複しうるので、画面上の並びどおりの順位に振り直してから計算する
+        ranks = display_ranks([(r.id, r.position) for r in roles])
+        others = [(r.name, ranks[r.id]) for r in roles if r.id != role.id and r.id in ranks]
+        target = target_role_position(kind, others)
+        if target is None:
+            return
+        positions = role_positions_after_move(list(ranks.items()), role_id=role.id, target=target)
+        if not positions:
+            logger.warning(f"Skipped moving role {role.name}: role positions are inconsistent")
+            return
+        await guild.edit_role_positions(
+            {discord.Object(id=role_id): position for role_id, position in positions.items()}
+        )
+    except discord.HTTPException as e:
+        logger.warning(f"Failed to move role {role.name}: {e}")
 
 
 async def _rollback_channel(channel: discord.TextChannel) -> discord.HTTPException | None:
