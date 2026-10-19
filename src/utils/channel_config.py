@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from logging import getLogger
 import os
-from typing import Optional
+from typing import ClassVar, Optional
 
 import discord
 
@@ -26,6 +26,7 @@ class ChannelConfig:
         project_request_channel_name: プロジェクト作成リクエストを受け付けるチャンネル名
         club_category_name: クラブチャンネルを作成するカテゴリー名
         clubs_request_channel_name: クラブチャンネル作成リクエストを受け付けるチャンネル名
+        log_channel_name: 記録を残すログチャンネル名
     """
 
     event_category_name: str
@@ -36,9 +37,10 @@ class ChannelConfig:
     project_request_channel_name: str
     club_category_name: str
     clubs_request_channel_name: str
+    log_channel_name: str
 
     # クラス変数: シングルトンインスタンス
-    _instance: Optional["ChannelConfig"] = None
+    _instance: ClassVar[Optional["ChannelConfig"]] = None
 
     @classmethod
     def get_instance(cls) -> Optional["ChannelConfig"]:
@@ -52,73 +54,16 @@ class ChannelConfig:
             環境変数が不足している場合はNone
         """
         if cls._instance is None:
-            event_category_name = os.getenv("EVENT_CATEGORY_NAME")
-            archive_event_category_name = os.getenv("ARCHIVE_EVENT_CATEGORY_NAME")
-            event_request_channel_name = os.getenv("EVENT_REQUEST_CHANNEL_NAME")
-            project_category_name = os.getenv("PROJECT_CATEGORY_NAME")
-            archive_project_category_name = os.getenv("ARCHIVE_PROJECT_CATEGORY_NAME")
-            project_request_channel_name = os.getenv("PROJECT_REQUEST_CHANNEL_NAME")
-            club_category_name = os.getenv("CLUB_CATEGORY_NAME")
-            clubs_request_channel_name = os.getenv("CLUBS_REQUEST_CHANNEL_NAME")
-
-            # 環境変数のバリデーション
-            missing_vars = []
-            if not event_category_name:
-                missing_vars.append("EVENT_CATEGORY_NAME")
-            if not archive_event_category_name:
-                missing_vars.append("ARCHIVE_EVENT_CATEGORY_NAME")
-            if not event_request_channel_name:
-                missing_vars.append("EVENT_REQUEST_CHANNEL_NAME")
-            if not project_category_name:
-                missing_vars.append("PROJECT_CATEGORY_NAME")
-            if not archive_project_category_name:
-                missing_vars.append("ARCHIVE_PROJECT_CATEGORY_NAME")
-            if not project_request_channel_name:
-                missing_vars.append("PROJECT_REQUEST_CHANNEL_NAME")
-            if not club_category_name:
-                missing_vars.append("CLUB_CATEGORY_NAME")
-            if not clubs_request_channel_name:
-                missing_vars.append("CLUBS_REQUEST_CHANNEL_NAME")
+            values, missing_vars = _read_env()
 
             if missing_vars:
                 logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
-                logger.error("Please set the following environment variables in .env file:")
                 for var in missing_vars:
                     logger.error(f"  - {var}")
                 return None
 
-            # すべての環境変数が存在する場合のみインスタンスを作成
-            # mypy: None チェックは上で行われているのでここでは安全
-            assert event_category_name is not None
-            assert archive_event_category_name is not None
-            assert event_request_channel_name is not None
-            assert project_category_name is not None
-            assert archive_project_category_name is not None
-            assert project_request_channel_name is not None
-            assert club_category_name is not None
-            assert clubs_request_channel_name is not None
-            cls._instance = cls(
-                event_category_name=event_category_name,
-                archive_event_category_name=archive_event_category_name,
-                event_request_channel_name=event_request_channel_name,
-                project_category_name=project_category_name,
-                archive_project_category_name=archive_project_category_name,
-                project_request_channel_name=project_request_channel_name,
-                club_category_name=club_category_name,
-                clubs_request_channel_name=clubs_request_channel_name,
-            )
-
-            logger.info(
-                f"ChannelConfig initialized: "
-                f"event_category='{event_category_name}', "
-                f"archive_event_category='{archive_event_category_name}', "
-                f"event_request_channel='{event_request_channel_name}', "
-                f"project_category='{project_category_name}', "
-                f"archive_project_category='{archive_project_category_name}', "
-                f"project_request_channel='{project_request_channel_name}', "
-                f"club_category='{club_category_name}', "
-                f"clubs_request_channel='{clubs_request_channel_name}'"
-            )
+            cls._instance = cls(**values)
+            logger.info(f"ChannelConfig initialized: {cls._instance}")
 
         return cls._instance
 
@@ -140,17 +85,11 @@ class ChannelConfig:
 
         if config is None:
             logger.warning(f"Failed to load ChannelConfig for user {ctx.user}")
+            _, missing_vars = _read_env()
+            missing_list = "\n".join(f"• `{var}`" for var in missing_vars)
             await ctx.response.send_message(
                 "❌ 必要な環境変数が設定されていません。\n"
-                "サーバー管理者に以下の環境変数の設定を依頼してください:\n"
-                "• `EVENT_CATEGORY_NAME`\n"
-                "• `ARCHIVE_EVENT_CATEGORY_NAME`\n"
-                "• `EVENT_REQUEST_CHANNEL_NAME`\n"
-                "• `PROJECT_CATEGORY_NAME`\n"
-                "• `ARCHIVE_PROJECT_CATEGORY_NAME`\n"
-                "• `PROJECT_REQUEST_CHANNEL_NAME`\n"
-                "• `CLUB_CATEGORY_NAME`\n"
-                "• `CLUBS_REQUEST_CHANNEL_NAME`",
+                f"サーバー管理者に以下の環境変数の設定を依頼してください:\n{missing_list}",
                 ephemeral=True,
             )
             return None
@@ -169,5 +108,33 @@ class ChannelConfig:
             f"archive_project='{self.archive_project_category_name}', "
             f"project_request='{self.project_request_channel_name}', "
             f"club='{self.club_category_name}', "
-            f"clubs_request='{self.clubs_request_channel_name}')"
+            f"clubs_request='{self.clubs_request_channel_name}', "
+            f"log='{self.log_channel_name}')"
         )
+
+
+# 属性名と環境変数名の対応。すべて必須
+ENV_VARS = {
+    "event_category_name": "EVENT_CATEGORY_NAME",
+    "archive_event_category_name": "ARCHIVE_EVENT_CATEGORY_NAME",
+    "event_request_channel_name": "EVENT_REQUEST_CHANNEL_NAME",
+    "project_category_name": "PROJECT_CATEGORY_NAME",
+    "archive_project_category_name": "ARCHIVE_PROJECT_CATEGORY_NAME",
+    "project_request_channel_name": "PROJECT_REQUEST_CHANNEL_NAME",
+    "club_category_name": "CLUB_CATEGORY_NAME",
+    "clubs_request_channel_name": "CLUBS_REQUEST_CHANNEL_NAME",
+    "log_channel_name": "LOG_CHANNEL_NAME",
+}
+
+
+def _read_env() -> tuple[dict[str, str], list[str]]:
+    """環境変数を読み込み、(属性名→値, 不足している環境変数名) を返す"""
+    values: dict[str, str] = {}
+    missing_vars: list[str] = []
+    for attr, env_var in ENV_VARS.items():
+        value = os.getenv(env_var)
+        if value:
+            values[attr] = value
+        else:
+            missing_vars.append(env_var)
+    return values, missing_vars
