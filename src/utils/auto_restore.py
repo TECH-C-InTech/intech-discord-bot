@@ -11,11 +11,20 @@ from .channel_order import move_channel
 from .channel_utils import resolve_target_text_channel
 from .kinds import Kind
 from .linking import Located, collect_kind_categories, locate_channel
+from .numbering import number_of
 from .records import build_restored_by_post_embed, post_channel_record
 
 logger = getLogger(__name__)
 
 USER_MESSAGE_TYPES = (discord.MessageType.default, discord.MessageType.reply)
+
+
+def _is_user_post(message: discord.Message) -> bool:
+    """人の投稿か。カテゴリを見る前に、メモリ上の値だけで判定する"""
+    if message.author.bot or message.webhook_id is not None:
+        return False
+    # ピン留めやスレッド作成などのシステムメッセージは、人の投稿として数えない
+    return message.type in USER_MESSAGE_TYPES
 
 
 def restore_target(
@@ -28,10 +37,7 @@ def restore_target(
         message: 投稿
         categories: 種類ごとの、チャンネルを置くカテゴリ（[通常, アーカイブ]の順）
     """
-    if message.author.bot or message.webhook_id is not None:
-        return None
-    # ピン留めやスレッド作成などのシステムメッセージは、人の投稿として数えない
-    if message.type not in USER_MESSAGE_TYPES:
+    if not _is_user_post(message):
         return None
     # スレッドへの投稿は親チャンネルの動きとして扱う
     if not isinstance(message.channel, (discord.TextChannel, discord.Thread)):
@@ -41,6 +47,9 @@ def restore_target(
         return None
     located = locate_channel(channel, categories)
     if not isinstance(located, Located) or not located.archived:
+        return None
+    # 番号のないチャンネル（アーカイブカテゴリに置いた案内など）は自動では動かさない
+    if number_of(located.kind.prefix, channel.name) is None:
         return None
     return channel, located.kind
 
@@ -59,7 +68,8 @@ async def restore_on_post(
         locks: チャンネルごとの、復元を直列化するLock
     """
     guild = message.guild
-    if guild is None:
+    # サーバーの全投稿で呼ばれるので、安い判定で先にほとんどを捨てる
+    if guild is None or not _is_user_post(message):
         return
     categories, _ = collect_kind_categories(guild.categories, names_of)
     target = restore_target(message, categories)
@@ -88,7 +98,13 @@ async def restore_on_post(
         try:
             await move_channel(channel, own, kind)
         except discord.HTTPException as e:
+            # botの権限不足や、キャッシュより先にカテゴリが埋まっていた場合など
             logger.warning(f"Failed to restore {channel.name} on post: {e}")
+            await _reply_quietly(
+                message,
+                f"このチャンネルを `{own.name}` カテゴリーに戻せませんでした。"
+                "サーバー管理者に連絡してください。",
+            )
             return
     logger.info(f"Restored {kind.key} channel {channel.name} on post by {message.author}")
     await post_channel_record(

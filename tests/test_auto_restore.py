@@ -2,6 +2,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import discord
+import pytest
 
 from src.utils.auto_restore import restore_on_post, restore_target
 from src.utils.kinds import CLUB, EVENT, PROJECT, Kind
@@ -208,7 +209,7 @@ async def test_full_destination_keeps_channel_archived_and_replies_why() -> None
     )
 
 
-async def test_failed_move_is_not_raised_or_recorded() -> None:
+async def test_failed_move_is_not_recorded_and_replies_why() -> None:
     channel = make_channel("e003-おでん会", ARCHIVED_ID)
     message = make_message(channel)
     message.guild = make_guild(channel)
@@ -216,9 +217,14 @@ async def test_failed_move_is_not_raised_or_recorded() -> None:
         side_effect=discord.Forbidden(MagicMock(status=403, reason="Forbidden"), "forbidden")
     )
 
+    message.reply = AsyncMock()
+
     await restore_on_post(message, names_of, locks={})
 
     channel.send.assert_not_called()
+    assert message.reply.await_args.args[0] == (
+        "このチャンネルを `events` カテゴリーに戻せませんでした。サーバー管理者に連絡してください。"
+    )
 
 
 async def test_failed_lookup_of_latest_channel_is_not_raised() -> None:
@@ -232,3 +238,18 @@ async def test_failed_lookup_of_latest_channel_is_not_raised() -> None:
     await restore_on_post(message, names_of, locks={})
 
     channel.edit.assert_not_called()
+
+
+def test_post_in_unnumbered_channel_in_archive_does_not_restore() -> None:
+    # アーカイブカテゴリに置いた案内用のチャンネルなど
+    channel = make_channel("アーカイブについて", ARCHIVED_ID)
+
+    assert restore_target(make_message(channel), CATEGORIES) is None
+
+
+async def test_bot_post_is_dropped_without_looking_at_categories() -> None:
+    message = make_message(make_channel("e003-おでん会", ARCHIVED_ID), bot=True)
+    message.guild = MagicMock(spec=discord.Guild)
+    type(message.guild).categories = property(lambda _: pytest.fail("looked at categories"))
+
+    await restore_on_post(message, names_of, locks={})
