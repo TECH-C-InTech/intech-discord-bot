@@ -1,7 +1,10 @@
 """番号（c001 / e001 / p001）の採番と読み取り"""
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 import re
+from typing import TypeVar
+
+T = TypeVar("T")
 
 
 def number_of(prefix: str, name: str) -> int | None:
@@ -14,3 +17,8 @@ def next_number(prefix: str, names: Iterable[str]) -> int:
     """使われている最大の番号に1を足す。欠番は埋めない（番号は再利用しない）"""
     numbers = [n for n in (number_of(prefix, name) for name in names) if n is not None]
     return max(numbers, default=0) + 1
+
+
+def with_number(prefix: str, number: int, items: Iterable[T], name: Callable[[T], str]) -> list[T]:
+    """名前の番号が number のものをすべて返す（同じ番号が重なっていないか呼び出し側で確かめる）"""
+    return [item for item in items if number_of(prefix, name(item)) == number]

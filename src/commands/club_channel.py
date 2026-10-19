@@ -20,7 +20,7 @@ from ..utils.message_utils import (
     send_error_message,
     send_private_reply,
 )
-from ..utils.numbering import next_number, number_of
+from ..utils.numbering import next_number, number_of, with_number
 from ..utils.records import (
     build_creation_embed,
     build_members_added_embed,
@@ -34,6 +34,16 @@ from ..utils.validation_utils import (
 )
 
 logger = getLogger(__name__)
+
+
+def _number_mismatch_message(kind: str, number: int, count: int) -> str:
+    if count == 0:
+        return f"番号 `c{number:03d}` の{kind}が見つかりません。"
+    # 手作業の移行などで同じ番号が重なった場合は、どれを使うか決められないので止める
+    return (
+        f"番号 `c{number:03d}` の{kind}が{count}個あります。"
+        "サーバー管理者に番号の重なりを直してもらってください。"
+    )
 
 
 # ==================== コマンド実装関数 ====================
@@ -187,15 +197,17 @@ async def add_club_role_member_impl(
             )
             return
         # チャンネルと同じ番号のロールを探す
-        role = next((r for r in guild.roles if number_of("c", r.name) == number), None)
-        if not role:
-            await send_error_message(ctx, f"番号 `c{number:03d}` のロールが見つかりません。")
+        roles = with_number("c", number, guild.roles, name=lambda r: r.name)
+        if len(roles) != 1:
+            await send_error_message(ctx, _number_mismatch_message("ロール", number, len(roles)))
             return
+        role = roles[0]
     else:
         # role_nameが指定された場合、パース関数でロールを取得
-        role = await parse_role_mention(ctx, role_name, guild)
-        if not role:
+        parsed_role = await parse_role_mention(ctx, role_name, guild)
+        if not parsed_role:
             return
+        role = parsed_role
 
     # ロールの安全性チェック
     if not await validate_role_safety(ctx, role):
@@ -203,14 +215,18 @@ async def add_club_role_member_impl(
 
     # ロールと同じ番号のチャンネルがCLUB_CATEGORY_NAMEカテゴリーに存在するか確認
     role_number = number_of("c", role.name)
-    club_channel = (
-        next(
-            (ch for ch in club_category.text_channels if number_of("c", ch.name) == role_number),
-            None,
-        )
+    channels = (
+        with_number("c", role_number, club_category.text_channels, name=lambda ch: ch.name)
         if role_number is not None
-        else None
+        else []
     )
+    if len(channels) > 1:
+        assert role_number is not None
+        await send_error_message(
+            ctx, _number_mismatch_message("チャンネル", role_number, len(channels))
+        )
+        return
+    club_channel = channels[0] if channels else None
     if not club_channel:
         await send_error_message(
             ctx,

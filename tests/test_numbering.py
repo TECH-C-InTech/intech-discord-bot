@@ -1,4 +1,4 @@
-from src.utils.numbering import next_number, number_of
+from src.utils.numbering import next_number, number_of, with_number
 
 
 def test_first_number_is_one() -> None:
@@ -20,3 +20,9 @@ def test_number_is_read_from_numbered_name() -> None:
 def test_unnumbered_or_other_kind_name_has_no_number() -> None:
     assert number_of("c", "ラーメン") is None
     assert number_of("c", "e005-x") is None
+
+
+def test_items_with_the_number_are_picked_by_name() -> None:
+    names = ["c003-映画", "c004-写真", "c003-写真", "e003"]
+
+    assert with_number("c", 3, names, name=lambda n: n) == ["c003-映画", "c003-写真"]
