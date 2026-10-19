@@ -94,14 +94,23 @@ def build_members_removed_embed(
     )
 
 
-def build_archive_notice_embed(*, actor: Mentionable, restore_command: str) -> discord.Embed:
+def build_archive_notice_embed(
+    *, actor: Mentionable, restore_command: str, restore_to: str
+) -> discord.Embed:
     """アーカイブのチャンネル内の記録（移動の前に投稿する）"""
     embed = discord.Embed(
         title="アーカイブ",
         description=f"{actor.mention} がこのチャンネルをアーカイブしました",
         color=discord.Color.light_grey(),
     )
-    embed.add_field(name="復元方法", value=f"`{restore_command}`", inline=False)
+    embed.add_field(
+        name="復元方法",
+        value=(
+            f"このチャンネルでメッセージを送ると、`{restore_to}` カテゴリーに自動で戻ります\n"
+            f"手動で戻す場合: `{restore_command}`"
+        ),
+        inline=False,
+    )
     return embed
 
 
@@ -110,6 +119,17 @@ def build_restored_embed(*, actor: Mentionable, channel: Mentionable) -> discord
     return discord.Embed(
         title="復元",
         description=f"{actor.mention} が {channel.mention} を復元しました",
+        color=discord.Color.green(),
+    )
+
+
+def build_restored_by_post_embed(*, author: Mentionable, restored_to: str) -> discord.Embed:
+    """投稿をきっかけにした自動復元のチャンネル内の記録（投稿した本人はそこにいるので通知しない）"""
+    return discord.Embed(
+        title="復元",
+        description=(
+            f"{author.mention} がメッセージを送ったので、`{restored_to}` カテゴリーに戻しました"
+        ),
         color=discord.Color.green(),
     )
 

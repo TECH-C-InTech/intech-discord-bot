@@ -100,12 +100,15 @@ def test_members_removed_record_includes_actor_role_and_removed_members() -> Non
 
 def test_archive_notice_says_who_archived_and_how_to_restore() -> None:
     embed = build_archive_notice_embed(
-        actor=mentionable("<@1>"), restore_command="/restore_event_channel"
+        actor=mentionable("<@1>"), restore_command="/restore_channel", restore_to="📅 イベント"
     )
 
     assert embed.title == "アーカイブ"
     assert embed.description == "<@1> がこのチャンネルをアーカイブしました"
-    assert field(embed, "復元方法") == "`/restore_event_channel`"
+    assert field(embed, "復元方法") == (
+        "このチャンネルでメッセージを送ると、`📅 イベント` カテゴリーに自動で戻ります\n"
+        "手動で戻す場合: `/restore_channel`"
+    )
 
 
 def test_restored_record_says_who_restored() -> None:

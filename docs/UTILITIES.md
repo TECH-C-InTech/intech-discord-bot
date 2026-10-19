@@ -322,6 +322,7 @@ if reason is not None:
 - `build_members_removed_embed(...)` - 参加者の削除（チャンネル内。外された人は通知しないので`mention_users`を渡さない）
 - `build_archive_notice_embed(...)` - アーカイブ（チャンネル内、移動の前に投稿）
 - `build_restored_embed(...)` - 復元（チャンネル内、移動の後）
+- `build_restored_by_post_embed(...)` - 投稿による自動復元（チャンネル内、移動の後。通知しない）
 
 ### 送信
 

@@ -55,9 +55,12 @@ from ..utils.validation_utils import parse_member_mentions, validate_role_safety
 
 logger = getLogger(__name__)
 
+# 移動時にカテゴリの権限をチャンネルに写すが、botが持っていない権限の許可・拒否は
+# 書き込めない（botにそのチャンネルで「権限の管理」を個別に付与していれば書き込める）
 PERMISSION_HELP = (
-    "サーバー管理者に、`{category}`, `{archive}`のカテゴリに「権限の管理」"
-    "権限がInTech Botのみに付与されているか確認してください。"
+    "サーバー管理者に、`{category}`, `{archive}` カテゴリーの権限設定を確認してもらってください。"
+    "botが持っていない権限の許可・拒否がカテゴリーに設定されていると、チャンネルを移動できません"
+    "（botに「権限の管理」を個別に付与すると回避できます）。"
 )
 
 KIND_CHOICES = [app_commands.Choice(name=kind.label, value=kind.key) for kind in KINDS]
@@ -240,7 +243,9 @@ async def archive_channel_impl(
     # アーカイブ先ではbotが送信できない可能性があるため、移動の前に記録を残す
     notice = await post_channel_record(
         target,
-        build_archive_notice_embed(actor=ctx.user, restore_command="/restore_channel"),
+        build_archive_notice_embed(
+            actor=ctx.user, restore_command="/restore_channel", restore_to=own_name
+        ),
     )
 
     try:

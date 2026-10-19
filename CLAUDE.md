@@ -155,6 +155,7 @@ async def command_cmd(...):
 - [src/utils/role\_utils.py](src/utils/role_utils.py) - Role granting and revoking
 - [src/utils/kinds.py](src/utils/kinds.py) - Differences between club / event / project
 - [src/utils/linking.py](src/utils/linking.py) - Linking channels and roles by number
+- [src/utils/auto\_restore.py](src/utils/auto_restore.py) - Restoring archived channels on posts
 - [src/utils/records.py](src/utils/records.py) - In-channel records
 
 ## Workflow for Common Tasks
