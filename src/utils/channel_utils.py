@@ -6,11 +6,14 @@
 
 from logging import getLogger
 import re
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import discord
 
 from .message_utils import send_error_message
+
+if TYPE_CHECKING:
+    from discord.interactions import InteractionChannel
 
 logger = getLogger(__name__)
 
@@ -179,3 +182,24 @@ async def get_channel_by_name(
 
     logger.debug(f"Channel '{channel_name}' found with ID: {channel.id}")
     return channel
+
+
+def resolve_target_text_channel(
+    channel: "InteractionChannel | None",
+) -> tuple[discord.TextChannel | None, bool]:
+    """コマンドの対象にするテキストチャンネルを、実行された場所から決める
+
+    スレッドから実行された場合は親のテキストチャンネルを対象にする。
+
+    Args:
+        channel: コマンドが実行された場所（Interaction.channel）
+
+    Returns:
+        (対象のテキストチャンネル, スレッドの親を対象にしたか)。
+        対象にできない場所（フォーラムのスレッド、ボイスチャンネル等）では (None, False)
+    """
+    if isinstance(channel, discord.TextChannel):
+        return channel, False
+    if isinstance(channel, discord.Thread) and isinstance(channel.parent, discord.TextChannel):
+        return channel.parent, True
+    return None, False
