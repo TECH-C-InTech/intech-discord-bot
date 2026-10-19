@@ -5,6 +5,8 @@ from typing import Optional
 
 import discord
 
+from .creation import Failed, Rejected
+
 logger = getLogger(__name__)
 
 
@@ -174,3 +176,40 @@ async def handle_command_error(
         f"{action}中にエラーが発生しました: {type(error).__name__}",
         help_text=help_text or "管理者に連絡してください。",
     )
+
+
+async def send_private_reply(ctx: discord.Interaction, embed: discord.Embed) -> None:
+    """操作した本人にだけ見える返信を送る
+
+    defer済みの前提でfollowupを使う。2通目以降のfollowupはdeferの可視性を
+    引き継がないため、毎回ephemeralを指定する。送れなくても例外は出さない
+    （操作が成功していれば、記録は返信の成否に関係なく残すため）。
+
+    followupに失敗した場合は、deferで出た「考え中…」の応答を結果で書き換える。
+    書き換えないと、本人には結果が分からず同じ操作をやり直してしまう。
+    """
+    try:
+        await ctx.followup.send(embed=embed, ephemeral=True)
+        return
+    except discord.HTTPException as e:
+        logger.warning(f"Failed to send reply to {ctx.user}: {e}")
+    try:
+        await ctx.edit_original_response(embed=embed)
+    except discord.HTTPException as e:
+        logger.warning(f"Failed to edit original response for {ctx.user}: {e}")
+
+
+async def report_creation_problem(
+    ctx: discord.Interaction, outcome: "Rejected | Failed", action: str
+) -> None:
+    """チャンネルとロールを作成できなかった理由を本人に返す"""
+    if isinstance(outcome, Rejected):
+        await send_error_message(ctx, outcome.reason)
+        return
+    await handle_command_error(ctx, outcome.error, action)
+    if outcome.leftover_channel is not None:
+        await send_error_message(
+            ctx,
+            f"作成途中の {outcome.leftover_channel.mention} を消せませんでした。"
+            "サーバー管理者に削除を依頼してください。",
+        )
