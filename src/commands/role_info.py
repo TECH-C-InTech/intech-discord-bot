@@ -121,7 +121,7 @@ def setup(tree: app_commands.CommandTree):
         description="指定したロールのメンバー一覧を表示します",
     )
     @app_commands.describe(
-        role_name="対象のロール（@ロール形式で指定。例: @ロール名）",
+        role_name="メンバーを表示するロール（@ロール形式で指定。例: @ロール名）",
         visibility="表示範囲を選択",
     )
     @app_commands.choices(
