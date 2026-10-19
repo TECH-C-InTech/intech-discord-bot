@@ -7,10 +7,11 @@
 ### 主な機能
 
 - **チャンネルとロールの一括作成**: 1つのコマンドでチャンネルとロールを同時に作成
-- **承認フロー**: 管理者による承認プロセスを経て作成
+- **どこからでも作成**: 承認不要。どのチャンネル・スレッドからでも実行可能
 - **メンバー管理**: 作成時または後からメンバーをロールに追加可能
-- **チャンネル制限**: 専用のリクエストチャンネルでのみ実行可能
-- **重複チェック**: 同名チャンネルの作成を防止
+- **名前の衝突チェック**: 同名チャンネル、既存ロール、番号の形式（`e001`など）、ログチャンネル名と衝突する名前を拒否
+- **上限チェック**: カテゴリ・サーバーのチャンネル数やロール数が上限なら作成しない
+- **記録**: 作成とメンバー追加をログチャンネルと対象チャンネルに残す（[ARCHITECTURE.md](./ARCHITECTURE.md#記録の出し先)）
 
 ## 🏗️ アーキテクチャ
 
@@ -25,6 +26,9 @@ src/commands/club_channel.py
 src/utils/
 ├── channel_config.py               # 環境変数管理
 ├── channel_utils.py                # チャンネルユーティリティ
+├── club_name.py                    # クラブ名の検証
+├── creation.py                     # 作成の共通処理（上限チェック・ロールバック）
+├── records.py                      # 記録
 ├── validation_utils.py             # バリデーション
 └── message_utils.py                # メッセージヘルパー
 ```
@@ -36,11 +40,7 @@ src/utils/
 ```bash
 # クラブチャンネル管理用の設定
 CLUB_CATEGORY_NAME="clubs"                    # クラブチャンネルを作成するカテゴリー名
-CLUBS_REQUEST_CHANNEL_NAME="club-request"    # リクエストを受け付けるチャンネル名
-
-# 承認システムの設定
-APPROVER_ROLE_NAME="Administrator"            # 承認権限を持つロール名
-APPROVAL_TIMEOUT_HOURS="24"                   # 承認タイムアウト（時間）
+LOG_CHANNEL_NAME="bot-log"                    # 記録を残すログチャンネル名
 ```
 
 ## 💡 使い方
@@ -76,7 +76,7 @@ APPROVAL_TIMEOUT_HOURS="24"                   # 承認タイムアウト（時�
 /add_club_role_member members:@user3 @user4
 ```
 
-実行チャンネル名のロールにメンバーを追加します。
+実行チャンネル名のロールにメンバーを追加します。スレッドから実行した場合は親チャンネルが対象になります。
 
 #### 任意の場所で実行
 
@@ -94,37 +94,32 @@ APPROVAL_TIMEOUT_HOURS="24"                   # 承認タイムアウト（時�
 sequenceDiagram
     participant User
     participant Bot
-    participant Approver
     participant Discord
 
     User->>Bot: /create_club_channel
-    Bot->>Bot: チャンネル制限チェック
-    Bot->>Bot: 重複チェック
-    Bot->>Approver: 承認リクエスト送信
-    Approver->>Bot: 承認ボタンクリック
+    Bot->>Bot: defer（本人だけに見える）
+    Note over Bot: ここから作成用のLock内
+    Bot->>Bot: 上限チェック
+    Bot->>Bot: 名前の衝突チェック（正規化した名前）
     Bot->>Discord: チャンネル作成
-    Bot->>Discord: ロール作成
+    Bot->>Bot: 実際のチャンネル名で衝突チェック（違反なら削除して拒否）
+    Bot->>Discord: ロール作成（失敗したらチャンネルを削除）
+    Note over Bot: Lockを解放
     Bot->>Discord: メンバーにロール付与
-    Bot->>User: 完了通知
+    Bot->>User: 結果（本人にだけ表示）
+    Bot->>Discord: チャンネル内とログチャンネルに記録
 ```
 
-### 重複チェックの仕組み
+### 名前の衝突チェックの仕組み
 
-チャンネル作成前に、**clubsカテゴリ内**で同名のチャンネルが存在するかチェックします:
+クラブはチャンネルとロールを**名前で**結びつけます。そのため、既存の権限つきロールと同じ名前のクラブを作れると、`/add_club_role_member`でそのロールを自分に付与できてしまいます。これを防ぐため、`validate_club_name`（`src/utils/club_name.py`）で次の名前を拒否します。
 
-```python
-# カテゴリ内に同名のチャンネルが既に存在するかチェック
-channel_dict = {ch.name: ch for ch in category_channel.text_channels}
-existing_channel = channel_dict.get(formatted_channel_name)
-if existing_channel:
-    # エラーメッセージを表示して終了
-    return
-```
+- 番号の形式（`e001`、`c012-x`など）
+- ログチャンネル名
+- 既存のロール名
+- **clubsカテゴリ内**の同名チャンネル
 
-**重要なポイント:**
-- サーバー全体ではなく、**clubsカテゴリ内のみ**をチェック
-- 他のカテゴリに同じ名前があっても作成可能
-- ユーザーフレンドリーなエラーメッセージを表示
+Discordはチャンネル名を正規化します（小文字化、空白をハイフンに、など）。規則は公開されていないため、作成前に近似した正規化で検査し、作成後に実際の`channel.name`でもう一度検査します。ロールは実際の`channel.name`で作るので、チャンネル名とロール名がずれることはありません。
 
 ### ロールメンバー追加の制限
 
@@ -152,7 +147,7 @@ if not club_channel:
     category="クラブチャンネル管理",
     icon="🏛️",
     short_description="クラブ用のチャンネルとロールを作成",
-    restrictions="• クラブリクエストチャンネルでのみ実行可能",
+    restrictions="• どのチャンネル・スレッドからでも実行可能",
     examples=[
         "`/create_club_channel channel_name:プログラミング部`",
         "`/create_club_channel channel_name:ロボット研究会 members:@user1 @user2`",
@@ -162,8 +157,6 @@ if not club_channel:
     name="create_club_channel",
     description="新しいクラブチャンネルを作成します",
 )
-@require_channel(channel_name_from_config="clubs_request_channel_name", must_be_in=True)
-@require_approval(description="新しいクラブチャンネルを作成します")
 @app_commands.describe(
     channel_name="作成するクラブチャンネル名",
     members="ロールに追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
@@ -177,9 +170,7 @@ async def create_club_channel(
 **デコレーターの順序（重要）:**
 1. `@command_meta()` - メタデータ登録
 2. `@tree.command()` - コマンド登録
-3. `@require_channel()` - チャンネル制限
-4. `@require_approval()` - 承認フロー
-5. `@app_commands.describe()` - パラメータ説明
+3. `@app_commands.describe()` - パラメータ説明
 
 ### add_club_role_member コマンド
 
@@ -216,11 +207,11 @@ async def add_club_role_member(
 | **インデックス管理** | ✅ 自動採番 (3桁0埋め) | ❌ なし |
 | **ロール作成** | ✅ | ✅ |
 | **メンバー追加** | ✅ | ✅ |
-| **承認フロー** | ✅ | ✅ |
-| **チャンネル制限** | ✅ event-request | ✅ club-request |
+| **上限チェック** | ✅ | ✅ |
+| **記録** | ✅ | ✅ |
 | **アーカイブ機能** | ✅ | ❌ |
 | **復元機能** | ✅ | ❌ |
-| **重複チェック** | カテゴリ内 | カテゴリ内 |
+| **名前の衝突チェック** | 番号で採番するため不要 | 同名チャンネル・既存ロール・番号形式・ログチャンネル名 |
 
 **設計思想の違い:**
 - **イベント**: 一時的な活動、インデックスで管理、アーカイブ可能
@@ -244,13 +235,14 @@ async def add_club_role_member(
        return  # エラーメッセージは自動表示
    ```
 
-3. **重複チェック**
+3. **名前の衝突チェック**（作成用のLock内で、作成前と作成後に実施）
    ```python
-   channel_dict = {ch.name: ch for ch in category_channel.text_channels}
-   existing_channel = channel_dict.get(formatted_channel_name)
-   if existing_channel:
-       await send_error_message(ctx, "既に存在します")
-       return
+   reason = validate_club_name(
+       name,
+       log_channel_name=config.log_channel_name,
+       existing_role_names=[role.name for role in guild.roles],
+       existing_channel_names=[ch.name for ch in category_channel.text_channels],
+   )
    ```
 
 4. **メンバーメンションのパース**
@@ -268,15 +260,19 @@ async def add_club_role_member(
 
 ### エラーハンドリング
 
+チャンネルとロールの作成は`create_channel_with_role`（`src/utils/creation.py`）が行い、結果を`Created` / `Rejected` / `Failed`で返します。ロールの作成に失敗した場合はチャンネルを削除して元に戻します。
+
 ```python
-try:
-    # チャンネル作成処理
-    channel = await guild.create_text_channel(...)
-    role = await guild.create_role(...)
-    # ...
-except Exception as e:
-    logger.error(f"Error creating club channel: {e}", exc_info=True)
-    await handle_command_error(ctx, e, "クラブチャンネルの作成")
+outcome = await create_channel_with_role(
+    guild,
+    category_channel,
+    decide_name=decide_name,
+    validate_created_name=...,
+    role_name_for=lambda channel: channel.name,
+)
+if not isinstance(outcome, Created):
+    await report_creation_problem(ctx, outcome, "クラブチャンネルの作成")
+    return
 ```
 
 ## 🎯 ベストプラクティス
@@ -309,8 +305,7 @@ except Exception as e:
 
 **同名チャンネルが存在する場合:**
 ```
-❌ チャンネル `プログラミング部` は既にclubsカテゴリ内に存在します。
-   別の名前を使用してください。
+❌ 同じ名前のチャンネルが既にあります。
 ```
 
 **対処法:**
@@ -319,25 +314,11 @@ except Exception as e:
 
 ## 🔗 関連ドキュメント
 
-- [APPROVAL.md](./APPROVAL.md) - 承認システムの詳細
-- [CHANNEL_RESTRICTION.md](./CHANNEL_RESTRICTION.md) - チャンネル制限の詳細
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - 記録の出し先
 - [UTILITIES.md](./UTILITIES.md) - ユーティリティ関数の使い方
 - [ADD_COMMAND.md](./ADD_COMMAND.md) - 新しいコマンドの追加方法
 
 ## 🐛 トラブルシューティング
-
-### Q: 承認リクエストが送信されない
-
-**原因:**
-- `CLUBS_REQUEST_CHANNEL_NAME` で指定されたチャンネル以外で実行
-
-**解決策:**
-```bash
-# .env ファイルを確認
-CLUBS_REQUEST_CHANNEL_NAME="club-request"
-
-# 正しいチャンネルで実行
-```
 
 ### Q: ロールにメンバーを追加できない
 
@@ -368,4 +349,6 @@ CLUBS_REQUEST_CHANNEL_NAME="club-request"
 - `src/commands/club_channel.py` - メインロジック
 - `src/utils/channel_config.py` - 設定管理
 - `src/utils/channel_utils.py` - チャンネルユーティリティ
+- `src/utils/club_name.py` - クラブ名の検証
+- `src/utils/creation.py` - 作成の共通処理
 - `src/utils/validation_utils.py` - バリデーション

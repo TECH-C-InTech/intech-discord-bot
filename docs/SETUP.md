@@ -49,20 +49,28 @@ cp .env.sample .env
 ```env
 DISCORD_BOT_TOKEN=your_bot_token_here
 EVENT_CATEGORY_NAME=event
-ARCHIVE_EVENT_CATEGORY_NAME=archived-event
-EVENT_REQUEST_CHANNEL_NAME=event-request
+ARCHIVE_EVENT_CATEGORY_NAME=archived
+PROJECT_CATEGORY_NAME=project
+ARCHIVE_PROJECT_CATEGORY_NAME=archived-project
+CLUB_CATEGORY_NAME=clubs
+LOG_CHANNEL_NAME=bot-log
 ```
 
 > **Note**: Bot Tokenは管理者（@KorRyu3 or @nka21）に問い合わせてください
 
 ### 3. 環境変数の説明
 
-| 変数名 | 説明 | デフォルト例 |
-|--------|------|--------------|
+`DISCORD_BOT_TOKEN`以外は、すべて設定しないとコマンドが設定エラーになります。
+
+| 変数名 | 説明 | 例 |
+|--------|------|------|
 | `DISCORD_BOT_TOKEN` | Discord Botのトークン(Bot起動に必須) | - |
 | `EVENT_CATEGORY_NAME` | イベントチャンネルを作成するカテゴリー名 | `event` |
-| `ARCHIVE_EVENT_CATEGORY_NAME` | アーカイブ先のカテゴリー名 | `archived-event` |
-| `EVENT_REQUEST_CHANNEL_NAME` | チャンネル作成リクエストを受け付けるチャンネル名 | `event-request` |
+| `ARCHIVE_EVENT_CATEGORY_NAME` | イベントのアーカイブ先のカテゴリー名 | `archived` |
+| `PROJECT_CATEGORY_NAME` | プロジェクトチャンネルを作成するカテゴリー名 | `project` |
+| `ARCHIVE_PROJECT_CATEGORY_NAME` | プロジェクトのアーカイブ先のカテゴリー名 | `archived-project` |
+| `CLUB_CATEGORY_NAME` | クラブチャンネルを作成するカテゴリー名 | `clubs` |
+| `LOG_CHANNEL_NAME` | 記録を残すログチャンネル名 | `bot-log` |
 
 ## Discord サーバーの設定
 
@@ -71,24 +79,29 @@ EVENT_REQUEST_CHANNEL_NAME=event-request
 ### カテゴリー
 
 1. `event` - イベントチャンネル用
-2. `archived-event` - アーカイブ用
+2. `archived` - イベントのアーカイブ用
+3. `project` - プロジェクトチャンネル用
+4. `archived-project` - プロジェクトのアーカイブ用
+5. `clubs` - クラブチャンネル用
 
 ### チャンネル
 
-1. `event-request` - チャンネル作成リクエスト用
+1. `bot-log` - ログチャンネル。メンバー全員が閲覧でき、botが閲覧・送信・埋め込みリンクできるようにする
+
+botは各カテゴリのチャンネルにも記録を投稿するため、上のカテゴリすべてでbotが閲覧・送信・埋め込みリンクできるようにしてください。起動時にログチャンネルの存在と権限を確認し、問題があればログにwarningを出します。
 
 ### 構造例
 
 ```text
 📁 event
-├── # 1-新歓イベント
-└── # 2-ハッカソン
+├── # e001-新歓イベント
+└── # e002-ハッカソン
 
-📁 archived-event
-└── # 3-終了したイベント
+📁 archived
+└── # e003-終了したイベント
 
 📁 その他
-└── # event-request
+└── # bot-log
 ```
 
 ## 実行方法

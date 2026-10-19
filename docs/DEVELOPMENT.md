@@ -48,8 +48,13 @@ DISCORD_BOT_TOKEN=your_dev_bot_token_here
 DEV_GUILD_ID=your_dev_server_id_here
 EVENT_CATEGORY_NAME=event
 ARCHIVE_EVENT_CATEGORY_NAME=archived
-EVENT_REQUEST_CHANNEL_NAME=event-request
+PROJECT_CATEGORY_NAME=project
+ARCHIVE_PROJECT_CATEGORY_NAME=archived-project
+CLUB_CATEGORY_NAME=clubs
+LOG_CHANNEL_NAME=bot-log
 ```
+
+必要な環境変数の一覧は [SETUP.md](./SETUP.md#3-環境変数の説明) を参照してください。`LOG_CHANNEL_NAME`が未設定だと、すべてのコマンドが設定エラーになります。
 
 **推奨構成**:
 
@@ -181,7 +186,7 @@ from discord import app_commands
 
 # 3. ローカルモジュール
 from ..utils.command_metadata import command_meta
-from ..utils.validation_utils import validate_channel_restriction
+from ..utils.validation_utils import validate_role_safety
 ```
 
 ## コード品質チェック
@@ -221,6 +226,14 @@ uv run ruff check --fix .
 uv run mypy .
 ```
 
+### テスト
+
+```bash
+uv run pytest
+```
+
+Discordに依存しない判定（上限、名前の検証、作成の手順、記録の組み立てなど）は`tests/`に自動テストがあります。Discordオブジェクトは`unittest.mock.MagicMock(spec=...)`で置き換えます。
+
 ### プルリクエスト前のチェックリスト
 
 ```bash
@@ -228,11 +241,13 @@ uv run mypy .
 uv run ruff format --check .
 uv run ruff check .
 uv run mypy .
+uv run pytest
 
 # または自動修正してからチェック
 uv run ruff format .
 uv run ruff check --fix .
 uv run mypy .
+uv run pytest
 ```
 
 ## CI/CDパイプライン
@@ -250,6 +265,7 @@ uv run mypy .
 4. フォーマットチェック (`ruff format --check`)
 5. リントチェック (`ruff check`)
 6. 型チェック (`mypy`)
+7. テスト (`pytest`)
 
 **すべてのチェックが通らないとマージできません。**
 
@@ -306,7 +322,10 @@ flyctl launch --region nrt
 fly secrets set DISCORD_BOT_TOKEN="your_token_here"
 fly secrets set EVENT_CATEGORY_NAME="event"
 fly secrets set ARCHIVE_EVENT_CATEGORY_NAME="archived"
-fly secrets set EVENT_REQUEST_CHANNEL_NAME="event-request"
+fly secrets set PROJECT_CATEGORY_NAME="project"
+fly secrets set ARCHIVE_PROJECT_CATEGORY_NAME="archived-project"
+fly secrets set CLUB_CATEGORY_NAME="clubs"
+fly secrets set LOG_CHANNEL_NAME="bot-log"
 
 # デプロイ
 fly deploy
@@ -345,7 +364,7 @@ docker run -p 8000:8000 intech-bot
 
 ## テスト戦略
 
-**現在、自動テストはありません** - 環境分離によるマニュアルテスト:
+Discordに依存しないロジックは`pytest`で自動テストします（[テスト](#テスト)）。コマンド全体の動作は、環境分離によるマニュアルテストで確認します:
 
 - 開発環境: `DEV_GUILD_ID` で迅速なイテレーション
 - 本番環境: グローバルコマンド同期

@@ -27,6 +27,7 @@ uv run ruff format --check .     # Check formatting
 uv run ruff check .              # Lint code
 uv run ruff check --fix .        # Auto-fix lint issues
 uv run mypy .                    # Type checking
+uv run pytest                    # Run tests
 
 # Deployment
 fly deploy                       # Deploy to Fly.io
@@ -58,19 +59,12 @@ flyctl status                    # Check deployment status
   - バリデーションユーティリティ
   - メッセージユーティリティ
   - チャンネルユーティリティ
+  - 作成と上限チェック、記録
   - ロギングパターン
 
-- **[docs/APPROVAL.md](docs/APPROVAL.md)** - 承認システムの仕様
-  - 承認フローの概要とアーキテクチャ
-  - `@require_approval` デコレーターの使い方
-  - スレッド連携とUI実装
-  - 実装例とベストプラクティス
-
-- **[docs/CHANNEL_RESTRICTION.md](docs/CHANNEL_RESTRICTION.md)** - チャンネル制限デコレーター
-  - `@require_channel` デコレーターの概要
-  - 基本的な使い方とパラメータ
-  - 承認システムとの統合
-  - 実装例とベストプラクティス
+- **[docs/CLUB_CHANNEL.md](docs/CLUB_CHANNEL.md)** - クラブチャンネル
+  - 名前でのチャンネルとロールの紐づけ
+  - 名前の衝突チェック
 
 - **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** - 開発ワークフロー
   - 開発環境のセットアップ
@@ -107,8 +101,8 @@ async def command_cmd(...):
 - ユーティリティ使用時 → [docs/UTILITIES.md](docs/UTILITIES.md)
 - アーキテクチャ理解 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - 開発環境構築 → [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
-- チャンネル制限追加時 → [docs/CHANNEL_RESTRICTION.md](docs/CHANNEL_RESTRICTION.md)
-- 承認フロー追加時 → [docs/APPROVAL.md](docs/APPROVAL.md)
+- 記録（ログチャンネル・チャンネル内の記録）を残す時 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#記録の出し先)
+- 用語の確認 → [CONTEXT.md](CONTEXT.md)（目指す姿を含む用語集で、まだ実装されていない部分もある）
 
 ### 3. Development vs Production
 
@@ -150,14 +144,15 @@ async def command_cmd(...):
 ### Utilities
 
 - [src/utils/command\_metadata.py](src/utils/command_metadata.py) - Metadata registry
-- [src/utils/event\_config.py](src/utils/event_config.py) - Singleton config
+- [src/utils/channel\_config.py](src/utils/channel_config.py) - Singleton config
 - [src/utils/validation\_utils.py](src/utils/validation_utils.py) - Validation helpers
 - [src/utils/message\_utils.py](src/utils/message_utils.py) - Message & error handling
 - [src/utils/channel\_utils.py](src/utils/channel_utils.py) - Channel operations
-- [src/utils/channel\_decorator.py](src/utils/channel_decorator.py) - Channel restriction decorator
-- [src/utils/approval\_decorator.py](src/utils/approval_decorator.py) - Approval middleware
-- [src/utils/approval\_utils.py](src/utils/approval_utils.py) - Approval utilities
-- [src/views/approval\_view.py](src/views/approval_view.py) - Approval UI
+- [src/utils/capacity.py](src/utils/capacity.py) - Discord limits (channels, roles)
+- [src/utils/creation.py](src/utils/creation.py) - Serialized channel and role creation
+- [src/utils/club\_name.py](src/utils/club_name.py) - Club name validation
+- [src/utils/role\_utils.py](src/utils/role_utils.py) - Role granting
+- [src/utils/records.py](src/utils/records.py) - Log channel and in-channel records
 
 ## Workflow for Common Tasks
 
@@ -167,9 +162,8 @@ async def command_cmd(...):
 2. Copy [src/commands/\_sample.py](src/commands/_sample.py)
 3. Follow decorator ordering rules
 4. Reference [docs/UTILITIES.md](docs/UTILITIES.md) for helper functions
-5. (オプション) チャンネル制限が必要な場合は [docs/CHANNEL_RESTRICTION.md](docs/CHANNEL_RESTRICTION.md) を参照
-6. (オプション) 承認が必要な場合は [docs/APPROVAL.md](docs/APPROVAL.md) を参照
-7. Test with `.env.dev` and `DEV_GUILD_ID`
+5. (オプション) 記録を残す場合は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#記録の出し先) の表に従う
+6. Test with `.env.dev` and `DEV_GUILD_ID`
 
 ### Understanding Architecture
 
@@ -191,8 +185,8 @@ async def command_cmd(...):
    - Architecture changes → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
    - Utility changes → [docs/UTILITIES.md](docs/UTILITIES.md)
    - Command patterns → [docs/ADD_COMMAND.md](docs/ADD_COMMAND.md)
-   - Channel restriction → [docs/CHANNEL_RESTRICTION.md](docs/CHANNEL_RESTRICTION.md)
-   - Approval system → [docs/APPROVAL.md](docs/APPROVAL.md)
+   - Club channels → [docs/CLUB_CHANNEL.md](docs/CLUB_CHANNEL.md)
+   - Terms → [CONTEXT.md](CONTEXT.md)
    - Workflow changes → [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
 
 2. Update [docs/INDEX.md](docs/INDEX.md) if adding new sections
@@ -203,6 +197,6 @@ async def command_cmd(...):
 
 **詳細**: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#テスト戦略)
 
-- 現在、自動テストなし
-- 環境分離によるマニュアルテスト
+- Discordに依存しないロジックは`uv run pytest`で自動テスト（`tests/`）
+- コマンド全体は環境分離によるマニュアルテスト
 - 開発用と本番用で別々のBotトークンを使用

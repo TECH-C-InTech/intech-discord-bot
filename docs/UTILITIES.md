@@ -7,37 +7,14 @@
 1. [バリデーションユーティリティ](#バリデーションユーティリティ)
 2. [メッセージユーティリティ](#メッセージユーティリティ)
 3. [チャンネルユーティリティ](#チャンネルユーティリティ)
-4. [コマンドメタデータ](#コマンドメタデータ)
-5. [承認ミドルウェア](#承認ミドルウェア)
-6. [設定管理](#設定管理)
+4. [作成と上限チェック](#作成と上限チェック)
+5. [記録](#記録)
+6. [コマンドメタデータ](#コマンドメタデータ)
+7. [設定管理](#設定管理)
 
 ## バリデーションユーティリティ
 
 **場所**: [src/utils/validation_utils.py](../src/utils/validation_utils.py)
-
-### `validate_channel_restriction(ctx, channel_name)`
-
-特定のチャンネルでのみコマンド実行を許可するチェック。
-
-**パラメータ**:
-- `ctx: discord.Interaction` - Discord インタラクション
-- `channel_name: str` - 許可するチャンネル名
-
-**戻り値**:
-- `str | None` - エラーメッセージ（制限違反の場合）、または `None`（OK の場合）
-
-**使用例**:
-```python
-from src.utils.validation_utils import validate_channel_restriction
-
-async def my_command(ctx: discord.Interaction):
-    error = validate_channel_restriction(ctx, "event-request")
-    if error:
-        await send_error_message(ctx, error)
-        return
-
-    # コマンドの処理
-```
 
 ### `validate_channel_in_category(ctx, channel, category_name)`
 
@@ -61,27 +38,26 @@ if not valid:
     return
 ```
 
-### `parse_member_mentions(ctx, mention_string)`
+### `parse_member_mentions(ctx, members_str, guild)`
 
 メンション文字列を解析して`discord.Member`オブジェクトのリストに変換。
 
 **パラメータ**:
 - `ctx: discord.Interaction` - Discord インタラクション
-- `mention_string: str | None` - メンション文字列（例: "@user1 @user2"）
+- `members_str: str` - メンション文字列（例: "@user1 @user2"）
+- `guild: discord.Guild` - Discordギルド
 
 **戻り値**:
-- `list[discord.Member]` - メンバーオブジェクトのリスト
+- `list[discord.Member] | None` - メンバーオブジェクトのリスト。エラー時は `None`（エラーメッセージは自動送信）
 
 **使用例**:
 ```python
 from src.utils.validation_utils import parse_member_mentions
 
 async def add_members_command(ctx: discord.Interaction, members: str):
-    member_list = parse_member_mentions(ctx, members)
-
-    if not member_list:
-        await send_error_message(ctx, "有効なメンバーが見つかりませんでした")
-        return
+    member_list = await parse_member_mentions(ctx, members, ctx.guild)
+    if member_list is None:
+        return  # エラーメッセージは既に送信されている
 
     # メンバーリストを処理
     for member in member_list:
@@ -93,25 +69,24 @@ async def add_members_command(ctx: discord.Interaction, members: str):
 - `<@123456789>` - ID形式のメンション
 - 複数メンションをスペース区切り
 
-### `validate_role_safety(role)`
+### `validate_role_safety(ctx, role)`
 
 ロールが安全に操作できるかチェック（管理者ロール、マネージドロール、@everyoneロールをブロック）。
 
 **パラメータ**:
+- `ctx: discord.Interaction` - Discord インタラクション
 - `role: discord.Role` - チェックするロール
 
 **戻り値**:
-- `str | None` - エラーメッセージ、または `None`
+- `bool` - 安全なら `True`、危険なら `False`（エラーメッセージは自動送信）
 
 **使用例**:
 ```python
 from src.utils.validation_utils import validate_role_safety
 
 async def modify_role_command(ctx: discord.Interaction, role: discord.Role):
-    error = validate_role_safety(role)
-    if error:
-        await send_error_message(ctx, error)
-        return
+    if not await validate_role_safety(ctx, role):
+        return  # エラーメッセージは既に送信されている
 
     # ロールの操作
 ```
@@ -189,6 +164,16 @@ embed = create_success_embed("チャンネルを作成しました")
 await ctx.response.send_message(embed=embed)
 ```
 
+### `send_private_reply(ctx, embed)`
+
+操作した本人にだけ見える返信を送る。defer済みの前提で`followup`を使い、毎回`ephemeral=True`を指定する（2通目以降のfollowupはdeferの可視性を引き継がないため）。送信に失敗しても例外は出さない。
+
+```python
+await ctx.response.defer(ephemeral=True, thinking=True)
+# ... 操作 ...
+await send_private_reply(ctx, create_success_embed(title="作成完了", description="..."))
+```
+
 ### Interactionレスポンスパターン
 
 **重要**: 必ずレスポンスの状態をチェックしてから送信してください。
@@ -240,6 +225,21 @@ channel_name = f"e{index:03d}-{event_name}"
 
 詳細は [ARCHITECTURE.md](./ARCHITECTURE.md#イベントチャンネルのインデックス管理) を参照。
 
+### `resolve_target_text_channel(channel)`
+
+コマンドが実行された場所（`Interaction.channel`）から、対象にするテキストチャンネルを決める。
+
+**戻り値**:
+- `tuple[discord.TextChannel | None, bool]` - (対象のチャンネル, スレッドの親を対象にしたか)
+
+| 実行された場所 | 戻り値 |
+|---|---|
+| テキストチャンネル | (そのチャンネル, `False`) |
+| テキストチャンネルのスレッド | (親チャンネル, `True`) |
+| フォーラムのスレッド、ボイスチャンネルなど | (`None`, `False`) |
+
+スレッドの親を対象にした場合は、そのことを本人への返信で伝える。
+
 ### `find_event_channel_by_name(guild, partial_name, category_name)`
 
 部分一致でイベントチャンネルを検索。
@@ -267,6 +267,76 @@ if not channel:
 - インデックス部分（`e001-`）を除いた名前で部分一致
 - 大文字小文字を区別
 
+## 作成と上限チェック
+
+### `create_channel_with_role(guild, category, *, decide_name, role_name_for, validate_created_name=..., lock=creation_lock)`
+
+**場所**: [src/utils/creation.py](../src/utils/creation.py)
+
+上限チェックから、チャンネルとロールの作成までをサーバー全体で1つのLockの中で行う。ロールの作成に失敗したらチャンネルを削除して元に戻す。
+
+**パラメータ**:
+- `decide_name(guild, category) -> str | Rejected` - チャンネル名を決める（event/projectは採番、clubは名前の衝突チェック）
+- `role_name_for(channel) -> str` - 作成されたチャンネルからロール名を決める
+- `validate_created_name(guild, channel) -> str | None` - Discordが正規化した実際のチャンネル名を検証する（clubのみ）
+
+**戻り値**:
+- `Created(channel, role)` - 作成できた
+- `Rejected(reason)` - 上限や名前の検証で拒否した（何も残らない）
+- `Failed(error, leftover_channel)` - Discordの操作に失敗した。ロールバックできなかったチャンネルがあれば`leftover_channel`に入る
+
+`Rejected`と`Failed`は`report_creation_problem(ctx, outcome, action)`で本人に返す。設計は [ARCHITECTURE.md](./ARCHITECTURE.md#作成の直列化と上限チェック) を参照。
+
+### `check_creation_capacity(...)` / `check_move_capacity(...)`
+
+**場所**: [src/utils/capacity.py](../src/utils/capacity.py)
+
+件数だけを受け取り、上限に達していれば理由を、余裕があれば`None`を返す純粋関数。`remaining_capacity(...)`は上限までの残り件数を返す。
+
+```python
+reason = check_move_capacity(destination_category_channels=len(archive_category.channels))
+if reason is not None:
+    await send_error_message(ctx, reason)
+    return
+```
+
+### `validate_club_name(name, *, log_channel_name, existing_role_names, existing_channel_names)`
+
+**場所**: [src/utils/club_name.py](../src/utils/club_name.py)
+
+クラブ名として使えない場合に理由を返す（番号の形式、ログチャンネル名、既存のロール名、同じカテゴリの既存チャンネル名）。詳細は [CLUB_CHANNEL.md](./CLUB_CHANNEL.md#名前の衝突チェックの仕組み) を参照。
+
+### `grant_role(members, role)`
+
+**場所**: [src/utils/role_utils.py](../src/utils/role_utils.py)
+
+メンバーにロールを付与し、`GrantResult(granted, already_had, failed)`を返す。失敗した人がいても残りの人への付与は続ける。
+
+## 記録
+
+**場所**: [src/utils/records.py](../src/utils/records.py)
+
+どこに何を残すかは [ARCHITECTURE.md](./ARCHITECTURE.md#記録の出し先) を参照。
+
+### 組み立て
+
+- `build_creation_embed(...)` - 作成（ログ・チャンネル内で共通）
+- `build_members_added_embed(...)` - メンバー追加（チャンネル内）
+- `build_archive_notice_embed(...)` - アーカイブ（チャンネル内、移動の前に投稿）
+- `build_archived_log_embed(...)` - アーカイブ（ログ、移動の成功後）
+- `build_restored_embed(...)` - 復元（ログ・チャンネル内で共通）
+
+### 送信
+
+- `post_log(guild, log_channel_name, embed)` - ログチャンネルへ送る。誰も通知しない
+- `post_channel_record(channel, embed, mention_users=())` - 対象チャンネルへ送る。`mention_users`だけを本文のメンションで通知する。送信したメッセージ（送れなければ`None`）を返す
+
+どちらも送信に失敗しても例外は出さず、warningを出す。
+
+### `find_log_channel_problems(guild, log_channel_name)`
+
+ログチャンネルが無い、またはbotが閲覧・送信・埋め込みできない場合にその内容を返す。`on_ready`で使う。
+
 ## コマンドメタデータ
 
 **場所**: [src/utils/command_metadata.py](../src/utils/command_metadata.py)
@@ -291,7 +361,7 @@ from src.utils.command_metadata import command_meta
     category="イベント管理",
     icon="📅",
     short_description="新しいイベントチャンネルを作成",
-    restrictions="event-requestチャンネルでのみ実行可能",
+    restrictions="• どのチャンネル・スレッドからでも実行可能",
     examples=[
         "`/create_event_channel name:ハッカソン`",
         "`/create_event_channel name:勉強会 members:@user1 @user2`",
@@ -304,201 +374,6 @@ async def create_event_channel_cmd(ctx: discord.Interaction, name: str, members:
 ```
 
 **重要**: `@command_meta` は必ず最上位のデコレーターとして配置してください。詳細は [ADD_COMMAND.md](./ADD_COMMAND.md#デコレーターの順序重要) を参照。
-
-## チャンネル制限デコレーター
-
-**場所**: [src/utils/channel_decorator.py](../src/utils/channel_decorator.py)
-
-### `@require_channel` デコレーター
-
-特定のチャンネルでのみ（または特定のチャンネル以外で）コマンドを実行できるように制限するデコレーター。
-
-**パラメータ**:
-- `channel_name: str | None` - チャンネル名を直接指定（`channel_name_from_config` と排他）
-- `channel_name_from_config: str | None` - `ChannelConfig` の属性名を指定して動的取得（`channel_name` と排他）
-- `must_be_in: bool` - チャンネル制限の方向（デフォルト: `True`）
-  - `True`: 指定チャンネルでのみ実行可能
-  - `False`: 指定チャンネル以外で実行可能
-
-**使用例（直接指定）**:
-```python
-from src.utils.channel_decorator import require_channel
-
-@command_meta(...)
-@tree.command(name="admin_command", description="管理コマンド")
-@require_channel(channel_name="管理チャンネル", must_be_in=True)
-@app_commands.describe(...)
-async def admin_command_cmd(ctx: discord.Interaction, ...):
-    # このコマンドは「管理チャンネル」でのみ実行可能
-    await ctx.response.send_message("管理コマンドを実行しました")
-```
-
-**使用例（環境変数から取得）**:
-```python
-from src.utils.channel_decorator import require_channel
-
-@command_meta(...)
-@tree.command(name="create_event", description="イベント作成")
-@require_channel(channel_name_from_config="event_request_channel_name", must_be_in=True)
-@app_commands.describe(...)
-async def create_event_cmd(ctx: discord.Interaction, ...):
-    # このコマンドは EVENT_REQUEST_CHANNEL_NAME で指定されたチャンネルでのみ実行可能
-    await ctx.response.send_message("イベントを作成しました")
-```
-
-**チャンネル制限と承認の組み合わせ**:
-```python
-@command_meta(...)
-@tree.command(...)
-@require_channel(channel_name_from_config="event_request_channel_name", must_be_in=True)
-@require_approval(timeout_hours=24, description="新しいイベントを作成します")
-@app_commands.describe(...)
-async def create_event_cmd(ctx: discord.Interaction, ...):
-    # 1. まずチャンネル制限をチェック
-    # 2. 通過したら承認フローへ
-    ...
-```
-
-**重要**: `@require_channel` は `@require_approval` より上位に配置してください。これにより、承認リクエスト送信前にチャンネル制限をチェックできます。
-
-## 承認ミドルウェア
-
-**場所**:
-- [src/utils/approval_decorator.py](../src/utils/approval_decorator.py) - デコレーター
-- [src/utils/approval_utils.py](../src/utils/approval_utils.py) - ユーティリティ関数
-- [src/views/approval_view.py](../src/views/approval_view.py) - UI コンポーネント
-
-### `@require_approval` デコレーター
-
-特定のコマンドに承認フローを追加するデコレーター。Administrator権限を持つユーザーは承認不要で即座に実行され、それ以外のユーザーは承認リクエストを送信します。
-
-**パラメータ**:
-- `timeout_hours: int` - タイムアウト時間（時間単位）。デフォルトは24時間
-- `description: str | None` - 承認リクエストに表示するコマンドの説明（任意）
-
-**使用例**:
-```python
-from src.utils.approval_decorator import require_approval
-
-@command_meta(
-    category="イベント管理",
-    icon="📅",
-    short_description="新しいイベントチャンネルを作成",
-)
-@tree.command(name="create_event_channel", description="イベントチャンネルを作成")
-@require_approval(timeout_hours=24, description="新しいイベントチャンネルを作成します")
-@app_commands.describe(name="チャンネル名")
-async def create_event_channel_cmd(ctx: discord.Interaction, name: str):
-    # この関数は承認後に実行される
-    await ctx.response.send_message(f"チャンネル {name} を作成しました")
-```
-
-**デコレーターの順序**:
-```python
-@command_meta(...)          # 最上位（必須）
-@tree.command(...)          # Discord登録
-@require_channel(...)       # チャンネル制限（オプション、承認より上位）
-@require_approval(...)      # 承認ミドルウェア（ここに配置）
-@app_commands.describe(...) # パラメータ説明
-async def command(...):
-```
-
-### 承認フロー
-
-1. **Administrator が実行した場合**:
-   - 承認不要で即座にコマンドが実行される
-   - ログに「Administrator」として記録
-
-2. **一般ユーザーが実行した場合**:
-   - 承認リクエストメッセージが送信される（Embed + ボタン）
-   - Administratorが承認ボタンをクリックするとコマンド実行
-   - Administratorが拒否ボタンをクリックすると拒否メッセージ表示
-   - タイムアウト（デフォルト24時間）で自動的に拒否
-
-### 承認ユーティリティ関数
-
-承認リクエストや結果表示用のEmbed作成関数。
-
-**使用可能な関数**:
-```python
-from src.utils.approval_utils import (
-    create_approval_request_embed,
-    create_approval_result_embed,
-    create_rejection_result_embed,
-    create_timeout_result_embed,
-    has_administrator_permission,
-)
-
-# 承認リクエストEmbed
-embed = create_approval_request_embed(
-    command_name="/create_channel",
-    requester=ctx.user,
-    timeout_hours=24,
-    description="新しいチャンネルを作成します"
-)
-
-# 承認成功Embed
-embed = create_approval_result_embed("/create_channel", approver)
-
-# 拒否Embed
-embed = create_rejection_result_embed("/create_channel", rejector)
-
-# タイムアウトEmbed
-embed = create_timeout_result_embed("/create_channel", 24)
-
-# Administrator権限チェック
-if has_administrator_permission(member):
-    # 即座に実行
-```
-
-### ApprovalView クラス
-
-承認/拒否ボタンを持つUIコンポーネント。通常はデコレーター経由で自動的に使用されます。
-
-**ボタン**:
-- ✅ **承認ボタン（緑）**: Administrator権限を持つユーザーがクリックするとコマンド実行
-- ❌ **拒否ボタン（赤）**: Administrator権限を持つユーザーがクリックすると拒否
-
-**タイムアウト処理**:
-- 指定時間（デフォルト24時間）経過すると自動的に拒否
-- メッセージを編集してタイムアウトを表示
-- ボタンを無効化
-
-### 注意事項
-
-**Interactionコンテキストの扱い**:
-- 承認後に実行されるコマンドには、承認ボタンの`Interaction`が渡されます
-- 元の`ctx.response`は承認リクエスト送信時に既に使用済みです
-- コマンド内では`ctx.response.send_message()`または`ctx.followup.send()`が使用できます
-
-**Bot再起動時の動作**:
-- 24時間のタイムアウト中にBotが再起動すると、承認リクエストは未処理のまま残ります
-- ユーザーがボタンをクリックすると「このインタラクションは無効です」とDiscordが表示します
-- この動作は現時点では許容範囲として設計されています
-
-**ログ記録**:
-```python
-# 承認リクエスト送信時
-logger.info(f"Approval request sent for command '{command_name}' by {user}")
-
-# 承認時
-logger.info(f"Command '{command_name}' approved by {approver}")
-
-# 拒否時
-logger.warning(f"Command '{command_name}' rejected by {rejector}")
-
-# タイムアウト時
-logger.warning(f"Approval request for '{command_name}' timed out")
-```
-
-### 将来的な拡張
-
-現在は「一人でも承認すればOK」モードのみ実装されています。将来的には以下の拡張が考えられます：
-
-- **全員承認モード**: 複数のAdministratorが全員承認する必要があるモード
-- **拒否理由の入力**: Modalを使用して拒否理由を記述する機能
-- **承認履歴の記録**: データベースやログファイルに承認履歴を保存
-- **Bot再起動後の復元**: 未処理の承認リクエストを復元する機能
 
 ## 設定管理
 
@@ -518,7 +393,7 @@ config = await ChannelConfig.load(ctx)
 event_category = config.event_category_name
 archive_category = config.archive_event_category_name
 project_category = config.project_category_name
-request_channel = config.event_request_channel_name
+log_channel = config.log_channel_name
 ```
 
 **プロパティ** (主要):
@@ -526,14 +401,14 @@ request_channel = config.event_request_channel_name
 - `archive_event_category_name: str` - アーカイブカテゴリー名
 - `project_category_name: str` - プロジェクトカテゴリー名
 - `archive_project_category_name: str` - プロジェクトアーカイブカテゴリー名
-- `event_request_channel_name: str` - イベントリクエストチャンネル名
-- `project_request_channel_name: str` - プロジェクトリクエストチャンネル名
+- `club_category_name: str` - クラブカテゴリー名
+- `log_channel_name: str` - ログチャンネル名
 
 **特徴**:
 - 非同期ロード (`await ChannelConfig.load(ctx)`)
 - 初回アクセス時に環境変数を読み込み、キャッシュ
-- バリデーション付き
-- エラーメッセージは自動表示
+- バリデーション付き（すべて必須）
+- エラーメッセージは自動表示（不足している環境変数だけを並べる）
 
 詳細は [ARCHITECTURE.md](./ARCHITECTURE.md#設定管理) を参照。
 
