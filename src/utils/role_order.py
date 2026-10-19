@@ -50,3 +50,15 @@ def role_positions_after_move(
         # 位置が重複・欠番していると並びを決められないので、動かさない
         return {}
     return dict(zip(ordered, span, strict=True))
+
+
+def display_ranks(roles: list[tuple[int, int]]) -> dict[int, int]:
+    """(ID, 位置) から、画面上の並びどおりの順位（下から1, 2, …）を返す。@everyoneは除く
+
+    Discordの位置は一意とは限らない（作成直後のロールは既存のロールと同じ位置になる）。
+    同じ位置のロールはIDが大きいほうが下に表示されるので、それに合わせて振り直す。
+    """
+    ordered = sorted(
+        ((position, -role_id, role_id) for role_id, position in roles if position > 0),
+    )
+    return {role_id: rank for rank, (_, _, role_id) in enumerate(ordered, start=1)}

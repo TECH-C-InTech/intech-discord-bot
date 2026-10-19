@@ -1,4 +1,4 @@
-from src.utils.role_order import role_positions_after_move, target_role_position
+from src.utils.role_order import display_ranks, role_positions_after_move, target_role_position
 
 # (ロール名, 位置)。位置は大きいほど上
 ROLES = [
@@ -54,3 +54,11 @@ def test_move_is_given_up_when_positions_are_inconsistent() -> None:
     roles = [(0, 0), (999, 1), (101, 2), (102, 2), (201, 3)]
 
     assert role_positions_after_move(roles, role_id=999, target=3) == {}
+
+
+def test_roles_sharing_a_position_are_ranked_like_discord_shows_them() -> None:
+    # 作成直後、新しいロール（IDが大きい）が既存のp273と同じ位置1で返ってくる。
+    # Discordは同じ位置ならIDが大きいほうを下に表示する
+    roles = [(0, 0), (500, 1), (900, 1), (300, 2), (200, 3)]
+
+    assert display_ranks(roles) == {900: 1, 500: 2, 300: 3, 200: 4}

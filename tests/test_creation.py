@@ -206,3 +206,26 @@ async def test_failing_to_move_role_does_not_fail_creation() -> None:
     outcome = await create(guild, category, role_kind="event")
 
     assert outcome == Created(channel=channel, role=role)
+
+
+async def test_created_role_is_moved_even_when_it_shares_a_position_with_another_role() -> None:
+    # 実際のサーバーでは、作成直後のロールが既存の一番下のロールと同じ位置1で返ってくる
+    guild, category, _, role = make_guild()
+    role.position = 1
+    role.name = "c005-asdf"
+    guild.fetch_roles = AsyncMock(
+        return_value=[
+            named_role("@everyone", 0, 0),
+            named_role("p273", 1, 10),
+            role,  # id=42, position=1
+            named_role("e001", 2, 20),
+            named_role("c004-asdf", 3, 30),
+        ]
+    )
+    guild.edit_role_positions = AsyncMock()
+
+    await create(guild, category, role_kind="club")
+
+    # c004-asdf のすぐ下へ。p273とe001は1つずつ下がる
+    sent = guild.edit_role_positions.await_args.args[0]
+    assert {obj.id: position for obj, position in sent.items()} == {10: 1, 20: 2, 42: 3}

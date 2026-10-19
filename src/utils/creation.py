@@ -12,7 +12,7 @@ from logging import getLogger
 import discord
 
 from .capacity import check_creation_capacity
-from .role_order import role_positions_after_move, target_role_position
+from .role_order import display_ranks, role_positions_after_move, target_role_position
 
 logger = getLogger(__name__)
 
@@ -108,17 +108,18 @@ async def _place_role(guild: discord.Guild, role: discord.Role, kind: str) -> No
     """作成したロールを、同じ種類のロールの並びに動かす。動かせなくても作成は成功扱いにする
 
     作成直後のロールはキャッシュになく、他のロールの位置もずれる前のままなので、
-    最新のロールの一覧を取得してから位置を決める。
+    最新のロールの一覧を取得してから位置を決める。作成直後のロールは既存のロールと
+    同じ位置で返ってくるので、画面上の並びどおりの順位に振り直して扱う。
     """
     try:
         roles = await guild.fetch_roles()
-        others = [(r.name, r.position) for r in roles if r.id != role.id]
+        # 位置は重複しうるので、画面上の並びどおりの順位に振り直してから計算する
+        ranks = display_ranks([(r.id, r.position) for r in roles])
+        others = [(r.name, ranks[r.id]) for r in roles if r.id != role.id and r.id in ranks]
         target = target_role_position(kind, others)
         if target is None:
             return
-        positions = role_positions_after_move(
-            [(r.id, r.position) for r in roles], role_id=role.id, target=target
-        )
+        positions = role_positions_after_move(list(ranks.items()), role_id=role.id, target=target)
         if not positions:
             logger.warning(f"Skipped moving role {role.name}: role positions are inconsistent")
             return
