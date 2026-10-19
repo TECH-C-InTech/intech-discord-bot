@@ -7,7 +7,7 @@ from typing import ClassVar, Optional
 
 import discord
 
-from .kinds import CLUB, EVENT, Kind
+from .kinds import CLUB, EVENT, PROJECT, Kind
 
 logger = getLogger(__name__)
 
@@ -94,12 +94,12 @@ class ChannelConfig:
         return config
 
     def category_names(self, kind: Kind) -> tuple[str, str]:
-        """種類の (通常のカテゴリ名, アーカイブカテゴリ名) を返す"""
-        if kind is CLUB:
-            return self.club_category_name, self.archive_club_category_name
-        if kind is EVENT:
-            return self.event_category_name, self.archive_event_category_name
-        return self.project_category_name, self.archive_project_category_name
+        """種類の (通常のカテゴリ名, アーカイブカテゴリ名) を返す。知らない種類はKeyError"""
+        return {
+            CLUB.key: (self.club_category_name, self.archive_club_category_name),
+            EVENT.key: (self.event_category_name, self.archive_event_category_name),
+            PROJECT.key: (self.project_category_name, self.archive_project_category_name),
+        }[kind.key]
 
     def __str__(self) -> str:
         """文字列表現を返す（デバッグ用）"""

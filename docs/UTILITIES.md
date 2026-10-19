@@ -275,7 +275,9 @@ if reason is not None:
 
 **場所**: [src/utils/linking.py](../src/utils/linking.py)
 
-番号でチャンネルとロールを結びつける。`categories`は種類ごとの`[通常のカテゴリ, アーカイブカテゴリ]`。結びつけば`Linked(kind, channel, role)`、できなければ本人に見せる理由つきの`NotLinked(reason)`を返す。`locate_channel`はチャンネルの種類とアーカイブ中かどうか（`Located(kind, archived)`）を返す。
+番号でチャンネルとロールを結びつける。`categories`は種類ごとの`[通常のカテゴリ, アーカイブカテゴリ]`。結びつけば`Linked(kind, channel, role)`、できなければ本人に見せる理由つきの`NotLinked(reason)`を返す。`locate_channel`はチャンネルの種類とアーカイブ中かどうか（`Located(kind, archived)`）を返す。複数の種類が同じカテゴリを使っている場合は、チャンネル名の頭文字で種類を決める。
+
+`collect_kind_categories(categories, config.category_names)`はサーバーのカテゴリから`categories`を組み立て、見つからないカテゴリ名も返す。`explain_not_linked(not_linked, missing)`は、カテゴリが見つからないせいで紐づけられなかった可能性を本人への返信に添える。
 
 ### `next_number(prefix, names)` / `number_of(prefix, name)`
 

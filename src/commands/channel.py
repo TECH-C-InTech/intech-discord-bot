@@ -18,7 +18,15 @@ from ..utils.channel_utils import (
 from ..utils.command_metadata import command_meta
 from ..utils.creation import Created, Rejected, create_channel_with_role
 from ..utils.kinds import KINDS, Kind
-from ..utils.linking import Linked, NotLinked, link_channel, link_role, locate_channel
+from ..utils.linking import (
+    Linked,
+    NotLinked,
+    collect_kind_categories,
+    explain_not_linked,
+    link_channel,
+    link_role,
+    locate_channel,
+)
 from ..utils.message_utils import (
     create_success_embed,
     handle_command_error,
@@ -57,19 +65,9 @@ KIND_CHOICES = [app_commands.Choice(name=kind.label, value=kind.key) for kind in
 
 def _kind_categories(
     guild: discord.Guild, config: ChannelConfig
-) -> dict[Kind, list[discord.CategoryChannel]]:
-    """種類ごとの、チャンネルを置くカテゴリ（[通常, アーカイブ]の順）"""
-    categories: dict[Kind, list[discord.CategoryChannel]] = {}
-    for kind in KINDS:
-        own_name, archive_name = config.category_names(kind)
-        own = discord.utils.get(guild.categories, name=own_name)
-        archive = discord.utils.get(guild.categories, name=archive_name)
-        # 通常のカテゴリがないと[通常, アーカイブ]の順が崩れるので、その種類は扱わない
-        if own is None:
-            logger.warning(f"Category '{own_name}' not found in guild '{guild.name}'")
-            continue
-        categories[kind] = [own] if archive is None else [own, archive]
-    return categories
+) -> tuple[dict[Kind, list[discord.CategoryChannel]], list[str]]:
+    """種類ごとのカテゴリ（[通常, アーカイブ]の順）と、見つからないカテゴリ名"""
+    return collect_kind_categories(guild.categories, config.category_names)
 
 
 # ==================== コマンド実装関数 ====================
@@ -196,9 +194,10 @@ async def _resolve_channel_to_move(
         if channel is None:
             return None
 
-    located = locate_channel(channel, _kind_categories(guild, config))
+    categories, missing = _kind_categories(guild, config)
+    located = locate_channel(channel, categories)
     if isinstance(located, NotLinked):
-        await send_error_message(ctx, located.reason)
+        await send_error_message(ctx, explain_not_linked(located, missing))
         return None
     if located.archived != archived:
         state = "アーカイブされていません" if archived else "既にアーカイブされています"
@@ -349,7 +348,7 @@ async def _resolve_role_target(
         await send_error_message(ctx, "このコマンドはサーバー内でのみ実行できます。")
         return None
 
-    categories = _kind_categories(guild, config)
+    categories, missing = _kind_categories(guild, config)
     via_thread = False
     if role is None:
         # 省略時は実行チャンネル（スレッドなら親チャンネル）のロール
@@ -360,7 +359,7 @@ async def _resolve_role_target(
     else:
         linked = link_role(role, guild.roles, categories)
     if isinstance(linked, NotLinked):
-        await send_error_message(ctx, linked.reason)
+        await send_error_message(ctx, explain_not_linked(linked, missing))
         return None
 
     if not await validate_role_safety(ctx, linked.role):

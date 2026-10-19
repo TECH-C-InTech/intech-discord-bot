@@ -1,11 +1,11 @@
 """番号によるチャンネルとロールの紐づけ"""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 
 import discord
 
-from .kinds import Kind, kind_of_role_name
+from .kinds import KINDS, Kind, kind_of_role_name
 from .numbering import number_of, with_number
 
 
@@ -27,6 +27,46 @@ class NotLinked:
     reason: str
 
 
+def collect_kind_categories(
+    categories: Sequence[discord.CategoryChannel],
+    names_of: Callable[[Kind], tuple[str, str]],
+) -> tuple[dict[Kind, list[discord.CategoryChannel]], list[str]]:
+    """種類ごとのカテゴリ（[通常, アーカイブ]の順）と、見つからないカテゴリ名を返す
+
+    通常のカテゴリがない種類は、[通常, アーカイブ]の順が崩れるので扱わない。
+
+    Args:
+        categories: サーバーのカテゴリ
+        names_of: 種類の (通常のカテゴリ名, アーカイブカテゴリ名)
+    """
+    by_name = {category.name: category for category in categories}
+    collected: dict[Kind, list[discord.CategoryChannel]] = {}
+    missing: list[str] = []
+    for kind in KINDS:
+        own_name, archive_name = names_of(kind)
+        own, archive = by_name.get(own_name), by_name.get(archive_name)
+        missing.extend(
+            name for name, found in ((own_name, own), (archive_name, archive)) if not found
+        )
+        if own is not None:
+            collected[kind] = [own] if archive is None else [own, archive]
+    return collected, missing
+
+
+def explain_not_linked(not_linked: NotLinked, missing_categories: Sequence[str]) -> str:
+    """紐づけられなかった理由に、見つからないカテゴリがあればそのことを添える
+
+    カテゴリがないと、その種類のチャンネルは「対象外」に見えてしまうため。
+    """
+    if not missing_categories:
+        return not_linked.reason
+    names = ", ".join(f"`{name}`" for name in missing_categories)
+    return (
+        f"{not_linked.reason}\n"
+        f"カテゴリー {names} が見つかりません。サーバー設定を確認するよう管理者に連絡してください。"
+    )
+
+
 def link_role(
     role: discord.Role,
     roles: Sequence[discord.Role],
@@ -44,7 +84,7 @@ def link_role(
         return NotLinked(f"{role.mention} はクラブ・イベント・プロジェクトのロールではありません。")
     number = number_of(kind.prefix, role.name)
     assert number is not None
-    same_number_roles = with_number(kind.prefix, number, roles, _name)
+    same_number_roles = _kind_roles_with_number(kind, number, roles)
     if len(same_number_roles) > 1:
         return NotLinked(_mismatch(kind, number, "ロール", len(same_number_roles)))
     channels = [
@@ -67,10 +107,20 @@ def locate_channel(
         channel: 対象のチャンネル
         categories: 種類ごとの、チャンネルを置くカテゴリ（[通常, アーカイブ]の順）
     """
-    for kind, kind_categories in categories.items():
-        for index, category in enumerate(kind_categories):
-            if category.id == channel.category_id:
-                return Located(kind=kind, archived=index > 0)
+    matches = [
+        Located(kind=kind, archived=index > 0)
+        for kind, kind_categories in categories.items()
+        for index, category in enumerate(kind_categories)
+        if category.id == channel.category_id
+    ]
+    if len(matches) > 1:
+        # 複数の種類が同じカテゴリを使っている場合は、チャンネル名の頭文字で種類を決める
+        by_prefix = [m for m in matches if number_of(m.kind.prefix, channel.name) is not None]
+        if len(by_prefix) == 1:
+            return by_prefix[0]
+        return NotLinked(f"{channel.mention} の種類を決められません。")
+    if matches:
+        return matches[0]
     return NotLinked(
         f"{channel.mention} はクラブ・イベント・プロジェクトのチャンネルではありません。"
     )
@@ -98,15 +148,22 @@ def link_channel(
             f"{channel.mention} は{kind.label}チャンネルの形式"
             f"（{kind.prefix}001-xxx）ではありません。"
         )
-    candidates = [
-        role
-        for role in with_number(kind.prefix, number, roles, _name)
-        if kind.role_pattern.match(role.name)
-    ]
+    candidates = _kind_roles_with_number(kind, number, roles)
     if len(candidates) != 1:
         return NotLinked(_mismatch(kind, number, "ロール", len(candidates)))
     # 見つかったロールからたどり直して、番号の重なりも同じように確かめる
     return link_role(candidates[0], roles, categories)
+
+
+def _kind_roles_with_number(
+    kind: Kind, number: int, roles: Sequence[discord.Role]
+) -> list[discord.Role]:
+    """種類のロールの形をしていて、番号が number のロール"""
+    return [
+        role
+        for role in with_number(kind.prefix, number, roles, _name)
+        if kind.role_pattern.match(role.name)
+    ]
 
 
 def _mismatch(kind: Kind, number: int, what: str, count: int) -> str:

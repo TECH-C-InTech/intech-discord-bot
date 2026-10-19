@@ -1,11 +1,12 @@
 from collections.abc import Iterator
+import re
 from unittest.mock import AsyncMock, MagicMock
 
 import discord
 import pytest
 
 from src.utils.channel_config import ChannelConfig
-from src.utils.kinds import CLUB, EVENT, PROJECT
+from src.utils.kinds import CLUB, EVENT, PROJECT, Kind
 
 REQUIRED_ENV = {
     "EVENT_CATEGORY_NAME": "events",
@@ -60,3 +61,12 @@ def test_each_kind_has_its_own_and_archive_category() -> None:
     assert config.category_names(CLUB) == ("clubs", "archived-clubs")
     assert config.category_names(EVENT) == ("events", "archived")
     assert config.category_names(PROJECT) == ("projects", "archived-projects")
+
+
+def test_unknown_kind_has_no_categories() -> None:
+    config = ChannelConfig.get_instance()
+    assert config is not None
+    other = Kind(key="other", prefix="o", label="その他", role_pattern=re.compile(r"^o\d{3}$"))
+
+    with pytest.raises(KeyError):
+        config.category_names(other)

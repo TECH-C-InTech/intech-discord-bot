@@ -3,8 +3,17 @@ from unittest.mock import MagicMock
 
 import discord
 
-from src.utils.kinds import CLUB, EVENT, Kind
-from src.utils.linking import Linked, Located, NotLinked, link_channel, link_role, locate_channel
+from src.utils.kinds import CLUB, EVENT, PROJECT, Kind
+from src.utils.linking import (
+    Linked,
+    Located,
+    NotLinked,
+    collect_kind_categories,
+    explain_not_linked,
+    link_channel,
+    link_role,
+    locate_channel,
+)
 
 
 def make_channel(name: str, category_id: int) -> MagicMock:
@@ -148,3 +157,64 @@ def test_channel_in_own_category_is_located_as_not_archived() -> None:
     located = locate_channel(events.text_channels[0], categories({"event": [events]}))
 
     assert located == Located(kind=EVENT, archived=False)
+
+
+def test_channel_in_shared_archive_is_located_by_its_number_prefix() -> None:
+    # 設定でクラブとイベントのアーカイブカテゴリが同じになっている
+    shared = make_category(3, "c005-ラーメン", "e003-おでん会")
+    mapping = categories({"club": [make_category(1), shared], "event": [make_category(2), shared]})
+
+    located = locate_channel(shared.text_channels[1], mapping)
+
+    assert located == Located(kind=EVENT, archived=True)
+
+
+def test_unnumbered_channel_in_shared_category_has_undecidable_kind() -> None:
+    shared = make_category(3, "おしらせ")
+    mapping = categories({"club": [make_category(1), shared], "event": [make_category(2), shared]})
+
+    located = locate_channel(shared.text_channels[0], mapping)
+
+    assert isinstance(located, NotLinked)
+    assert "種類を決められません" in located.reason
+
+
+def test_roles_outside_the_kind_shape_do_not_count_as_duplicates() -> None:
+    role = make_role("c005-ラーメン")
+    clubs = make_category(1, "c005-ラーメン")
+
+    linked = link_role(role, [role, make_role("c005")], categories({"club": [clubs]}))
+
+    assert linked == Linked(kind=CLUB, channel=clubs.text_channels[0], role=role)
+
+
+def named_category(category_id: int, name: str) -> MagicMock:
+    category = make_category(category_id)
+    category.name = name
+    return category
+
+
+def test_kind_without_its_own_category_is_left_out_and_reported() -> None:
+    clubs, archived_clubs = named_category(1, "clubs"), named_category(2, "archived-clubs")
+    names = {
+        CLUB: ("clubs", "archived-clubs"),
+        EVENT: ("events", "archived"),
+        PROJECT: ("projects", "archived-projects"),
+    }
+    archived = named_category(3, "archived")
+
+    mapping, missing = collect_kind_categories([clubs, archived_clubs, archived], names.__getitem__)
+
+    assert mapping == {CLUB: [clubs, archived_clubs]}
+    assert missing == ["events", "projects", "archived-projects"]
+
+
+def test_not_linked_reason_mentions_missing_categories() -> None:
+    reason = explain_not_linked(NotLinked("見つかりません。"), ["clubs"])
+
+    assert reason.startswith("見つかりません。")
+    assert "`clubs`" in reason
+
+
+def test_not_linked_reason_is_kept_when_no_category_is_missing() -> None:
+    assert explain_not_linked(NotLinked("見つかりません。"), []) == "見つかりません。"
