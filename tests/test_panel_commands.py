@@ -3,7 +3,12 @@ from unittest.mock import AsyncMock, MagicMock
 import discord
 import pytest
 
-from src.commands.panel import all_participants_text, choose_panel, handle_channel_press
+from src.commands.panel import (
+    all_participants_text,
+    choose_panel,
+    handle_channel_press,
+    setup_panel_impl,
+)
 from src.utils.kinds import EVENT
 from src.utils.linking import Linked, NotLinked
 from src.utils.panel import ChannelAction
@@ -58,6 +63,13 @@ def test_intech_in_thread_of_kind_channel_shows_parents_panel() -> None:
 
 def test_intech_outside_kind_channels_shows_create_panel() -> None:
     assert choose_panel(make_channel("雑談", 99), [], make_categories()) is None
+
+
+def test_intech_in_unnumbered_channel_of_kind_category_shows_create_panel() -> None:
+    # 種類のカテゴリに置いた案内用のチャンネルなど
+    guide = make_channel("はじめに", 1)
+
+    assert choose_panel(guide, [], make_categories(guide)) is None
 
 
 def test_intech_in_kind_channel_without_role_explains_why() -> None:
@@ -178,3 +190,59 @@ async def test_join_button_refuses_role_with_administrator(
     await handle_channel_press(ctx, ChannelAction.JOIN, 500)
 
     join.assert_not_called()
+
+
+def setup_ctx(monkeypatch: pytest.MonkeyPatch, *categories: MagicMock) -> MagicMock:
+    # イベントとプロジェクトがアーカイブカテゴリを共有している
+    names = {
+        "club": ("clubs", "archived-clubs"),
+        "event": ("events", "archived"),
+        "project": ("projects", "archived"),
+    }
+    config = MagicMock()
+    config.category_names = MagicMock(side_effect=lambda kind: names[kind.key])
+    monkeypatch.setattr("src.commands.panel.ChannelConfig.load", AsyncMock(return_value=config))
+    ctx = MagicMock(spec=discord.Interaction)
+    ctx.guild = MagicMock(spec=discord.Guild)
+    ctx.guild.categories = list(categories)
+    ctx.guild.roles = [make_role("e001"), make_role("p001")]
+    ctx.response = MagicMock()
+    ctx.response.is_done = MagicMock(return_value=False)
+    ctx.response.defer = AsyncMock()
+    ctx.response.send_message = AsyncMock()
+    ctx.followup = MagicMock()
+    ctx.followup.send = AsyncMock()
+    return ctx
+
+
+def named(category_id: int, name: str, *channels: MagicMock) -> MagicMock:
+    category = MagicMock(spec=discord.CategoryChannel)
+    category.id, category.name, category.text_channels = category_id, name, list(channels)
+    return category
+
+
+async def test_setup_all_places_panel_once_per_channel_in_shared_category(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    event, project = make_channel("e001-a", 2), make_channel("p001-b", 2)
+    ctx = setup_ctx(
+        monkeypatch, named(1, "events"), named(3, "projects"), named(2, "archived", event, project)
+    )
+    place = AsyncMock(return_value=True)
+    monkeypatch.setattr("src.commands.panel.place_panel", place)
+
+    await setup_panel_impl(ctx, "all")
+
+    assert sorted(call.args[0].name for call in place.await_args_list) == ["e001-a", "p001-b"]
+    assert "2個のチャンネルにパネルを置きました" in ctx.followup.send.await_args.args[0]
+
+
+async def test_setup_here_outside_kind_channel_explains_why(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ctx = setup_ctx(monkeypatch, named(1, "events"), named(3, "projects"), named(2, "archived"))
+    ctx.channel = make_channel("雑談", 99)
+
+    await setup_panel_impl(ctx, "here")
+
+    assert "ではありません" in ctx.response.send_message.await_args.args[0]

@@ -16,7 +16,7 @@ from ..utils.channel_actions import (
 from ..utils.channel_config import ChannelConfig
 from ..utils.channel_utils import resolve_target_text_channel_or_error
 from ..utils.command_metadata import command_meta
-from ..utils.kinds import KINDS, Kind
+from ..utils.kinds import KINDS, Kind, kind_of_key
 from ..utils.linking import (
     Linked,
     NotLinked,
@@ -206,7 +206,10 @@ async def remove_role_members_impl(
 
 
 def _kind_of(key: str) -> Kind:
-    return next(kind for kind in KINDS if kind.key == key)
+    kind = kind_of_key(key)
+    # 選択肢はKINDSから作っているので、知らないキーは来ない
+    assert kind is not None
+    return kind
 
 
 # ==================== コマンド登録 ====================

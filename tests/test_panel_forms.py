@@ -4,6 +4,7 @@ import discord
 import pytest
 
 from src.utils.kinds import EVENT
+from src.utils.linking import Linked
 from src.utils.panel_forms import CreateForm, ParticipantsForm
 
 
@@ -50,8 +51,31 @@ def linked_channel() -> MagicMock:
     return linked
 
 
+def config_of(names: dict[str, tuple[str, str]]) -> MagicMock:
+    config = MagicMock()
+    config.category_names = MagicMock(side_effect=lambda kind: names[kind.key])
+    return config
+
+
+def guild_where_channel_is_archived() -> tuple[MagicMock, Linked]:
+    """フォームを開いたときは通常のカテゴリにあったが、今はアーカイブされているチャンネル"""
+    channel = MagicMock(spec=discord.TextChannel)
+    channel.name = "e003-おでん会"
+    channel.category_id = 2
+    events = MagicMock(spec=discord.CategoryChannel)
+    events.id, events.name, events.text_channels = 1, "events", []
+    archived = MagicMock(spec=discord.CategoryChannel)
+    archived.id, archived.name, archived.text_channels = 2, "archived", [channel]
+    role = MagicMock(spec=discord.Role)
+    role.name = "e003"
+    guild = MagicMock(spec=discord.Guild)
+    guild.categories = [events, archived]
+    guild.roles = [role]
+    return guild, Linked(kind=EVENT, channel=channel, role=role, archived=False)
+
+
 async def test_add_form_asks_at_least_one_person() -> None:
-    form = ParticipantsForm(linked_channel(), removing=False)
+    form = ParticipantsForm(MagicMock(), linked_channel(), removing=False)
 
     assert form.title == "参加者を追加"
     assert fields(form) == [("追加する人", "#e003-おでん会 に追加します")]
@@ -59,22 +83,29 @@ async def test_add_form_asks_at_least_one_person() -> None:
 
 
 async def test_remove_form_says_whom_to_remove_from() -> None:
-    form = ParticipantsForm(linked_channel(), removing=True)
+    form = ParticipantsForm(MagicMock(), linked_channel(), removing=True)
 
     assert form.title == "参加者を外す"
     assert fields(form) == [("外す人", "#e003-おでん会 から外します")]
 
 
-async def test_participants_form_removes_selected_members(
+async def test_participants_form_uses_channel_state_at_submit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     remove = AsyncMock()
     monkeypatch.setattr("src.utils.panel_forms.remove_participants", remove)
     member = MagicMock(spec=discord.Member)
     selecting(monkeypatch, member)
-    linked = linked_channel()
+    guild, opened = guild_where_channel_is_archived()
+    config = config_of(
+        {"club": ("c", "ac"), "event": ("events", "archived"), "project": ("p", "ap")}
+    )
     interaction = MagicMock(spec=discord.Interaction)
+    interaction.guild = guild
 
-    await ParticipantsForm(linked, removing=True).on_submit(interaction)
+    await ParticipantsForm(config, opened, removing=True).on_submit(interaction)
 
-    remove.assert_awaited_once_with(interaction, linked, [member])
+    assert remove.await_args is not None
+    _, linked, members = remove.await_args.args
+    assert linked.archived is True
+    assert members == [member]

@@ -476,4 +476,4 @@ async def create(
         mention_users=grant.granted,
         mention_label="参加者",
     )
-    await place_panel(channel, role, archived=False, joined=grant.granted)
+    await place_panel(channel, role, archived=False, joined=grant.granted, new_channel=True)

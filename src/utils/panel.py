@@ -7,7 +7,7 @@ import re
 
 import discord
 
-from .kinds import KINDS, Kind
+from .kinds import KINDS, Kind, kind_of_key
 from .linking import NotLinked, collect_kind_categories, link_channel
 from .records import Mentionable
 
@@ -200,18 +200,21 @@ async def place_panel(
     *,
     archived: bool,
     joined: Sequence[discord.Member] = (),
+    new_channel: bool = False,
 ) -> bool:
     """チャンネルにパネルを投稿してピン留めする。置いたらTrue
 
-    すでにパネルがあれば置かない。ピン留めできなくても投稿は残す（ボタンは使えるため）。
+    すでにパネルがあれば置かない。ピン留めできなければ投稿を取り下げる
+    （パネルはピン留めから探すので、ピン留めされていないパネルは書き換えられず、置き直すと重複する）。
 
     Args:
         channel: パネルを置くチャンネル
         role: チャンネルのロール
         archived: アーカイブ中か
         joined: 直前にロールを付けた人（作成の直後など）
+        new_channel: 作ったばかりのチャンネルか（ピン留めがないので探さない）
     """
-    if await find_panel(channel, channel.guild.me.id) is not None:
+    if not new_channel and await find_panel(channel, channel.guild.me.id) is not None:
         return False
     embed, view = channel_panel(
         channel, current_participants(role, joined=joined), archived=archived
@@ -225,6 +228,11 @@ async def place_panel(
         await message.pin()
     except discord.HTTPException as e:
         logger.warning(f"Failed to pin panel in {channel.name}: {e}")
+        try:
+            await message.delete()
+        except discord.HTTPException as delete_error:
+            logger.warning(f"Failed to withdraw unpinned panel in {channel.name}: {delete_error}")
+        return False
     return True
 
 
@@ -287,7 +295,10 @@ class CreatePanelButton(
         match: re.Match[str],
         /,
     ) -> "CreatePanelButton":
-        return cls(next(kind for kind in KINDS if kind.key == match["kind"]))
+        kind = kind_of_key(match["kind"])
+        if kind is None:
+            raise ValueError(f"unknown kind in custom_id: {match['kind']}")
+        return cls(kind)
 
     async def callback(self, interaction: discord.Interaction) -> None:
         if _create_press_handler is None:

@@ -21,7 +21,7 @@ from ..utils.linking import (
     locate_channel,
 )
 from ..utils.message_utils import send_error_message
-from ..utils.numbering import NUMBERS_EXHAUSTED
+from ..utils.numbering import NUMBERS_EXHAUSTED, number_of
 from ..utils.panel import (
     ChannelAction,
     ChannelPanelButton,
@@ -52,11 +52,16 @@ def choose_panel(
     """/intech を打った場所に出すパネルを決める
 
     Returns:
-        クラブ・イベント・プロジェクトのチャンネル（スレッドなら親）ではそのチャンネルとロール、
+        クラブ・イベント・プロジェクトの番号つきのチャンネル（スレッドなら親）では
+        そのチャンネルとロール、
         ロールと紐づかなければその理由、それ以外の場所ではNone（作るパネルを出す）
     """
     target, _ = resolve_target_text_channel(channel)
-    if target is None or isinstance(locate_channel(target, categories), NotLinked):
+    if target is None:
+        return None
+    located = locate_channel(target, categories)
+    # 番号のないチャンネル（種類のカテゴリに置いた案内など）では、作るパネルを出す
+    if isinstance(located, NotLinked) or number_of(located.kind.prefix, target.name) is None:
         return None
     return link_channel(target, roles, categories)
 
@@ -135,7 +140,7 @@ async def handle_channel_press(
         await leave(ctx, linked)
     elif action in (ChannelAction.ADD, ChannelAction.REMOVE):
         await ctx.response.send_modal(
-            ParticipantsForm(linked, removing=action is ChannelAction.REMOVE)
+            ParticipantsForm(config, linked, removing=action is ChannelAction.REMOVE)
         )
     elif action is ChannelAction.ARCHIVE:
         await ask_to_archive(ctx, linked)
@@ -236,15 +241,20 @@ async def setup_panel_impl(ctx: discord.Interaction, panel: str) -> None:
 
     await ctx.response.defer(ephemeral=True, thinking=True)
     placed, skipped = 0, []
-    for kind_categories in categories.values():
-        for category in kind_categories:
-            for channel in category.text_channels:
-                linked = link_channel(channel, guild.roles, categories)
-                if isinstance(linked, NotLinked):
-                    skipped.append(channel.mention)
-                    continue
-                if await place_panel(channel, linked.role, archived=linked.archived):
-                    placed += 1
+    # 複数の種類が同じカテゴリを使っていても、1つのチャンネルは1回だけ見る
+    unique_categories = {
+        category.id: category
+        for kind_categories in categories.values()
+        for category in kind_categories
+    }
+    for category in unique_categories.values():
+        for channel in category.text_channels:
+            linked = link_channel(channel, guild.roles, categories)
+            if isinstance(linked, NotLinked):
+                skipped.append(channel.mention)
+                continue
+            if await place_panel(channel, linked.role, archived=linked.archived):
+                placed += 1
     message = f"{placed}個のチャンネルにパネルを置きました（すでにあるチャンネルは除く）。"
     if skipped:
         message += f"\nロールと紐づかないため置かなかったチャンネル: {', '.join(skipped)}"

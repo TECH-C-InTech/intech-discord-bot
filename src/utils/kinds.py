@@ -40,3 +40,8 @@ KINDS = (CLUB, EVENT, PROJECT)
 def kind_of_role_name(name: str) -> Kind | None:
     """ロール名の形から種類を返す。どの種類のロールでもなければNone"""
     return next((kind for kind in KINDS if kind.role_pattern.match(name)), None)
+
+
+def kind_of_key(key: str) -> Kind | None:
+    """キー（club / event / project）から種類を返す。知らないキーならNone"""
+    return next((kind for kind in KINDS if kind.key == key), None)

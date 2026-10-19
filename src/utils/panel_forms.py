@@ -5,7 +5,14 @@ import discord
 from .channel_actions import add_participants, create, remove_participants
 from .channel_config import ChannelConfig
 from .kinds import CLUB, EVENT, PROJECT, Kind
-from .linking import Linked
+from .linking import (
+    Linked,
+    NotLinked,
+    collect_kind_categories,
+    explain_not_linked,
+    link_channel,
+)
+from .message_utils import send_error_message
 
 # 名前の入力欄に、入力前に出す例
 NAME_EXAMPLES = {CLUB.key: "ラーメン", EVENT.key: "おでん会", PROJECT.key: "ハッカソン"}
@@ -49,8 +56,9 @@ class CreateForm(discord.ui.Modal):
 class ParticipantsForm(discord.ui.Modal):
     """参加者を追加・外すフォーム。1人以上選ぶ"""
 
-    def __init__(self, linked: Linked, *, removing: bool) -> None:
+    def __init__(self, config: ChannelConfig, linked: Linked, *, removing: bool) -> None:
         super().__init__(title="参加者を外す" if removing else "参加者を追加")
+        self.config = config
         self.linked = linked
         self.removing = removing
         self.people: discord.ui.UserSelect = discord.ui.UserSelect(
@@ -70,8 +78,16 @@ class ParticipantsForm(discord.ui.Modal):
         )
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
+        # フォームを開いている間にアーカイブなどされていることがあるので、送った時点で紐づけ直す
+        guild = interaction.guild
+        assert guild is not None
+        categories, missing = collect_kind_categories(guild.categories, self.config.category_names)
+        linked = link_channel(self.linked.channel, guild.roles, categories)
+        if isinstance(linked, NotLinked):
+            await send_error_message(interaction, explain_not_linked(linked, missing))
+            return
         members = _members(self.people)
         if self.removing:
-            await remove_participants(interaction, self.linked, members)
+            await remove_participants(interaction, linked, members)
         else:
-            await add_participants(interaction, self.linked, members)
+            await add_participants(interaction, linked, members)
