@@ -151,6 +151,7 @@ async def command_cmd(...):
 - [src/utils/creation.py](src/utils/creation.py) - Serialized channel and role creation
 - [src/utils/numbering.py](src/utils/numbering.py) - Numbering (c001 / e001 / p001)
 - [src/utils/role\_order.py](src/utils/role_order.py) - Placement of created roles
+- [src/utils/channel\_order.py](src/utils/channel_order.py) - Sorting channels in a category by number
 - [src/utils/role\_utils.py](src/utils/role_utils.py) - Role granting
 - [src/utils/records.py](src/utils/records.py) - In-channel records
 

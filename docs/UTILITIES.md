@@ -308,6 +308,12 @@ if reason is not None:
 
 番号の採番と読み取り。`next_number("c", names)`は、`cNNN-`で始まる名前の最大の番号に1を足す（欠番は埋めない）。`number_of("c", "c005-ラーメン")`は`5`を返し、番号がなければ`None`を返す。
 
+### `sort_category(guild, *, category_id, prefix)` / `sorted_channel_positions(prefix, channels)`
+
+**場所**: [src/utils/channel_order.py](../src/utils/channel_order.py)
+
+カテゴリ内のテキストチャンネルを番号順に並べ直す。`sorted_channel_positions`は (ID, 名前, 位置) から変わる位置だけを返す純粋関数。並べ方は [ARCHITECTURE.md](./ARCHITECTURE.md#チャンネルの並び) を参照。
+
 ### `target_role_position(kind, roles)`
 
 **場所**: [src/utils/role_order.py](../src/utils/role_order.py)

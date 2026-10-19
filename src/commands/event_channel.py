@@ -8,6 +8,7 @@ from discord import app_commands
 
 from ..utils.capacity import check_move_capacity
 from ..utils.channel_config import ChannelConfig
+from ..utils.channel_order import sort_category
 from ..utils.channel_utils import (
     get_next_event_index,
     resolve_target_text_channel_or_error,
@@ -231,6 +232,9 @@ async def archive_event_channel_impl(
             )
         return
 
+    # 移動したチャンネルは移動前の位置を持ち越すので、アーカイブ先を番号順に並べ直す
+    await sort_category(guild, category_id=archive_category_channel.id, prefix="e")
+
     await send_private_reply(
         ctx,
         create_success_embed(
@@ -305,6 +309,9 @@ async def restore_event_channel_impl(
             },
         )
         return
+
+    # 移動したチャンネルは移動前の位置を持ち越すので、戻し先を番号順に並べ直す
+    await sort_category(guild, category_id=event_category_channel.id, prefix="e")
 
     await send_private_reply(
         ctx,
