@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Optional
 
 import discord
 
+from .kinds import Kind
 from .message_utils import send_error_message
 from .numbering import next_number
 
@@ -25,6 +26,20 @@ def _channel_names_in(guild: discord.Guild, *category_names: str) -> list[str]:
         if category:
             names.extend(channel.name for channel in category.channels)
     return names
+
+
+def get_next_number(
+    guild: discord.Guild, kind: Kind, category_names: tuple[str, ...]
+) -> int | None:
+    """種類の次の番号を返す。999まで使い切っていたらNone
+
+    種類のカテゴリ（通常とアーカイブ）にあるチャンネル名に加え、ロール名の番号も避ける。
+    チャンネルだけ消されてロールが残っている番号を再利用しないため。
+    """
+    return next_number(
+        kind.prefix,
+        [*_channel_names_in(guild, *category_names), *(role.name for role in guild.roles)],
+    )
 
 
 def get_next_event_index(

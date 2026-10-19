@@ -12,6 +12,7 @@ REQUIRED_ENV = {
     "PROJECT_CATEGORY_NAME": "projects",
     "ARCHIVE_PROJECT_CATEGORY_NAME": "archived-projects",
     "CLUB_CATEGORY_NAME": "clubs",
+    "ARCHIVE_CLUB_CATEGORY_NAME": "archived-clubs",
 }
 
 
@@ -41,3 +42,11 @@ async def test_load_error_lists_only_missing_variables(monkeypatch: pytest.Monke
     message = ctx.response.send_message.await_args.args[0]
     assert "CLUB_CATEGORY_NAME" in message
     assert "EVENT_CATEGORY_NAME" not in message
+
+
+def test_config_cannot_be_loaded_without_club_archive_category(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("ARCHIVE_CLUB_CATEGORY_NAME")
+
+    assert ChannelConfig.get_instance() is None

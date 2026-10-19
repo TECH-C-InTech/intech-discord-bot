@@ -4,9 +4,11 @@ import discord
 
 from src.utils.channel_utils import (
     get_next_event_index,
+    get_next_number,
     get_next_project_index,
     resolve_target_text_channel,
 )
+from src.utils.kinds import CLUB, EVENT
 
 
 def test_text_channel_targets_itself() -> None:
@@ -75,3 +77,29 @@ def test_next_project_index_counts_both_project_and_archive_categories() -> None
     ]
 
     assert get_next_project_index(guild, "project", "archived-project") == 6
+
+
+def make_role(name: str) -> MagicMock:
+    role = MagicMock(spec=discord.Role)
+    role.name = name
+    return role
+
+
+def test_next_number_avoids_numbers_left_only_on_roles() -> None:
+    guild = MagicMock(spec=discord.Guild)
+    guild.categories = [make_category("events", ["e003-a"]), make_category("archived", [])]
+    # チャンネルだけ消されて、ロールが残っている番号
+    guild.roles = [make_role("e010"), make_role("c020-ラーメン")]
+
+    assert get_next_number(guild, EVENT, ("events", "archived")) == 11
+
+
+def test_next_number_counts_archived_channels_of_the_kind() -> None:
+    guild = MagicMock(spec=discord.Guild)
+    guild.categories = [
+        make_category("clubs", ["c002-a"]),
+        make_category("archived-clubs", ["c009-b"]),
+    ]
+    guild.roles = []
+
+    assert get_next_number(guild, CLUB, ("clubs", "archived-clubs")) == 10

@@ -2,13 +2,22 @@ from unittest.mock import AsyncMock, MagicMock
 
 import discord
 
-from src.utils.role_utils import GrantResult, describe_grant, grant_role, with_creator
+from src.utils.role_utils import (
+    GrantResult,
+    RevokeResult,
+    describe_grant,
+    describe_revoke,
+    grant_role,
+    revoke_role,
+    with_creator,
+)
 
 
 def make_member(*roles: discord.Role) -> MagicMock:
     member = MagicMock(spec=discord.Member)
     member.roles = list(roles)
     member.add_roles = AsyncMock()
+    member.remove_roles = AsyncMock()
     return member
 
 
@@ -104,3 +113,50 @@ def test_creator_who_is_not_a_server_member_is_not_added() -> None:
     creator.id = 1
 
     assert with_creator([other], creator) == [other]
+
+
+async def test_revokes_role_from_members_who_have_it() -> None:
+    role = MagicMock(spec=discord.Role)
+    member = make_member(role)
+
+    result = await revoke_role([member], role)
+
+    member.remove_roles.assert_awaited_once_with(role)
+    assert result.revoked == [member]
+
+
+async def test_members_without_role_are_separated_on_revoke() -> None:
+    role = MagicMock(spec=discord.Role)
+    member = make_member()
+
+    result = await revoke_role([member], role)
+
+    member.remove_roles.assert_not_called()
+    assert result.revoked == []
+    assert result.did_not_have == [member]
+
+
+async def test_failed_members_are_separated_and_others_still_lose_role() -> None:
+    role = MagicMock(spec=discord.Role)
+    failing = make_member(role)
+    failing.remove_roles = AsyncMock(
+        side_effect=discord.Forbidden(MagicMock(status=403, reason="Forbidden"), "forbidden")
+    )
+    other = make_member(role)
+
+    result = await revoke_role([failing, other], role)
+
+    assert result.failed == [failing]
+    assert result.revoked == [other]
+
+
+def test_revoke_description_lists_each_group() -> None:
+    result = RevokeResult(
+        revoked=[mentioned("<@1>")], did_not_have=[mentioned("<@2>")], failed=[mentioned("<@3>")]
+    )
+
+    description = describe_revoke(result)
+    assert "外しました:\n<@1>" in description
+    assert "持っていません:\n<@2>" in description
+    assert "外せませんでした:\n<@3>" in description
+    assert "ロールの順位" in description
