@@ -171,20 +171,37 @@ def named_role(name: str, position: int, role_id: int) -> MagicMock:
     return role
 
 
-async def test_created_role_is_moved_next_to_roles_of_its_kind() -> None:
+async def test_created_role_is_moved_using_fresh_roles_even_if_not_cached() -> None:
     guild, category, _, role = make_guild()
-    role.edit = AsyncMock()
-    guild.roles = [named_role("e002", 5, 1), named_role("p001", 4, 2), role]
+    role.position = 1
+    # キャッシュ（guild.roles）には新しいロールがない。最新の一覧は取得し直して使う
+    guild.roles = [named_role("e002", 4, 1), named_role("p001", 3, 2)]
+    guild.fetch_roles = AsyncMock(
+        return_value=[
+            named_role("@everyone", 0, 0),
+            named_role("e002", 3, 1),
+            named_role("p001", 2, 2),
+            role,
+        ]
+    )
+    role.name = "e003"
+    guild.edit_role_positions = AsyncMock()
 
     await create(guild, category, role_kind="event")
 
-    role.edit.assert_awaited_once_with(position=4)
+    # e002（3）のすぐ下＝位置2へ。p001は1つ下がる
+    sent = guild.edit_role_positions.await_args.args[0]
+    assert {obj.id: position for obj, position in sent.items()} == {2: 1, 42: 2}
 
 
 async def test_failing_to_move_role_does_not_fail_creation() -> None:
     guild, category, channel, role = make_guild()
-    role.edit = AsyncMock(side_effect=http_error())
-    guild.roles = [named_role("e002", 5, 1), role]
+    role.position = 1
+    role.name = "e003"
+    guild.fetch_roles = AsyncMock(
+        return_value=[named_role("@everyone", 0, 0), named_role("e002", 2, 1), role]
+    )
+    guild.edit_role_positions = AsyncMock(side_effect=http_error())
 
     outcome = await create(guild, category, role_kind="event")
 

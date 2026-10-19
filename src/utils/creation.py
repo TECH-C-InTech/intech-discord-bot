@@ -12,7 +12,7 @@ from logging import getLogger
 import discord
 
 from .capacity import check_creation_capacity
-from .role_order import target_role_position
+from .role_order import role_positions_after_move, target_role_position
 
 logger = getLogger(__name__)
 
@@ -105,15 +105,28 @@ def _count_pending_roles(guild: discord.Guild, pending: set[int]) -> int:
 
 
 async def _place_role(guild: discord.Guild, role: discord.Role, kind: str) -> None:
-    """作成したロールを、同じ種類のロールの並びに動かす。動かせなくても作成は成功扱いにする"""
-    others = [(r.name, r.position) for r in guild.roles if r.id != role.id]
-    position = target_role_position(kind, others)
-    if position is None:
-        return
+    """作成したロールを、同じ種類のロールの並びに動かす。動かせなくても作成は成功扱いにする
+
+    作成直後のロールはキャッシュになく、他のロールの位置もずれる前のままなので、
+    最新のロールの一覧を取得してから位置を決める。
+    """
     try:
-        await role.edit(position=position)
+        roles = await guild.fetch_roles()
+        others = [(r.name, r.position) for r in roles if r.id != role.id]
+        target = target_role_position(kind, others)
+        if target is None:
+            return
+        positions = role_positions_after_move(
+            [(r.id, r.position) for r in roles], role_id=role.id, target=target
+        )
+        if not positions:
+            logger.warning(f"Skipped moving role {role.name}: role positions are inconsistent")
+            return
+        await guild.edit_role_positions(
+            {discord.Object(id=role_id): position for role_id, position in positions.items()}
+        )
     except discord.HTTPException as e:
-        logger.warning(f"Failed to move role {role.name} to position {position}: {e}")
+        logger.warning(f"Failed to move role {role.name}: {e}")
 
 
 async def _rollback_channel(channel: discord.TextChannel) -> discord.HTTPException | None:

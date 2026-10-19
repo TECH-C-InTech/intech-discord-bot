@@ -1,4 +1,4 @@
-from src.utils.role_order import target_role_position
+from src.utils.role_order import role_positions_after_move, target_role_position
 
 # (ロール名, 位置)。位置は大きいほど上
 ROLES = [
@@ -37,3 +37,20 @@ def test_kinds_are_told_apart_by_role_name_format() -> None:
     roles = [("c001-ラーメン", 5), ("e001-なにか", 4), ("p001", 3)]
 
     assert target_role_position("event", roles) == 3
+
+
+def test_move_includes_the_moved_role_and_shifts_roles_in_between() -> None:
+    # 最新の位置: @everyone(0), 新しいロール(1), p001(2), e001(3), c001(4)
+    roles = [(0, 0), (999, 1), (101, 2), (201, 3), (301, 4)]
+
+    # 新しいロールを位置3（c001のすぐ下）へ動かす
+    positions = role_positions_after_move(roles, role_id=999, target=3)
+
+    assert positions == {101: 1, 201: 2, 999: 3}
+
+
+def test_move_is_given_up_when_positions_are_inconsistent() -> None:
+    # 位置2が重複している（Discord側で位置が揃っていない）
+    roles = [(0, 0), (999, 1), (101, 2), (102, 2), (201, 3)]
+
+    assert role_positions_after_move(roles, role_id=999, target=3) == {}
