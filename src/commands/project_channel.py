@@ -25,7 +25,6 @@ from ..utils.message_utils import (
 )
 from ..utils.records import (
     build_archive_notice_embed,
-    build_archived_log_embed,
     build_creation_embed,
     build_members_added_embed,
     build_restored_embed,
@@ -247,14 +246,6 @@ async def archive_project_channel_impl(
     )
     logger.info(f"Archived channel: {channel.name} by {ctx.user}")
 
-    await post_log(
-        guild,
-        config.log_channel_name,
-        build_archived_log_embed(
-            actor=ctx.user, channel=channel, restore_command="/restore_project_channel"
-        ),
-    )
-
 
 async def restore_project_channel_impl(
     ctx: discord.Interaction,
@@ -333,11 +324,6 @@ async def restore_project_channel_impl(
     logger.info(f"Restored channel: {channel.name} by {ctx.user}")
 
     await post_channel_record(channel, build_restored_embed(actor=ctx.user, channel=channel))
-    await post_log(
-        guild,
-        config.log_channel_name,
-        build_restored_embed(actor=ctx.user, channel=channel),
-    )
 
 
 async def add_project_role_member_impl(

@@ -329,12 +329,11 @@ if reason is not None:
 - `build_creation_embed(...)` - 作成（ログ・チャンネル内で共通。参加方法の項目つき）
 - `build_members_added_embed(...)` - メンバー追加（チャンネル内）
 - `build_archive_notice_embed(...)` - アーカイブ（チャンネル内、移動の前に投稿）
-- `build_archived_log_embed(...)` - アーカイブ（ログ、移動の成功後。チャンネル名つきの復元方法の項目つき）
-- `build_restored_embed(...)` - 復元（ログ・チャンネル内で共通）
+- `build_restored_embed(...)` - 復元（チャンネル内、移動の後）
 
 ### 送信
 
-- `post_log(guild, log_channel_name, embed)` - ログチャンネルへ送る。誰も通知しない
+- `post_log(guild, log_channel_name, embed)` - ログチャンネルへ送る（作成のみ）。誰も通知しない
 - `post_channel_record(channel, embed, mention_users=())` - 対象チャンネルへ送る。`mention_users`だけを本文のメンションで通知する。送信したメッセージ（送れなければ`None`）を返す
 
 どちらも送信に失敗しても例外は出さず、warningを出す。

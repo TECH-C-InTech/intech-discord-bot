@@ -4,7 +4,6 @@ import discord
 
 from src.utils.records import (
     build_archive_notice_embed,
-    build_archived_log_embed,
     build_creation_embed,
     build_members_added_embed,
     build_restored_embed,
@@ -92,23 +91,6 @@ def test_archive_notice_says_who_archives_and_how_to_restore() -> None:
 
     assert embed.description == "<@1> がアーカイブします"
     assert field(embed, "復元方法") == "`/restore_event_channel`"
-
-
-def named_channel(mention: str, name: str) -> MagicMock:
-    channel = mentionable(mention)
-    channel.name = name
-    return channel
-
-
-def test_archived_log_says_who_archived_and_how_to_restore_that_channel() -> None:
-    embed = build_archived_log_embed(
-        actor=mentionable("<@1>"),
-        channel=named_channel("<#10>", "e012-おでん会"),
-        restore_command="/restore_event_channel",
-    )
-
-    assert embed.description == "<@1> が <#10> をアーカイブしました"
-    assert field(embed, "復元方法") == "`/restore_event_channel channel_name:e012-おでん会`"
 
 
 def test_restored_record_says_who_restored() -> None:

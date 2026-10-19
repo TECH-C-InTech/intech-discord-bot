@@ -1,6 +1,7 @@
 """記録（ログチャンネルとチャンネル内の記録）の組み立てと送信
 
-記録は読み手ごとに残す。ログチャンネルはサーバー全体向けで誰も通知しない。
+記録は読み手ごとに残す。ログチャンネルはサーバー全体向けの、新しく立った活動の掲示板で
+誰も通知しない（作成だけを流す）。
 チャンネル内の記録は対象チャンネルの参加者向けで、参加者にした人・加えられた人だけを通知する。
 送信の失敗はコマンドを止めず、warningを出すだけにする。
 """
@@ -23,13 +24,6 @@ class Mentionable(Protocol):
 
     @property
     def mention(self) -> str: ...
-
-
-class NamedChannel(Mentionable, Protocol):
-    """メンションでき、名前を持つチャンネル"""
-
-    @property
-    def name(self) -> str: ...
 
 
 def _mentions(items: Sequence[Mentionable]) -> str:
@@ -92,28 +86,8 @@ def build_archive_notice_embed(*, actor: Mentionable, restore_command: str) -> d
     return embed
 
 
-def build_archived_log_embed(
-    *, actor: Mentionable, channel: NamedChannel, restore_command: str
-) -> discord.Embed:
-    """アーカイブのログ（移動の成功後に送る）
-
-    ログチャンネルから復元するにはチャンネルの指定が要るため、復元方法に名前まで書く。
-    """
-    embed = discord.Embed(
-        title="アーカイブ",
-        description=f"{actor.mention} が {channel.mention} をアーカイブしました",
-        color=discord.Color.light_grey(),
-    )
-    embed.add_field(
-        name="復元方法",
-        value=f"`{restore_command} channel_name:{channel.name}`",
-        inline=False,
-    )
-    return embed
-
-
 def build_restored_embed(*, actor: Mentionable, channel: Mentionable) -> discord.Embed:
-    """復元の記録（ログチャンネルとチャンネル内の記録で共通）"""
+    """復元のチャンネル内の記録（移動の後に投稿する）"""
     return discord.Embed(
         title="復元",
         description=f"{actor.mention} が {channel.mention} を復元しました",
