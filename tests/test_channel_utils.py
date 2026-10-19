@@ -2,7 +2,11 @@ from unittest.mock import MagicMock
 
 import discord
 
-from src.utils.channel_utils import resolve_target_text_channel
+from src.utils.channel_utils import (
+    get_next_event_index,
+    get_next_project_index,
+    resolve_target_text_channel,
+)
 
 
 def test_text_channel_targets_itself() -> None:
@@ -39,3 +43,35 @@ def test_voice_channel_has_no_target() -> None:
 
 def test_missing_channel_has_no_target() -> None:
     assert resolve_target_text_channel(None) == (None, False)
+
+
+def make_category(name: str, channel_names: list[str]) -> MagicMock:
+    category = MagicMock(spec=discord.CategoryChannel)
+    category.name = name
+    channels = []
+    for channel_name in channel_names:
+        channel = MagicMock(spec=discord.TextChannel)
+        channel.name = channel_name
+        channels.append(channel)
+    category.channels = channels
+    return category
+
+
+def test_next_event_index_counts_both_event_and_archive_categories() -> None:
+    guild = MagicMock(spec=discord.Guild)
+    guild.categories = [
+        make_category("event", ["e001-a", "e004-b", "雑談"]),
+        make_category("archived", ["e007-c", "p009-d"]),
+    ]
+
+    assert get_next_event_index(guild, "event", "archived") == 8
+
+
+def test_next_project_index_counts_both_project_and_archive_categories() -> None:
+    guild = MagicMock(spec=discord.Guild)
+    guild.categories = [
+        make_category("project", ["p002-a"]),
+        make_category("archived-project", ["p005-b", "e009-c"]),
+    ]
+
+    assert get_next_project_index(guild, "project", "archived-project") == 6
