@@ -153,9 +153,7 @@ async def create_project_channel_impl(
             join_command="/add_project_role_member",
         )
 
-    # 立てた本人には通知しない
-    invited = [member for member in grant.granted if member.id != ctx.user.id]
-    await post_channel_record(channel, record(), mention_users=invited)
+    await post_channel_record(channel, record(), mention_users=grant.granted)
     await post_log(guild, config.log_channel_name, record())
 
 
