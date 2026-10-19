@@ -174,3 +174,16 @@ async def handle_command_error(
         f"{action}中にエラーが発生しました: {type(error).__name__}",
         help_text=help_text or "管理者に連絡してください。",
     )
+
+
+async def send_private_reply(ctx: discord.Interaction, embed: discord.Embed) -> None:
+    """操作した本人にだけ見える返信を送る
+
+    defer済みの前提でfollowupを使う。2通目以降のfollowupはdeferの可視性を
+    引き継がないため、毎回ephemeralを指定する。送れなくても例外は出さない
+    （操作が成功していれば、記録は返信の成否に関係なく残すため）。
+    """
+    try:
+        await ctx.followup.send(embed=embed, ephemeral=True)
+    except discord.HTTPException as e:
+        logger.warning(f"Failed to send reply to {ctx.user}: {e}")

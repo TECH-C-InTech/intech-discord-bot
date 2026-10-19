@@ -8,13 +8,28 @@ from discord import app_commands
 from ..utils.approval_decorator import require_approval
 from ..utils.channel_config import ChannelConfig
 from ..utils.channel_decorator import require_channel
-from ..utils.channel_utils import validate_category_exists
+from ..utils.channel_utils import resolve_target_text_channel, validate_category_exists
+from ..utils.club_name import validate_club_name
 from ..utils.command_metadata import command_meta
+from ..utils.creation import (
+    Created,
+    Rejected,
+    create_channel_with_role,
+    report_creation_problem,
+)
 from ..utils.message_utils import (
     create_success_embed,
     handle_command_error,
     send_error_message,
+    send_private_reply,
 )
+from ..utils.records import (
+    build_creation_embed,
+    build_members_added_embed,
+    post_channel_record,
+    post_log,
+)
+from ..utils.role_utils import grant_role
 from ..utils.validation_utils import (
     parse_member_mentions,
     parse_role_mention,
@@ -55,78 +70,95 @@ async def create_club_channel_impl(
         return
 
     # メンバーが指定されている場合、メンションから抽出
-    member_objects = []
+    member_objects: list[discord.Member] = []
     if members:
         parsed_members = await parse_member_mentions(ctx, members, guild)
         if parsed_members is None:
             return
         member_objects = parsed_members
 
-    # チャンネル名をそのまま使用
-    formatted_channel_name = channel_name
+    if not ctx.response.is_done():
+        await ctx.response.defer(ephemeral=True, thinking=True)
 
-    # カテゴリ内に同名のチャンネルが既に存在するかチェック
-    channel_dict = {ch.name: ch for ch in category_channel.text_channels}
-    existing_channel = channel_dict.get(formatted_channel_name)
-    if existing_channel:
-        await send_error_message(
-            ctx,
-            f"チャンネル `{formatted_channel_name}` "
-            f"は既に{config.club_category_name}カテゴリ内に存在します。\n"
-            f"別の名前を使用してください。",
+    # クラブはチャンネルとロールを名前で結びつけるため、既存のロールや番号と衝突する名前を拒否する
+    def validate(
+        guild: discord.Guild, name: str, *, exclude: discord.TextChannel | None = None
+    ) -> str | None:
+        return validate_club_name(
+            name,
+            log_channel_name=config.log_channel_name,
+            existing_role_names=[role.name for role in guild.roles],
+            existing_channel_names=[
+                ch.name
+                for ch in category_channel.text_channels
+                if exclude is None or ch.id != exclude.id
+            ],
         )
-        logger.warning(
-            f"Channel creation failed: '{formatted_channel_name}' already exists "
-            f"in category '{config.club_category_name}' (requested by {ctx.user})"
-        )
-        return
+
+    def decide_name(guild: discord.Guild, category: discord.CategoryChannel) -> str | Rejected:
+        reason = validate(guild, channel_name)
+        return Rejected(reason) if reason is not None else channel_name
 
     try:
-        # チャンネルを作成
-        channel = await guild.create_text_channel(
-            name=formatted_channel_name, category=category_channel
+        outcome = await create_channel_with_role(
+            guild,
+            category_channel,
+            decide_name=decide_name,
+            # Discordが正規化した実際の名前で検証し直す（作成したチャンネル自身は除く）
+            validate_created_name=lambda guild, channel: validate(
+                guild, channel.name, exclude=channel
+            ),
+            # ロールはチャンネルの実際の名前で作り、名前の紐づけがずれないようにする
+            role_name_for=lambda channel: channel.name,
         )
+    except Exception as e:
+        await handle_command_error(ctx, e, "クラブチャンネルの作成")
+        return
 
-        # 同じ名前のロールを作成
-        role = await guild.create_role(
-            name=formatted_channel_name,
-            mentionable=True,
+    if not isinstance(outcome, Created):
+        await report_creation_problem(ctx, outcome, "クラブチャンネルの作成")
+        return
+
+    channel, role = outcome.channel, outcome.role
+    grant = await grant_role(member_objects, role)
+
+    description_parts = [f"{channel.mention} と {role.mention} を作成しました"]
+    if grant.granted:
+        description_parts.append(
+            f"\n以下のメンバーにロールを付与しました:\n"
+            f"{', '.join(m.mention for m in grant.granted)}"
         )
-
-        # 指定されたメンバーにロールを付与
-        if member_objects:
-            for member in member_objects:
-                await member.add_roles(role)
-
-        # 成功メッセージ
-        description_parts = [f"{channel.mention} と {role.mention} を作成しました"]
-
-        if member_objects:
-            member_mentions_str = ", ".join([m.mention for m in member_objects])
-            description_parts.append(
-                f"\n以下のメンバーにロールを付与しました:\n{member_mentions_str}"
-            )
-
-        embed = create_success_embed(
+    if grant.failed:
+        description_parts.append(
+            f"\n以下のメンバーにはロールを付与できませんでした:\n"
+            f"{', '.join(m.mention for m in grant.failed)}"
+        )
+    await send_private_reply(
+        ctx,
+        create_success_embed(
             title="クラブチャンネル作成完了",
             description="".join(description_parts),
-            チャンネル名=formatted_channel_name,
-            ロール付与人数=len(member_objects) if member_objects else 0,
+            チャンネル名=channel.name,
+            ロール付与人数=len(grant.granted),
+        ),
+    )
+    logger.info(
+        f"Created club channel: {channel.name} and role "
+        f"with {len(grant.granted)} members by {ctx.user}"
+    )
+
+    def record() -> discord.Embed:
+        return build_creation_embed(
+            kind="クラブ",
+            actor=ctx.user,
+            channel=channel,
+            role=role,
+            members=grant.granted,
+            failed_members=grant.failed,
         )
 
-        # Interactionが既に応答済みの場合はfollowupを使用
-        if ctx.response.is_done():
-            await ctx.followup.send(embed=embed)
-        else:
-            await ctx.response.send_message(embed=embed)
-        logger.info(
-            f"Created club channel: {formatted_channel_name} and role "
-            f"with {len(member_objects)} members by {ctx.user}"
-        )
-
-    except Exception as e:
-        logger.error(f"Error creating club channel: {e}", exc_info=True)
-        await handle_command_error(ctx, e, "クラブチャンネルの作成")
+    await post_channel_record(channel, record(), mention_users=grant.granted)
+    await post_log(guild, config.log_channel_name, record())
 
 
 async def add_club_role_member_impl(
@@ -158,19 +190,23 @@ async def add_club_role_member_impl(
     if not club_category:
         return
 
-    # role_nameが省略された場合は実行チャンネル名を使用
+    via_thread = False
+    # role_nameが省略された場合は実行チャンネル（スレッドなら親チャンネル）の名前を使用
     if role_name is None:
-        # コマンド実行チャンネルがCLUB_CATEGORY_NAMEカテゴリーに属しているか確認
-        if not isinstance(ctx.channel, discord.TextChannel):
-            await send_error_message(ctx, "このコマンドはテキストチャンネルでのみ実行できます。")
+        target_channel, via_thread = resolve_target_text_channel(ctx.channel)
+        if target_channel is None:
+            await send_error_message(
+                ctx, "このコマンドはテキストチャンネルかそのスレッドでのみ実行できます。"
+            )
             return
-        if ctx.channel.category_id != club_category.id:
+        # 対象チャンネルがCLUB_CATEGORY_NAMEカテゴリーに属しているか確認
+        if target_channel.category_id != club_category.id:
             await send_error_message(
                 ctx,
                 f"このコマンドは {config.club_category_name} カテゴリー内でのみ実行できます。",
             )
             return
-        role_name = ctx.channel.name
+        role_name = target_channel.name
         # ロールを名前で検索
         role = discord.utils.get(guild.roles, name=role_name)
         if not role:
@@ -205,55 +241,52 @@ async def add_club_role_member_impl(
 
     # 応答を保留
     if not ctx.response.is_done():
-        await ctx.response.defer(thinking=True)
+        await ctx.response.defer(ephemeral=True, thinking=True)
 
-    try:
-        # ロールを追加
-        added_members = []
-        already_has_role = []
+    grant = await grant_role(member_objects, role)
 
-        for member in member_objects:
-            if role in member.roles:
-                already_has_role.append(member)
-            else:
-                await member.add_roles(role)
-                added_members.append(member)
-
-        # 成功メッセージ
-        description_parts = []
-
-        if added_members:
-            member_mentions_str = ", ".join([m.mention for m in added_members])
-            description_parts.append(
-                f"{role.mention} に以下のメンバーを追加しました:\n{member_mentions_str}"
-            )
-
-        if already_has_role:
-            member_mentions_str = ", ".join([m.mention for m in already_has_role])
-            description_parts.append(
-                f"\n以下のメンバーは既にロールを持っています:\n{member_mentions_str}"
-            )
-
-        embed = create_success_embed(
+    description_parts = []
+    if grant.granted:
+        description_parts.append(
+            f"{role.mention} に以下のメンバーを追加しました:\n"
+            f"{', '.join(m.mention for m in grant.granted)}"
+        )
+    if grant.already_had:
+        description_parts.append(
+            f"以下のメンバーは既にロールを持っています:\n"
+            f"{', '.join(m.mention for m in grant.already_had)}"
+        )
+    if grant.failed:
+        description_parts.append(
+            f"以下のメンバーにはロールを付与できませんでした:\n"
+            f"{', '.join(m.mention for m in grant.failed)}"
+        )
+    note = (
+        f"\n（スレッドから実行したため、親チャンネル {club_channel.mention} を対象にしました）"
+        if via_thread
+        else ""
+    )
+    await send_private_reply(
+        ctx,
+        create_success_embed(
             title="クラブロールメンバー追加完了",
-            description="\n".join(description_parts),
+            description="\n".join(description_parts) + note,
             クラブチャンネル=club_channel.mention,
             ロール=role.name,
-            追加人数=len(added_members),
-        )
+            追加人数=len(grant.granted),
+        ),
+    )
+    logger.info(
+        f"Added {len(grant.granted)} members to club role {role.name} "
+        f"(channel: {club_channel.name}) by {ctx.user}"
+    )
 
-        # 結果をfollowupで送信
-        await ctx.followup.send(embed=embed)
-        logger.info(
-            f"Added {len(added_members)} members to club role {role.name} "
-            f"(channel: {club_channel.name}) by {ctx.user}"
+    if grant.granted:
+        await post_channel_record(
+            club_channel,
+            build_members_added_embed(actor=ctx.user, role=role, members=grant.granted),
+            mention_users=grant.granted,
         )
-
-    except discord.Forbidden:
-        await send_error_message(ctx, f"Botに {role.mention} を付与する権限がありません。")
-    except Exception as e:
-        logger.error(f"Error adding club role members: {e}", exc_info=True)
-        await handle_command_error(ctx, e, "クラブロールメンバーの追加")
 
 
 # ==================== コマンド登録 ====================

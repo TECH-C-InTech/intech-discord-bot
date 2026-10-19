@@ -12,6 +12,7 @@ from logging import getLogger
 import discord
 
 from .capacity import check_creation_capacity
+from .message_utils import handle_command_error, send_error_message
 
 logger = getLogger(__name__)
 
@@ -117,3 +118,19 @@ async def _wait_for_role_cache(guild: discord.Guild, role: discord.Role, *, time
             logger.warning(f"Role {role.id} did not appear in cache within {timeout}s")
             return
         await asyncio.sleep(ROLE_CACHE_POLL_INTERVAL)
+
+
+async def report_creation_problem(
+    ctx: discord.Interaction, outcome: Rejected | Failed, action: str
+) -> None:
+    """作成できなかった理由を本人に返す"""
+    if isinstance(outcome, Rejected):
+        await send_error_message(ctx, outcome.reason)
+        return
+    await handle_command_error(ctx, outcome.error, action)
+    if outcome.leftover_channel is not None:
+        await send_error_message(
+            ctx,
+            f"作成途中の {outcome.leftover_channel.mention} を消せませんでした。"
+            "サーバー管理者に削除を依頼してください。",
+        )

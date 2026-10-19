@@ -7,18 +7,32 @@ import discord
 from discord import app_commands
 
 from ..utils.approval_decorator import require_approval
+from ..utils.capacity import check_move_capacity
 from ..utils.channel_config import ChannelConfig
 from ..utils.channel_decorator import require_channel
 from ..utils.channel_utils import (
     get_next_project_index,
+    resolve_target_text_channel,
     validate_category_exists,
 )
 from ..utils.command_metadata import command_meta
+from ..utils.creation import Created, create_channel_with_role, report_creation_problem
 from ..utils.message_utils import (
     create_success_embed,
     handle_command_error,
     send_error_message,
+    send_private_reply,
 )
+from ..utils.records import (
+    build_archive_notice_embed,
+    build_archived_log_embed,
+    build_creation_embed,
+    build_members_added_embed,
+    build_restored_embed,
+    post_channel_record,
+    post_log,
+)
+from ..utils.role_utils import grant_role
 from ..utils.validation_utils import (
     parse_member_mentions,
     parse_role_mention,
@@ -27,6 +41,28 @@ from ..utils.validation_utils import (
 )
 
 logger = getLogger(__name__)
+
+PERMISSION_HELP = (
+    "サーバー管理者に、`{category}`, `{archive}`のカテゴリに「権限の管理」"
+    "権限がInTech Botのみに付与されているか確認してください。"
+)
+
+
+def _thread_note(channel: discord.TextChannel, via_thread: bool) -> str:
+    if not via_thread:
+        return ""
+    return f"\n（スレッドから実行したため、親チャンネル {channel.mention} を対象にしました）"
+
+
+async def _resolve_target_or_error(
+    ctx: discord.Interaction,
+) -> tuple[discord.TextChannel | None, bool]:
+    channel, via_thread = resolve_target_text_channel(ctx.channel)
+    if channel is None:
+        await send_error_message(
+            ctx, "このコマンドはテキストチャンネルかそのスレッドでのみ実行できます。"
+        )
+    return channel, via_thread
 
 
 # ==================== コマンド実装関数 ====================
@@ -60,7 +96,7 @@ async def create_project_channel_impl(
         return
 
     # メンバーが指定されている場合、メンションから抽出
-    member_objects = []
+    member_objects: list[discord.Member] = []
     if members:
         parsed_members = await parse_member_mentions(ctx, members, guild)
         if parsed_members is None:
@@ -68,66 +104,74 @@ async def create_project_channel_impl(
         member_objects = parsed_members
 
     if not ctx.response.is_done():
-        await ctx.response.defer(thinking=True)
+        await ctx.response.defer(ephemeral=True, thinking=True)
 
-    try:
-        # 次のインデックス番号を取得
+    def decide_name(guild: discord.Guild, category: discord.CategoryChannel) -> str:
+        # 採番はLockの中で行い、並行した作成で番号が重ならないようにする
         next_index = get_next_project_index(
             guild,
             config.project_category_name,
             config.archive_project_category_name,
         )
-
         # チャンネル名を p{index:03d}-{name} の形式で構築（3桁0埋め）
-        formatted_channel_name = f"p{next_index:03d}-{channel_name}"
+        return f"p{next_index:03d}-{channel_name}"
 
-        # チャンネルを作成
-        channel = await guild.create_text_channel(
-            name=formatted_channel_name, category=category_channel
+    try:
+        outcome = await create_channel_with_role(
+            guild,
+            category_channel,
+            decide_name=decide_name,
+            # ロール名はチャンネル名の番号部分（p001）
+            role_name_for=lambda channel: channel.name.split("-", 1)[0],
         )
+    except Exception as e:
+        await handle_command_error(ctx, e, "チャンネルの作成")
+        return
 
-        # p{index}形式のロールを作成（3桁0埋め）
-        role_name = f"p{next_index:03d}"
-        role = await guild.create_role(
-            name=role_name,
-            mentionable=True,
+    if not isinstance(outcome, Created):
+        await report_creation_problem(ctx, outcome, "チャンネルの作成")
+        return
+
+    channel, role = outcome.channel, outcome.role
+    grant = await grant_role(member_objects, role)
+
+    description_parts = [f"{channel.mention} と {role.mention} を作成しました"]
+    if grant.granted:
+        description_parts.append(
+            f"\n以下のメンバーにロールを付与しました:\n"
+            f"{', '.join(m.mention for m in grant.granted)}"
         )
-
-        # 指定されたメンバーにロールを付与
-        if member_objects:
-            for member in member_objects:
-                await member.add_roles(role)
-
-        # 成功メッセージ
-        description_parts = [f"{channel.mention} と {role.mention} を作成しました"]
-
-        if member_objects:
-            member_mentions_str = ", ".join([m.mention for m in member_objects])
-            description_parts.append(
-                f"\n以下のメンバーにロールを付与しました:\n{member_mentions_str}"
-            )
-
-        embed = create_success_embed(
+    if grant.failed:
+        description_parts.append(
+            f"\n以下のメンバーにはロールを付与できませんでした:\n"
+            f"{', '.join(m.mention for m in grant.failed)}"
+        )
+    await send_private_reply(
+        ctx,
+        create_success_embed(
             title="プロジェクトチャンネル作成完了",
             description="".join(description_parts),
-            チャンネル名=formatted_channel_name,
-            インデックス=next_index,
-            ロール付与人数=len(member_objects) if member_objects else 0,
+            チャンネル名=channel.name,
+            ロール付与人数=len(grant.granted),
+        ),
+    )
+    logger.info(
+        f"Created channel: {channel.name} and role {role.name} "
+        f"with {len(grant.granted)} members by {ctx.user}"
+    )
+
+    def record() -> discord.Embed:
+        return build_creation_embed(
+            kind="プロジェクト",
+            actor=ctx.user,
+            channel=channel,
+            role=role,
+            members=grant.granted,
+            failed_members=grant.failed,
         )
 
-        # Interactionが既に応答済みの場合はfollowupを使用
-        if ctx.response.is_done():
-            await ctx.followup.send(embed=embed)
-        else:
-            await ctx.response.send_message(embed=embed)
-        logger.info(
-            f"Created channel: {formatted_channel_name} (index: {next_index}) and role "
-            f"with {len(member_objects)} members by {ctx.user}"
-        )
-
-    except Exception as e:
-        logger.error(f"Error creating channel: {e}", exc_info=True)
-        await handle_command_error(ctx, e, "チャンネルの作成")
+    await post_channel_record(channel, record(), mention_users=grant.granted)
+    await post_log(guild, config.log_channel_name, record())
 
 
 async def archive_project_channel_impl(
@@ -157,55 +201,72 @@ async def archive_project_channel_impl(
     if not archive_category_channel:
         return
 
-    # 移動するチャンネルを特定
+    # 移動するチャンネルを特定（スレッドから実行された場合は親チャンネル）
     channel: discord.TextChannel | None = channel_name
+    via_thread = False
     if channel is None:
-        if not isinstance(ctx.channel, discord.TextChannel):
-            await send_error_message(
-                ctx,
-                "このコマンドはテキストチャンネルでのみ実行できます。",
-            )
+        channel, via_thread = await _resolve_target_or_error(ctx)
+        if channel is None:
             return
-        channel = ctx.channel
 
     # チャンネルがプロジェクトカテゴリーに属しているか確認
     if not await validate_channel_in_category(ctx, channel, config.project_category_name):
         return
 
+    capacity_reason = check_move_capacity(
+        destination_category_channels=len(archive_category_channel.channels)
+    )
+    if capacity_reason is not None:
+        await send_error_message(ctx, capacity_reason)
+        return
+
     if not ctx.response.is_done():
-        await ctx.response.defer(thinking=True)
+        await ctx.response.defer(ephemeral=True, thinking=True)
+
+    # アーカイブ先ではbotが送信できない可能性があるため、移動の前に記録を残す
+    notice = await post_channel_record(
+        channel,
+        build_archive_notice_embed(actor=ctx.user, restore_command="/restore_project_channel"),
+    )
 
     try:
         await channel.edit(category=archive_category_channel, sync_permissions=True)
-
-        # 成功メッセージ
-        embed = create_success_embed(
-            title="プロジェクトチャンネルアーカイブ完了",
-            description=f"{channel.mention} をアーカイブしました",
-            チャンネル名=channel.name,
-        )
-
-        # Interactionが既に応答済みの場合はfollowupを使用
-        if ctx.response.is_done():
-            await ctx.followup.send(embed=embed)
-        else:
-            await ctx.response.send_message(embed=embed)
-        logger.info(f"Archived channel: {channel.name} by {ctx.user}")
-
     except Exception as e:
-        logger.error(f"Error archiving channel: {e}", exc_info=True)
+        if notice is not None:
+            try:
+                await notice.delete()
+            except discord.HTTPException as delete_error:
+                logger.warning(f"Failed to delete archive notice: {delete_error}")
         await handle_command_error(
             ctx,
             e,
             "チャンネルのアーカイブ",
             custom_help_texts={
-                discord.Forbidden: (
-                    f"サーバー管理者に、`{config.project_category_name}`, "
-                    f"`{config.archive_project_category_name}`のカテゴリに「権限の管理」"
-                    f"権限がInTech Botのみに付与されているか確認してください。"
+                discord.Forbidden: PERMISSION_HELP.format(
+                    category=config.project_category_name,
+                    archive=config.archive_project_category_name,
                 )
             },
         )
+        return
+
+    await send_private_reply(
+        ctx,
+        create_success_embed(
+            title="プロジェクトチャンネルアーカイブ完了",
+            description=(
+                f"{channel.mention} をアーカイブしました{_thread_note(channel, via_thread)}"
+            ),
+            チャンネル名=channel.name,
+        ),
+    )
+    logger.info(f"Archived channel: {channel.name} by {ctx.user}")
+
+    await post_log(
+        guild,
+        config.log_channel_name,
+        build_archived_log_embed(actor=ctx.user, channel=channel),
+    )
 
 
 async def restore_project_channel_impl(
@@ -235,52 +296,62 @@ async def restore_project_channel_impl(
     if not project_category_channel:
         return
 
-    # 移動するチャンネルを特定
+    # 移動するチャンネルを特定（スレッドから実行された場合は親チャンネル）
     channel: discord.TextChannel | None = channel_name
+    via_thread = False
     if channel is None:
-        # channel_name省略時は、アーカイブカテゴリー内でのみ実行可能
-        if not isinstance(ctx.channel, discord.TextChannel):
-            await send_error_message(ctx, "このコマンドはテキストチャンネルでのみ実行できます。")
+        channel, via_thread = await _resolve_target_or_error(ctx)
+        if channel is None:
             return
-        channel = ctx.channel
 
     if not await validate_channel_in_category(ctx, channel, config.archive_project_category_name):
         return
 
+    capacity_reason = check_move_capacity(
+        destination_category_channels=len(project_category_channel.channels)
+    )
+    if capacity_reason is not None:
+        await send_error_message(ctx, capacity_reason)
+        return
+
     if not ctx.response.is_done():
-        await ctx.response.defer(thinking=True)
+        await ctx.response.defer(ephemeral=True, thinking=True)
 
     try:
         await channel.edit(category=project_category_channel, sync_permissions=True)
-
-        # 成功メッセージ
-        embed = create_success_embed(
-            title="プロジェクトチャンネル復元完了",
-            description=f"{channel.mention} をプロジェクトカテゴリーに戻しました",
-            チャンネル名=channel.name,
-        )
-
-        # Interactionが既に応答済みの場合はfollowupを使用
-        if ctx.response.is_done():
-            await ctx.followup.send(embed=embed)
-        else:
-            await ctx.response.send_message(embed=embed)
-        logger.info(f"Restored channel: {channel.name} by {ctx.user}")
-
     except Exception as e:
-        logger.error(f"Error restoring channel: {e}", exc_info=True)
         await handle_command_error(
             ctx,
             e,
             "チャンネルの復元",
             custom_help_texts={
-                discord.Forbidden: (
-                    f"サーバー管理者に、`{config.project_category_name}`, "
-                    f"`{config.archive_project_category_name}`のカテゴリに「権限の管理」"
-                    f"権限がInTech Botのみに付与されているか確認してください。"
+                discord.Forbidden: PERMISSION_HELP.format(
+                    category=config.project_category_name,
+                    archive=config.archive_project_category_name,
                 )
             },
         )
+        return
+
+    await send_private_reply(
+        ctx,
+        create_success_embed(
+            title="プロジェクトチャンネル復元完了",
+            description=(
+                f"{channel.mention} をプロジェクトカテゴリーに戻しました"
+                f"{_thread_note(channel, via_thread)}"
+            ),
+            チャンネル名=channel.name,
+        ),
+    )
+    logger.info(f"Restored channel: {channel.name} by {ctx.user}")
+
+    await post_channel_record(channel, build_restored_embed(actor=ctx.user, channel=channel))
+    await post_log(
+        guild,
+        config.log_channel_name,
+        build_restored_embed(actor=ctx.user, channel=channel),
+    )
 
 
 async def add_project_role_member_impl(
@@ -312,18 +383,20 @@ async def add_project_role_member_impl(
     if not project_category:
         return
 
-    # role_nameが省略された場合は実行チャンネル名を使用
+    via_thread = False
+    # role_nameが省略された場合は実行チャンネル（スレッドなら親チャンネル）のロールを使用
     if role_name is None:
-        # コマンド実行チャンネルがPROJECT_CATEGORY_NAMEカテゴリーに属しているか確認
-        if not isinstance(ctx.channel, discord.TextChannel):
-            await send_error_message(ctx, "このコマンドはテキストチャンネルでのみ実行できます。")
+        target_channel, via_thread = await _resolve_target_or_error(ctx)
+        if target_channel is None:
             return
-        if not await validate_channel_in_category(ctx, ctx.channel, config.project_category_name):
+        # 対象チャンネルがPROJECT_CATEGORY_NAMEカテゴリーに属しているか確認
+        if not await validate_channel_in_category(
+            ctx, target_channel, config.project_category_name
+        ):
             return
-        channel_name = ctx.channel.name
-        # チャンネル名からindexを抽出して、p{index}形式のロールを検索
+        # チャンネル名からindexを抽出して、e{index}形式のロールを検索
         # チャンネル名: p001-xxx -> index: 001
-        match = re.match(r"^p(\d{3})-", channel_name)
+        match = re.match(r"^p(\d{3})-", target_channel.name)
         if not match:
             await send_error_message(
                 ctx, "このチャンネルはプロジェクトチャンネルの形式（p001-xxx）ではありません。"
@@ -341,17 +414,12 @@ async def add_project_role_member_impl(
         if not role:
             return
 
-    role_name = role.name
-
     # ロールの安全性チェック
     if not await validate_role_safety(ctx, role):
         return
 
     # ロール名から数字部分を抽出（p001 -> 1）
-    # role_nameはこの時点で必ず文字列
-    assert role_name is not None
-    role_pattern = re.compile(r"^p(\d{3})$")
-    role_match = role_pattern.match(role_name)
+    role_match = re.match(r"^p(\d{3})$", role.name)
     if not role_match:
         await send_error_message(
             ctx,
@@ -364,9 +432,9 @@ async def add_project_role_member_impl(
     # 同名のチャンネルがPROJECT_CATEGORY_NAMEカテゴリーに存在するか確認
     # p{index:03d}-で始まるチャンネルを検索（3桁0埋め）
     project_channel = None
-    for ch_name in project_category.text_channels:
-        if ch_name.name.startswith(f"p{role_index:03d}-"):
-            project_channel = ch_name
+    for ch in project_category.text_channels:
+        if ch.name.startswith(f"p{role_index:03d}-"):
+            project_channel = ch
             break
 
     if not project_channel:
@@ -384,55 +452,48 @@ async def add_project_role_member_impl(
 
     # 応答を保留
     if not ctx.response.is_done():
-        await ctx.response.defer(thinking=True)
+        await ctx.response.defer(ephemeral=True, thinking=True)
 
-    try:
-        # ロールを追加
-        added_members = []
-        already_has_role = []
+    grant = await grant_role(member_objects, role)
 
-        for member in member_objects:
-            if role in member.roles:
-                already_has_role.append(member)
-            else:
-                await member.add_roles(role)
-                added_members.append(member)
-
-        # 成功メッセージ
-        description_parts = []
-
-        if added_members:
-            member_mentions_str = ", ".join([m.mention for m in added_members])
-            description_parts.append(
-                f"{role.mention} に以下のメンバーを追加しました:\n{member_mentions_str}"
-            )
-
-        if already_has_role:
-            member_mentions_str = ", ".join([m.mention for m in already_has_role])
-            description_parts.append(
-                f"\n以下のメンバーは既にロールを持っています:\n{member_mentions_str}"
-            )
-
-        embed = create_success_embed(
+    description_parts = []
+    if grant.granted:
+        description_parts.append(
+            f"{role.mention} に以下のメンバーを追加しました:\n"
+            f"{', '.join(m.mention for m in grant.granted)}"
+        )
+    if grant.already_had:
+        description_parts.append(
+            f"以下のメンバーは既にロールを持っています:\n"
+            f"{', '.join(m.mention for m in grant.already_had)}"
+        )
+    if grant.failed:
+        description_parts.append(
+            f"以下のメンバーにはロールを付与できませんでした:\n"
+            f"{', '.join(m.mention for m in grant.failed)}"
+        )
+    note = _thread_note(project_channel, via_thread)
+    await send_private_reply(
+        ctx,
+        create_success_embed(
             title="プロジェクトロールメンバー追加完了",
-            description="\n".join(description_parts),
+            description="\n".join(description_parts) + note,
             プロジェクトチャンネル=project_channel.mention,
             ロール=role.name,
-            追加人数=len(added_members),
-        )
+            追加人数=len(grant.granted),
+        ),
+    )
+    logger.info(
+        f"Added {len(grant.granted)} members to project role {role.name} "
+        f"(channel: {project_channel.name}) by {ctx.user}"
+    )
 
-        # 結果をfollowupで送信
-        await ctx.followup.send(embed=embed)
-        logger.info(
-            f"Added {len(added_members)} members to project role {role.name} "
-            f"(channel: {project_channel.name}) by {ctx.user}"
+    if grant.granted:
+        await post_channel_record(
+            project_channel,
+            build_members_added_embed(actor=ctx.user, role=role, members=grant.granted),
+            mention_users=grant.granted,
         )
-
-    except discord.Forbidden:
-        await send_error_message(ctx, f"Botに {role.mention} を付与する権限がありません。")
-    except Exception as e:
-        logger.error(f"Error adding project role members: {e}", exc_info=True)
-        await handle_command_error(ctx, e, "プロジェクトロールメンバーの追加")
 
 
 # ==================== コマンド登録 ====================
