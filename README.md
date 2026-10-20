@@ -97,7 +97,7 @@ uv run bot.py
 | `/remove_role_members <members> [role]` | ロールから参加者を外す |
 | `/show_role_members <role_name> [visibility]` | ロールのメンバー一覧を表示 |
 | `/intech` | その場所のパネル（ボタンで操作できる画面）を自分にだけ出す |
-| `/setup_panel <panel>` | パネルを置く（管理者用） |
+| `/setup_panel <panel>` | ボタンで操作できるパネルを実行したチャンネルに設置（管理者用） |
 
 > 💡 各コマンドの詳細は `/docs command:コマンド名` で確認できます
 

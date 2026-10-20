@@ -4,6 +4,7 @@ import discord
 import pytest
 
 from src.commands.panel import (
+    PANEL_CHOICES,
     all_participants_text,
     choose_panel,
     handle_channel_press,
@@ -194,7 +195,6 @@ async def test_join_button_refuses_role_with_administrator(
 
 
 def setup_ctx(monkeypatch: pytest.MonkeyPatch, *categories: MagicMock) -> MagicMock:
-    # イベントとプロジェクトがアーカイブカテゴリを共有している
     names = {
         "club": ("clubs", "archived-clubs"),
         "event": ("events", "archived"),
@@ -222,44 +222,12 @@ def named(category_id: int, name: str, *channels: MagicMock) -> MagicMock:
     return category
 
 
-async def test_setup_all_places_panel_once_per_channel_in_shared_category(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    event, project = make_channel("e001-a", 2), make_channel("p001-b", 2)
-    ctx = setup_ctx(
-        monkeypatch, named(1, "events"), named(3, "projects"), named(2, "archived", event, project)
-    )
-    place = AsyncMock(return_value=Placement.PINNED)
-    monkeypatch.setattr("src.commands.panel.place_panel", place)
-
-    await setup_panel_impl(ctx, "all")
-
-    assert sorted(call.args[0].name for call in place.await_args_list) == ["e001-a", "p001-b"]
-    assert "2個のチャンネルにパネルを置きました" in ctx.followup.send.await_args.args[0]
-
-
-async def test_setup_all_lists_channels_whose_panel_could_not_be_pinned(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    pinned, unpinned = make_channel("e001-a", 1), make_channel("p001-b", 3)
-    ctx = setup_ctx(
-        monkeypatch,
-        named(1, "events", pinned),
-        named(3, "projects", unpinned),
-        named(2, "archived"),
-    )
-    results = {"e001-a": Placement.PINNED, "p001-b": Placement.PIN_FAILED}
-    monkeypatch.setattr(
-        "src.commands.panel.place_panel",
-        AsyncMock(side_effect=lambda channel, *_, **__: results[channel.name]),
-    )
-
-    await setup_panel_impl(ctx, "all")
-
-    reply = ctx.followup.send.await_args.args[0]
-    assert "1個のチャンネルにパネルを置きました" in reply
-    assert "ピン留めできず置かなかったチャンネル: #p001-b" in reply
-    assert PIN_FAILED_HELP in reply
+def test_setup_panel_offers_creating_buttons_and_participant_buttons_here() -> None:
+    # 一括の設置はしない。新しいチャンネルには自動で置かれ、必要なチャンネルにだけ置く
+    assert [choice.name for choice in PANEL_CHOICES] == [
+        "チャンネル作成ボタンパネルを設置（当チャンネル）",
+        "参加者用ボタンパネルを設置（当チャンネル）",
+    ]
 
 
 async def test_setup_here_asks_to_check_permission_when_pin_fails(
@@ -277,7 +245,7 @@ async def test_setup_here_asks_to_check_permission_when_pin_fails(
     await setup_panel_impl(ctx, "here")
 
     reply = ctx.followup.send.await_args.args[0]
-    assert "パネルをピン留めできなかったので、置きませんでした。" in reply
+    assert "パネルを設置できませんでした（ピン留めできなかったため）。" in reply
     assert PIN_FAILED_HELP in reply
 
 

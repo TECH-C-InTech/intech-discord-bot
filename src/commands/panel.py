@@ -200,85 +200,56 @@ async def show_all_participants(ctx: discord.Interaction, linked: Linked) -> Non
 
 
 SETUP_HERE_REPLIES = {
-    Placement.PINNED: "パネルを置きました。",
-    Placement.PIN_FAILED: f"パネルをピン留めできなかったので、置きませんでした。{PIN_FAILED_HELP}",
+    Placement.PINNED: "パネルを設置しました。",
+    Placement.PIN_FAILED: (
+        f"パネルを設置できませんでした（ピン留めできなかったため）。{PIN_FAILED_HELP}"
+    ),
     Placement.ALREADY_THERE: "パネルはすでにあります。",
     Placement.FAILED: (
-        "パネルを置けませんでした。botがこのチャンネルに送信できるか確認してください。"
+        "パネルを設置できませんでした。botがこのチャンネルに送信できるか確認してください。"
     ),
 }
 
 
+# 一括の設置はしない。新しいチャンネルには自動で置かれ、既存のチャンネルや
+# 置き直しは必要なチャンネルでだけ行う
 PANEL_CHOICES = [
-    app_commands.Choice(name="作るパネル（このチャンネルに置く）", value="create"),
-    app_commands.Choice(name="このチャンネルのパネル", value="here"),
-    app_commands.Choice(name="すべてのチャンネルのパネル", value="all"),
+    app_commands.Choice(name="チャンネル作成ボタンパネルを設置（当チャンネル）", value="create"),
+    app_commands.Choice(name="参加者用ボタンパネルを設置（当チャンネル）", value="here"),
 ]
 
 
 async def setup_panel_impl(ctx: discord.Interaction, panel: str) -> None:
-    """パネルを置く（管理者用）"""
+    """実行したチャンネルにパネルを設置する（管理者用）"""
     loaded = await _load(ctx)
     if loaded is None:
         return
     config, guild = loaded
-    categories, missing = collect_kind_categories(guild.categories, config.category_names)
 
     if panel == "create":
-        view = create_panel()
         if not isinstance(ctx.channel, discord.abc.Messageable):
-            await send_error_message(ctx, "ここには置けません。")
+            await send_error_message(ctx, "ここには設置できません。")
             return
         await ctx.response.defer(ephemeral=True, thinking=True)
-        await ctx.channel.send(view=view)
-        await ctx.followup.send("作るパネルを置きました。", ephemeral=True)
+        await ctx.channel.send(view=create_panel())
+        await ctx.followup.send("チャンネル作成ボタンパネルを設置しました。", ephemeral=True)
         return
 
-    if panel == "here":
-        target, _ = resolve_target_text_channel(ctx.channel)
-        linked = (
-            link_channel(target, guild.roles, categories)
-            if target is not None
-            else NotLinked("テキストチャンネルかそのスレッドで実行してください。")
-        )
-        if isinstance(linked, NotLinked):
-            await send_error_message(ctx, explain_not_linked(linked, missing))
-            return
-        await ctx.response.defer(ephemeral=True, thinking=True)
-        placement = await place_panel(linked.channel, linked.role, archived=linked.archived)
-        await ctx.followup.send(
-            f"{linked.channel.mention}: {SETUP_HERE_REPLIES[placement]}", ephemeral=True
-        )
+    categories, missing = collect_kind_categories(guild.categories, config.category_names)
+    target, _ = resolve_target_text_channel(ctx.channel)
+    linked = (
+        link_channel(target, guild.roles, categories)
+        if target is not None
+        else NotLinked("テキストチャンネルかそのスレッドで実行してください。")
+    )
+    if isinstance(linked, NotLinked):
+        await send_error_message(ctx, explain_not_linked(linked, missing))
         return
-
     await ctx.response.defer(ephemeral=True, thinking=True)
-    placed, pin_failed, skipped = 0, [], []
-    # 複数の種類が同じカテゴリを使っていても、1つのチャンネルは1回だけ見る
-    unique_categories = {
-        category.id: category
-        for kind_categories in categories.values()
-        for category in kind_categories
-    }
-    for category in unique_categories.values():
-        for channel in category.text_channels:
-            linked = link_channel(channel, guild.roles, categories)
-            if isinstance(linked, NotLinked):
-                skipped.append(channel.mention)
-                continue
-            placement = await place_panel(channel, linked.role, archived=linked.archived)
-            if placement is Placement.PINNED:
-                placed += 1
-            elif placement is Placement.PIN_FAILED:
-                pin_failed.append(channel.mention)
-    message = f"{placed}個のチャンネルにパネルを置きました（すでにあるチャンネルは除く）。"
-    if pin_failed:
-        message += (
-            f"\nピン留めできず置かなかったチャンネル: {', '.join(pin_failed)}\n{PIN_FAILED_HELP}"
-        )
-    if skipped:
-        message += f"\nロールと紐づかないため置かなかったチャンネル: {', '.join(skipped)}"
-    await ctx.followup.send(message[:2000], ephemeral=True)
-    logger.info(f"Placed {placed} panels by {ctx.user}")
+    placement = await place_panel(linked.channel, linked.role, archived=linked.archived)
+    await ctx.followup.send(
+        f"{linked.channel.mention}: {SETUP_HERE_REPLIES[placement]}", ephemeral=True
+    )
 
 
 def setup(tree: app_commands.CommandTree):
@@ -310,15 +281,17 @@ def setup(tree: app_commands.CommandTree):
     @command_meta(
         category="パネル",
         icon="🎛️",
-        short_description="パネルを置く（管理者用）",
+        short_description="ボタンで操作できるパネルを設置する（管理者用）",
         restrictions="• サーバーの管理権限が必要",
         examples=[
-            "`/setup_panel panel:作るパネル（このチャンネルに置く）` (案内チャンネルで)",
-            "`/setup_panel panel:すべてのチャンネルのパネル`",
+            "`/setup_panel panel:チャンネル作成ボタンパネルを設置（当チャンネル）` "
+            "(案内チャンネルで)",
+            "`/setup_panel panel:参加者用ボタンパネルを設置（当チャンネル）` "
+            "(クラブ・イベント・プロジェクトのチャンネルで)",
         ],
     )
-    @tree.command(name="setup_panel", description="パネルを置きます（管理者用）")
-    @app_commands.describe(panel="置くパネル")
+    @tree.command(name="setup_panel", description="ボタンで操作できるパネルの設置")
+    @app_commands.describe(panel="設置するパネル")
     @app_commands.choices(panel=PANEL_CHOICES)
     @app_commands.default_permissions(manage_guild=True)
     async def setup_panel(ctx: discord.Interaction, panel: app_commands.Choice[str]):

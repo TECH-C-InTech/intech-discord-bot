@@ -486,7 +486,8 @@ async def create(
             create_error_embed(
                 title="パネルのピン留め",
                 description=(
-                    f"{channel.mention} のパネルをピン留めできなかったので、置きませんでした。"
+                    f"{channel.mention} のパネルを設置できませんでした"
+                    "（ピン留めできなかったため）。"
                 ),
                 help_text=PIN_FAILED_HELP,
             ),

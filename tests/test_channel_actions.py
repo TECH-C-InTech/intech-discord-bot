@@ -287,5 +287,7 @@ async def test_creation_asks_to_check_permission_when_panel_pin_fails() -> None:
 
     channel.send.return_value.delete.assert_awaited_once()
     warning = ctx.followup.send.await_args_list[-1].kwargs["embed"]
-    assert warning.description == "<#500> のパネルをピン留めできなかったので、置きませんでした。"
+    assert (
+        warning.description == "<#500> のパネルを設置できませんでした（ピン留めできなかったため）。"
+    )
     assert warning.fields[0].value == PIN_FAILED_HELP
