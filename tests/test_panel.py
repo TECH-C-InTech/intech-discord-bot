@@ -284,7 +284,7 @@ async def test_create_panel_offers_three_kinds_to_anyone() -> None:
     view = create_panel()
 
     assert texts(view) == ["### チャンネルを作る\n誰でも作れます"]
-    assert button_labels(view) == ["クラブを作る", "イベントを作る", "プロジェクトを作る"]
+    assert button_labels(view) == ["イベントを作る", "プロジェクトを作る", "クラブを作る"]
 
 
 async def test_show_all_button_is_found_again_from_posted_message() -> None:

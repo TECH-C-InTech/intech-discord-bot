@@ -7,7 +7,7 @@ import re
 
 import discord
 
-from .kinds import KINDS, Kind, kind_of_key
+from .kinds import CLUB, EVENT, PROJECT, Kind, kind_of_key
 from .linking import NotLinked, collect_kind_categories, link_channel
 from .records import Mentionable
 
@@ -339,13 +339,17 @@ class CreatePanelButton(
         await _create_press_handler(interaction, self.kind)
 
 
+# 作るパネルのボタンの並び（KINDSの並びはロールの上下を表すので、別に決める）
+CREATE_ORDER = (EVENT, PROJECT, CLUB)
+
+
 def create_panel() -> discord.ui.LayoutView:
     """作るパネル（案内チャンネルと、チャンネルの外での /intech で共通）"""
     view = discord.ui.LayoutView(timeout=None)
     view.add_item(
         discord.ui.Container(
             discord.ui.TextDisplay("### チャンネルを作る\n誰でも作れます"),
-            discord.ui.ActionRow(*(CreatePanelButton(kind) for kind in KINDS)),
+            discord.ui.ActionRow(*(CreatePanelButton(kind) for kind in CREATE_ORDER)),
             accent_colour=discord.Colour.blurple(),
         )
     )
