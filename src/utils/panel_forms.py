@@ -13,7 +13,6 @@ from .linking import (
     link_channel,
 )
 from .message_utils import send_error_message
-from .panel import RESTORE_ON_POST
 
 # 名前の入力欄に、入力前に出す例
 NAME_EXAMPLES = {CLUB.key: "ラーメン", EVENT.key: "おでん会", PROJECT.key: "ハッカソン"}
@@ -113,7 +112,7 @@ class ArchiveForm(discord.ui.Modal):
         self.add_item(
             discord.ui.TextDisplay(
                 "本当にアーカイブしますか？（「送信」を押すとアーカイブします）\n"
-                f"アーカイブ中も、{RESTORE_ON_POST}。"
+                "あとで使いたくなったら、このチャンネルにメッセージを送るだけで元に戻ります。"
             )
         )
 

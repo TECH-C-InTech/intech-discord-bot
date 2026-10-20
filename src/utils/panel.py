@@ -20,9 +20,7 @@ SHOWN_PARTICIPANTS = 20
 # パネルは置いたまま何度も書き換えるので、並べた参加者のメンションでは鳴らさない
 NO_MENTIONS = discord.AllowedMentions.none()
 
-# アーカイブ中のチャンネルがどうすれば戻るか（パネルとアーカイブの確認で共通）
-RESTORE_ON_POST = "このチャンネルでメッセージを送ると戻ります"
-ARCHIVED_NOTE = f"📦 アーカイブ中（{RESTORE_ON_POST}）"
+ARCHIVED_NOTE = "📦 アーカイブ中（このチャンネルでメッセージを送ると戻ります）"
 
 
 def _participants_text(members: Sequence[Mentionable]) -> str:

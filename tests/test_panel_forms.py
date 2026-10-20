@@ -124,7 +124,7 @@ async def test_archive_form_tells_how_it_comes_back_and_what_submit_does() -> No
     # Discordのフォームの決定ボタンは「送信」で固定のため、本文で何が起きるかを伝える
     assert [item.content for item in form.children] == [  # type: ignore[attr-defined]
         "本当にアーカイブしますか？（「送信」を押すとアーカイブします）\n"
-        "アーカイブ中も、このチャンネルでメッセージを送ると戻ります。"
+        "あとで使いたくなったら、このチャンネルにメッセージを送るだけで元に戻ります。"
     ]
 
 
