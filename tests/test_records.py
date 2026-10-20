@@ -68,7 +68,9 @@ def test_creation_record_lists_members_who_could_not_become_participants() -> No
 def test_creation_record_tells_how_to_join() -> None:
     embed = creation_embed()
 
-    assert field(embed, "参加方法") == "<#10> のピン留めにある「参加する」を押す"
+    assert field(embed, "参加方法") == (
+        "<#10> のピン留めにある「参加する」を押すか、このチャンネルで `/intech` を打つ"
+    )
 
 
 def test_members_added_record_includes_actor_role_and_added_members() -> None:

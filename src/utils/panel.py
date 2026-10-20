@@ -42,7 +42,6 @@ class ChannelAction(StrEnum):
     ADD = "add"
     REMOVE = "remove"
     ARCHIVE = "archive"
-    CONFIRM_ARCHIVE = "confirm_archive"
     RESTORE = "restore"
     SHOW_ALL = "all"
 
@@ -53,7 +52,6 @@ _CHANNEL_BUTTONS: dict[ChannelAction, tuple[str, discord.ButtonStyle]] = {
     ChannelAction.ADD: ("参加者を追加", discord.ButtonStyle.secondary),
     ChannelAction.REMOVE: ("参加者を外す", discord.ButtonStyle.secondary),
     ChannelAction.ARCHIVE: ("アーカイブ", discord.ButtonStyle.secondary),
-    ChannelAction.CONFIRM_ARCHIVE: ("アーカイブする", discord.ButtonStyle.danger),
     ChannelAction.RESTORE: ("復元", discord.ButtonStyle.primary),
     ChannelAction.SHOW_ALL: ("全員を見る", discord.ButtonStyle.secondary),
 }

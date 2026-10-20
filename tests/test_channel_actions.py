@@ -271,9 +271,9 @@ async def test_creation_places_panel_and_tells_how_others_join() -> None:
     assert texts(panel["view"])[0] == "### #e003-おでん会"
     channel.send.return_value.pin.assert_awaited_once()
     assert (
-        "参加したい人には、このチャンネルを伝えてください。チャンネルのピン留めから参加できます。"
-        in private_text(ctx)
-    )
+        "参加したい人には、<#500> のピン留めにある「参加する」を押すよう伝えてください"
+        "（<#500> で `/intech` を打っても参加できます）。"
+    ) in private_text(ctx)
 
 
 async def test_creation_asks_to_check_permission_when_panel_pin_fails() -> None:

@@ -5,7 +5,7 @@ import pytest
 
 from src.utils.kinds import EVENT
 from src.utils.linking import Linked
-from src.utils.panel_forms import CreateForm, ParticipantsForm
+from src.utils.panel_forms import ArchiveForm, CreateForm, ParticipantsForm
 
 
 def fields(form: discord.ui.Modal) -> list[tuple[str, str | None]]:
@@ -109,3 +109,38 @@ async def test_participants_form_uses_channel_state_at_submit(
     _, linked, members = remove.await_args.args
     assert linked.archived is True
     assert members == [member]
+
+
+def archive_channel(name: str = "e003-おでん会") -> MagicMock:
+    channel = MagicMock(spec=discord.TextChannel)
+    channel.name = name
+    return channel
+
+
+async def test_archive_form_tells_how_it_comes_back_and_what_submit_does() -> None:
+    form = ArchiveForm(MagicMock(), archive_channel())
+
+    assert form.title == "#e003-おでん会 をアーカイブ"
+    # Discordのフォームの決定ボタンは「送信」で固定のため、本文で何が起きるかを伝える
+    assert [item.content for item in form.children] == [  # type: ignore[attr-defined]
+        "アーカイブ中も、このチャンネルでメッセージを送ると戻ります。\n"
+        "「送信」を押すとアーカイブします。"
+    ]
+
+
+async def test_archive_form_title_fits_discord_limit() -> None:
+    form = ArchiveForm(MagicMock(), archive_channel("e003-" + "あ" * 95))
+
+    assert len(form.title) <= 45
+    assert form.title.endswith("… をアーカイブ")
+
+
+async def test_archive_form_archives_channel_on_submit(monkeypatch: pytest.MonkeyPatch) -> None:
+    archive = AsyncMock()
+    monkeypatch.setattr("src.utils.panel_forms.archive", archive)
+    config, channel = MagicMock(), archive_channel()
+    interaction = MagicMock(spec=discord.Interaction)
+
+    await ArchiveForm(config, channel).on_submit(interaction)
+
+    archive.assert_awaited_once_with(interaction, config, channel)

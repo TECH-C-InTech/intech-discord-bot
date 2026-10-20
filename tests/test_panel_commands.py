@@ -14,6 +14,7 @@ from src.commands.panel import (
 from src.utils.kinds import EVENT
 from src.utils.linking import Linked, NotLinked
 from src.utils.panel import PIN_FAILED_HELP, ChannelAction, Placement
+from src.utils.panel_forms import ArchiveForm
 
 
 def make_channel(name: str, category_id: int) -> MagicMock:
@@ -128,29 +129,16 @@ def press_setup(monkeypatch: pytest.MonkeyPatch, *, archived: bool) -> tuple[Mag
     return ctx, channel
 
 
-async def test_archive_button_asks_presser_to_confirm(monkeypatch: pytest.MonkeyPatch) -> None:
-    ctx, _ = press_setup(monkeypatch, archived=False)
-
-    await handle_channel_press(ctx, ChannelAction.ARCHIVE, 500)
-
-    sent = ctx.response.send_message.await_args.kwargs
-    assert sent["ephemeral"] is True
-    assert sent["embed"].title == "#e003-おでん会 をアーカイブしますか？"
-    assert sent["view"].children[0].item.label == "アーカイブする"
-
-
-async def test_confirming_archive_removes_button_then_archives(
+async def test_archive_button_asks_presser_to_confirm_in_form(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     ctx, channel = press_setup(monkeypatch, archived=False)
-    archive = AsyncMock()
-    monkeypatch.setattr("src.commands.panel.archive", archive)
 
-    await handle_channel_press(ctx, ChannelAction.CONFIRM_ARCHIVE, 500)
+    await handle_channel_press(ctx, ChannelAction.ARCHIVE, 500)
 
-    ctx.response.edit_message.assert_awaited_once_with(view=None)
-    assert archive.await_args is not None
-    assert archive.await_args.args[2] is channel
+    form = ctx.response.send_modal.await_args.args[0]
+    assert isinstance(form, ArchiveForm)
+    assert form.channel is channel
 
 
 async def test_archive_button_on_archived_channel_says_so(

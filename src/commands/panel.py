@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import discord
 from discord import app_commands
 
-from ..utils.channel_actions import archive, join, leave, restore
+from ..utils.channel_actions import join, leave, restore
 from ..utils.channel_config import ChannelConfig
 from ..utils.channel_utils import get_next_number, resolve_target_text_channel
 from ..utils.command_metadata import command_meta
@@ -25,7 +25,6 @@ from ..utils.numbering import NUMBERS_EXHAUSTED, number_of
 from ..utils.panel import (
     NO_MENTIONS,
     PIN_FAILED_HELP,
-    RESTORE_ON_POST,
     ChannelAction,
     ChannelPanelButton,
     CreatePanelButton,
@@ -37,7 +36,7 @@ from ..utils.panel import (
     set_channel_press_handler,
     set_create_press_handler,
 )
-from ..utils.panel_forms import CreateForm, ParticipantsForm
+from ..utils.panel_forms import ArchiveForm, CreateForm, ParticipantsForm
 from ..utils.validation_utils import validate_role_safety
 
 if TYPE_CHECKING:
@@ -147,32 +146,19 @@ async def handle_channel_press(
             ParticipantsForm(config, linked, removing=action is ChannelAction.REMOVE)
         )
     elif action is ChannelAction.ARCHIVE:
-        await ask_to_archive(ctx, linked)
-    elif action is ChannelAction.CONFIRM_ARCHIVE:
-        # 確認のボタンを消してから、もう一度押されないようにする
-        await ctx.response.edit_message(view=None)
-        await archive(ctx, config, channel)
+        await ask_to_archive(ctx, config, linked)
     elif action is ChannelAction.RESTORE:
         await restore(ctx, config, channel)
     elif action is ChannelAction.SHOW_ALL:
         await show_all_participants(ctx, linked)
 
 
-async def ask_to_archive(ctx: discord.Interaction, linked: Linked) -> None:
-    """アーカイブの前に、押した本人にだけ確認する"""
+async def ask_to_archive(ctx: discord.Interaction, config: ChannelConfig, linked: Linked) -> None:
+    """アーカイブの前に、押した本人にだけフォームで確認する"""
     if linked.archived:
         await send_error_message(ctx, f"{linked.channel.mention} は既にアーカイブされています。")
         return
-    view = discord.ui.View(timeout=None)
-    view.add_item(ChannelPanelButton(ChannelAction.CONFIRM_ARCHIVE, linked.channel.id))
-    await ctx.response.send_message(
-        embed=discord.Embed(
-            title=f"#{linked.channel.name} をアーカイブしますか？",
-            description=f"アーカイブ中も、{RESTORE_ON_POST}。",
-        ),
-        view=view,
-        ephemeral=True,
-    )
+    await ctx.response.send_modal(ArchiveForm(config, linked.channel))
 
 
 def all_participants_text(members: Sequence[discord.Member]) -> str:

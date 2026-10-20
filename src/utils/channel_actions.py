@@ -386,9 +386,12 @@ async def restore(
     await refresh_channel_panel(ctx.guild, config.category_names, channel, archived=False)
 
 
-JOIN_GUIDE = (
-    "参加したい人には、このチャンネルを伝えてください。チャンネルのピン留めから参加できます。"
-)
+def join_guide(channel: discord.TextChannel) -> str:
+    """作成した人への、ほかの人の参加のしかたの案内"""
+    return (
+        f"参加したい人には、{channel.mention} のピン留めにある「参加する」を押すよう伝えてください"
+        f"（{channel.mention} で `/intech` を打っても参加できます）。"
+    )
 
 
 async def create(
@@ -448,7 +451,7 @@ async def create(
     grant_description = describe_grant(grant)
     if grant_description:
         description += f"\n{grant_description}"
-    description += f"\n{JOIN_GUIDE}"
+    description += f"\n{join_guide(channel)}"
     await send_private_reply(
         ctx,
         create_success_embed(

@@ -65,7 +65,10 @@ def build_creation_embed(
     _add_mention_fields(embed, "参加者にできなかった人", failed_members)
     embed.add_field(
         name="参加方法",
-        value=f"{channel.mention} のピン留めにある「参加する」を押す",
+        value=(
+            f"{channel.mention} のピン留めにある「参加する」を押すか、"
+            "このチャンネルで `/intech` を打つ"
+        ),
         inline=False,
     )
     return embed

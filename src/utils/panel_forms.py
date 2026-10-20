@@ -2,7 +2,7 @@
 
 import discord
 
-from .channel_actions import add_participants, create, remove_participants
+from .channel_actions import add_participants, archive, create, remove_participants
 from .channel_config import ChannelConfig
 from .kinds import CLUB, EVENT, PROJECT, Kind
 from .linking import (
@@ -13,6 +13,7 @@ from .linking import (
     link_channel,
 )
 from .message_utils import send_error_message
+from .panel import RESTORE_ON_POST
 
 # 名前の入力欄に、入力前に出す例
 NAME_EXAMPLES = {CLUB.key: "ラーメン", EVENT.key: "おでん会", PROJECT.key: "ハッカソン"}
@@ -91,3 +92,29 @@ class ParticipantsForm(discord.ui.Modal):
             await remove_participants(interaction, linked, members)
         else:
             await add_participants(interaction, linked, members)
+
+
+# Discordのフォームのタイトルの上限
+MAX_FORM_TITLE = 45
+
+
+class ArchiveForm(discord.ui.Modal):
+    """アーカイブの確認。押した本人にだけ出る"""
+
+    def __init__(self, config: ChannelConfig, channel: discord.TextChannel) -> None:
+        suffix = " をアーカイブ"
+        name = f"#{channel.name}"
+        if len(name) + len(suffix) > MAX_FORM_TITLE:
+            name = name[: MAX_FORM_TITLE - len(suffix) - 1] + "…"
+        super().__init__(title=name + suffix)
+        self.config = config
+        self.channel = channel
+        # フォームの決定ボタンは「送信」で固定なので、押すと何が起きるかを書く
+        self.add_item(
+            discord.ui.TextDisplay(
+                f"アーカイブ中も、{RESTORE_ON_POST}。\n「送信」を押すとアーカイブします。"
+            )
+        )
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        await archive(interaction, self.config, self.channel)
