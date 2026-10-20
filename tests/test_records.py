@@ -69,7 +69,7 @@ def test_creation_record_tells_how_to_join() -> None:
     embed = creation_embed()
 
     assert field(embed, "参加方法") == (
-        "<#10> のピン留めにある「参加する」を押すか、このチャンネルで `/intech` を打つ"
+        "<#10> のピン留めにある「参加する」を押すか、このチャンネルで`/intech`を打つ"
     )
 
 

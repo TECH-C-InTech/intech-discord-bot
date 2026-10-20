@@ -238,6 +238,17 @@ async def test_archiving_tells_presser_how_to_bring_it_back() -> None:
     )
 
 
+async def test_archiving_without_panel_does_not_point_to_it() -> None:
+    # パネルを設置していないチャンネルを /archive_channel でアーカイブした場合など
+    linked = make_linked()
+    guild = place_in_guild(linked, archived=False)
+    ctx = ctx_in(guild)
+
+    await archive(ctx, make_config(), linked.channel)
+
+    assert private_text(ctx).endswith("戻すときは、<#500> にメッセージを送ってください。")
+
+
 async def test_restoring_switches_panel_back_to_archive() -> None:
     panel = make_panel()
     linked = make_linked(panel=panel)
@@ -284,7 +295,7 @@ async def test_creation_places_panel_and_tells_how_others_join() -> None:
     channel.send.return_value.pin.assert_awaited_once()
     assert (
         "参加したい人には、<#500> のピン留めにある「参加する」を押すよう伝えてください"
-        "（<#500> で `/intech` を打っても参加できます）。"
+        "（<#500> で`/intech`を打っても参加できます）。"
     ) in private_text(ctx)
 
 
@@ -303,3 +314,21 @@ async def test_creation_asks_to_check_permission_when_panel_pin_fails() -> None:
         warning.description == "<#500> のパネルを設置できませんでした（ピン留めできなかったため）。"
     )
     assert warning.fields[0].value == PIN_FAILED_HELP
+
+
+async def test_creation_without_panel_guides_only_to_intech() -> None:
+    guild, channel, _ = guild_to_create_in()
+    ctx = ctx_in(guild)
+    record = MagicMock(spec=discord.Message)
+    # 作成の記録は送れたが、パネルは送れなかった
+    channel.send.side_effect = [record, discord.HTTPException(MagicMock(status=500), "error")]
+
+    await create(ctx, make_config(), EVENT, "おでん会", [])
+
+    reply = private_text(ctx)
+    assert "参加したい人には、<#500> で`/intech`を打つよう伝えてください。" in reply
+    assert "ピン留め" not in reply
+    warning = ctx.followup.send.await_args_list[-1].kwargs["embed"]
+    assert warning.description == (
+        "<#500> のパネルを設置できませんでした（メッセージを送れなかったため）。"
+    )

@@ -67,7 +67,7 @@ def build_creation_embed(
         name="参加方法",
         value=(
             f"{channel.mention} のピン留めにある「参加する」を押すか、"
-            "このチャンネルで `/intech` を打つ"
+            "このチャンネルで`/intech`を打つ"
         ),
         inline=False,
     )

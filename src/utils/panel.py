@@ -185,8 +185,8 @@ async def refresh_panel(
     archived: bool,
     joined: Sequence[discord.Member] = (),
     left: Sequence[discord.Member] = (),
-) -> None:
-    """ピン留めのパネルを今の参加者と状態に書き換える。パネルがなければ何もしない
+) -> bool:
+    """ピン留めのパネルを今の参加者と状態に書き換える。パネルがあればTrue
 
     Args:
         channel: パネルのあるチャンネル
@@ -197,7 +197,7 @@ async def refresh_panel(
     """
     panel = await find_panel(channel, channel.guild.me.id)
     if panel is None:
-        return
+        return False
     view = channel_panel(
         channel, current_participants(role, joined=joined, left=left), archived=archived
     )
@@ -205,6 +205,7 @@ async def refresh_panel(
         await panel.edit(view=view, allowed_mentions=NO_MENTIONS)
     except discord.HTTPException as e:
         logger.warning(f"Failed to refresh panel in {channel.name}: {e}")
+    return True
 
 
 def current_participants(
@@ -234,11 +235,23 @@ class Placement(Enum):
     FAILED = "failed"
 
 
-# ピン留めできなかったときに、操作した本人へ伝えること
 PIN_FAILED_HELP = (
     "botのロールに「メッセージをピン留め」権限があるか、サーバー管理者に確認してもらってください。"
-    "権限を付けたあと、サーバー管理者が `/setup_panel` でパネルを設置し直せます。"
+    "権限を付けたあと、サーバー管理者が`/setup_panel`でパネルを設置し直せます。"
 )
+
+# 設置できなかったときに、操作した本人へ伝える (何が起きたか, どうすればよいか)
+PLACEMENT_PROBLEMS: dict[Placement, tuple[str, str]] = {
+    Placement.PIN_FAILED: (
+        "パネルを設置できませんでした（ピン留めできなかったため）。",
+        PIN_FAILED_HELP,
+    ),
+    Placement.FAILED: (
+        "パネルを設置できませんでした（メッセージを送れなかったため）。",
+        "botがこのチャンネルを見て、メッセージを送れるか、サーバー管理者に確認してもらってください。"
+        "権限を直したあと、サーバー管理者が`/setup_panel`でパネルを設置し直せます。",
+    ),
+}
 
 
 async def place_panel(
@@ -292,8 +305,8 @@ async def refresh_channel_panel(
     channel: discord.TextChannel,
     *,
     archived: bool,
-) -> None:
-    """チャンネルのロールを探してパネルを書き換える。ロールと紐づかなければ何もしない
+) -> bool:
+    """チャンネルのロールを探してパネルを書き換える。パネルがあればTrue
 
     チャンネルを移動した直後はキャッシュのカテゴリが古いので、アーカイブ中かは呼び出し側が渡す。
 
@@ -307,8 +320,8 @@ async def refresh_channel_panel(
     linked = link_channel(channel, guild.roles, categories)
     if isinstance(linked, NotLinked):
         logger.info(f"Skipped refreshing panel of {channel.name}: {linked.reason}")
-        return
-    await refresh_panel(channel, linked.role, archived=archived)
+        return False
+    return await refresh_panel(channel, linked.role, archived=archived)
 
 
 CreatePressHandler = Callable[[discord.Interaction, Kind], Awaitable[None]]

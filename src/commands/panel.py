@@ -24,7 +24,7 @@ from ..utils.message_utils import send_error_message
 from ..utils.numbering import NUMBERS_EXHAUSTED, number_of
 from ..utils.panel import (
     NO_MENTIONS,
-    PIN_FAILED_HELP,
+    PLACEMENT_PROBLEMS,
     ChannelAction,
     ChannelPanelButton,
     CreatePanelButton,
@@ -180,13 +180,11 @@ async def show_all_participants(ctx: discord.Interaction, linked: Linked) -> Non
 
 SETUP_HERE_REPLIES = {
     Placement.PINNED: "パネルを設置しました。",
-    Placement.PIN_FAILED: (
-        f"パネルを設置できませんでした（ピン留めできなかったため）。{PIN_FAILED_HELP}"
-    ),
     Placement.ALREADY_THERE: "パネルはすでにあります。",
-    Placement.FAILED: (
-        "パネルを設置できませんでした。botがこのチャンネルに送信できるか確認してください。"
-    ),
+    **{
+        placement: problem + help_text
+        for placement, (problem, help_text) in PLACEMENT_PROBLEMS.items()
+    },
 }
 
 
@@ -210,7 +208,13 @@ async def setup_panel_impl(ctx: discord.Interaction, panel: str) -> None:
             await send_error_message(ctx, "ここには設置できません。")
             return
         await ctx.response.defer(ephemeral=True, thinking=True)
-        await ctx.channel.send(view=create_panel())
+        try:
+            await ctx.channel.send(view=create_panel())
+        except discord.HTTPException as e:
+            logger.warning(f"Failed to post create panel: {e}")
+            problem, help_text = PLACEMENT_PROBLEMS[Placement.FAILED]
+            await ctx.followup.send(problem + help_text, ephemeral=True)
+            return
         await ctx.followup.send("チャンネル作成ボタンパネルを設置しました。", ephemeral=True)
         return
 

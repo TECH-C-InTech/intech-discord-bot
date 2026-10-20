@@ -32,7 +32,7 @@ from .message_utils import (
     send_private_reply,
 )
 from .numbering import NUMBERS_EXHAUSTED
-from .panel import PIN_FAILED_HELP, Placement, place_panel, refresh_channel_panel, refresh_panel
+from .panel import PLACEMENT_PROBLEMS, Placement, place_panel, refresh_channel_panel, refresh_panel
 from .records import (
     build_archive_notice_embed,
     build_creation_embed,
@@ -310,21 +310,23 @@ async def archive(
             )
         return
 
+    has_panel = await refresh_channel_panel(
+        ctx.guild, config.category_names, channel, archived=True
+    )
+    # パネルからは確認なしでアーカイブするので、戻し方を添える
+    bring_back = "パネルの「復元」を押すか、" if has_panel else ""
     await send_private_reply(
         ctx,
         create_success_embed(
             title=f"{kind.label}チャンネルアーカイブ完了",
             description=(
                 f"{channel.mention} をアーカイブしました{thread_target_note(channel, via_thread)}\n"
-                # パネルからは確認なしでアーカイブするので、戻し方を添える
-                f"戻すときは、パネルの「復元」を押すか、{channel.mention} に"
-                "メッセージを送ってください。"
+                f"戻すときは、{bring_back}{channel.mention} にメッセージを送ってください。"
             ),
             チャンネル名=channel.name,
         ),
     )
     logger.info(f"Archived {kind.key} channel: {channel.name} by {ctx.user}")
-    await refresh_channel_panel(ctx.guild, config.category_names, channel, archived=True)
 
 
 async def restore(
@@ -389,11 +391,13 @@ async def restore(
     await refresh_channel_panel(ctx.guild, config.category_names, channel, archived=False)
 
 
-def join_guide(channel: discord.TextChannel) -> str:
+def join_guide(channel: discord.TextChannel, *, has_panel: bool) -> str:
     """作成した人への、ほかの人の参加のしかたの案内"""
+    if not has_panel:
+        return f"参加したい人には、{channel.mention} で`/intech`を打つよう伝えてください。"
     return (
         f"参加したい人には、{channel.mention} のピン留めにある「参加する」を押すよう伝えてください"
-        f"（{channel.mention} で `/intech` を打っても参加できます）。"
+        f"（{channel.mention} で`/intech`を打っても参加できます）。"
     )
 
 
@@ -450,20 +454,6 @@ async def create(
     # 立てた人は、その時点で参加者になる
     grant = await grant_role(with_creator(members, ctx.user), role)
 
-    description = f"{channel.mention} と {role.mention} を作成しました"
-    grant_description = describe_grant(grant)
-    if grant_description:
-        description += f"\n{grant_description}"
-    description += f"\n{join_guide(channel)}"
-    await send_private_reply(
-        ctx,
-        create_success_embed(
-            title=f"{kind.label}チャンネル作成完了",
-            description=description,
-            チャンネル名=channel.name,
-            ロール付与人数=len(grant.granted),
-        ),
-    )
     logger.info(
         f"Created {kind.key} channel: {channel.name} and role {role.name} "
         f"with {len(grant.granted)} members by {ctx.user}"
@@ -486,15 +476,29 @@ async def create(
     placement = await place_panel(
         channel, role, archived=False, joined=grant.granted, new_channel=True
     )
-    if placement is Placement.PIN_FAILED:
+
+    # 参加の案内はパネルを設置できたかで変わるので、設置のあとに返す
+    description = f"{channel.mention} と {role.mention} を作成しました"
+    grant_description = describe_grant(grant)
+    if grant_description:
+        description += f"\n{grant_description}"
+    description += f"\n{join_guide(channel, has_panel=placement is Placement.PINNED)}"
+    await send_private_reply(
+        ctx,
+        create_success_embed(
+            title=f"{kind.label}チャンネル作成完了",
+            description=description,
+            チャンネル名=channel.name,
+            ロール付与人数=len(grant.granted),
+        ),
+    )
+    if placement in PLACEMENT_PROBLEMS:
+        problem, help_text = PLACEMENT_PROBLEMS[placement]
         await send_private_reply(
             ctx,
             create_error_embed(
-                title="パネルのピン留め",
-                description=(
-                    f"{channel.mention} のパネルを設置できませんでした"
-                    "（ピン留めできなかったため）。"
-                ),
-                help_text=PIN_FAILED_HELP,
+                title="パネルの設置",
+                description=f"{channel.mention} の{problem}",
+                help_text=help_text,
             ),
         )

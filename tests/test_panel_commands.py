@@ -14,6 +14,7 @@ from src.commands.panel import (
 from src.utils.kinds import EVENT
 from src.utils.linking import Linked, NotLinked
 from src.utils.panel import PIN_FAILED_HELP, ChannelAction, Placement
+from tests.ui_helpers import texts
 
 
 def make_channel(name: str, category_id: int) -> MagicMock:
@@ -235,6 +236,54 @@ async def test_setup_here_asks_to_check_permission_when_pin_fails(
     reply = ctx.followup.send.await_args.args[0]
     assert "パネルを設置できませんでした（ピン留めできなかったため）。" in reply
     assert PIN_FAILED_HELP in reply
+
+
+@pytest.mark.parametrize(
+    ("placement", "reply"),
+    [
+        (Placement.PINNED, "パネルを設置しました。"),
+        (Placement.ALREADY_THERE, "パネルはすでにあります。"),
+        (Placement.FAILED, "パネルを設置できませんでした（メッセージを送れなかったため）。"),
+    ],
+)
+async def test_setup_here_tells_how_it_went(
+    monkeypatch: pytest.MonkeyPatch, placement: Placement, reply: str
+) -> None:
+    channel = make_channel("e001-a", 1)
+    ctx = setup_ctx(
+        monkeypatch, named(1, "events", channel), named(3, "projects"), named(2, "archived")
+    )
+    ctx.channel = channel
+    monkeypatch.setattr("src.commands.panel.place_panel", AsyncMock(return_value=placement))
+
+    await setup_panel_impl(ctx, "here")
+
+    assert ctx.followup.send.await_args.args[0].startswith(f"#e001-a: {reply}")
+
+
+async def test_setup_create_posts_create_panel(monkeypatch: pytest.MonkeyPatch) -> None:
+    ctx = setup_ctx(monkeypatch, named(1, "events"), named(3, "projects"), named(2, "archived"))
+    ctx.channel = make_channel("チャンネルを作る", 99)
+    ctx.channel.send = AsyncMock()
+
+    await setup_panel_impl(ctx, "create")
+
+    assert "### チャンネルを作る" in texts(ctx.channel.send.await_args.kwargs["view"])[0]
+    assert ctx.followup.send.await_args.args[0] == "チャンネル作成ボタンパネルを設置しました。"
+
+
+async def test_setup_create_tells_when_post_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    ctx = setup_ctx(monkeypatch, named(1, "events"), named(3, "projects"), named(2, "archived"))
+    ctx.channel = make_channel("チャンネルを作る", 99)
+    ctx.channel.send = AsyncMock(
+        side_effect=discord.Forbidden(MagicMock(status=403), "Missing Access")
+    )
+
+    await setup_panel_impl(ctx, "create")
+
+    assert ctx.followup.send.await_args.args[0].startswith(
+        "パネルを設置できませんでした（メッセージを送れなかったため）。"
+    )
 
 
 async def test_setup_here_outside_kind_channel_explains_why(
