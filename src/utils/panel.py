@@ -255,7 +255,8 @@ async def place_panel(
 ) -> Placement:
     """チャンネルにパネルを投稿してピン留めする
 
-    すでにパネルがあれば置かない。ピン留めできなければ投稿を取り下げる
+    すでにパネルがあれば置かない。botにピン留めの権限がなければ投稿しない。
+    権限があってもピン留めに失敗したら、投稿を取り下げる
     （パネルはピン留めから探すので、ピン留めされていないパネルは書き換えられず、置き直すと重複する）。
 
     Args:
@@ -267,6 +268,10 @@ async def place_panel(
     """
     if not new_channel and await find_panel(channel, channel.guild.me.id) is not None:
         return Placement.ALREADY_THERE
+    # 投稿してから取り下げると一瞬パネルが見えるので、ピン留めできないと分かっていれば投稿しない
+    if not channel.permissions_for(channel.guild.me).pin_messages:
+        logger.warning(f"Missing permission to pin panel in {channel.name}")
+        return Placement.PIN_FAILED
     view = channel_panel(channel, current_participants(role, joined=joined), archived=archived)
     try:
         message = await channel.send(view=view, allowed_mentions=NO_MENTIONS)

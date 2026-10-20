@@ -249,6 +249,15 @@ async def test_place_panel_posts_and_pins_it() -> None:
     posted.pin.assert_awaited_once()
 
 
+async def test_place_panel_does_not_post_without_pin_permission() -> None:
+    # 投稿してから取り下げると、一瞬パネルが見えてしまうため
+    channel, _ = channel_to_place()
+    channel.permissions_for = MagicMock(return_value=discord.Permissions(send_messages=True))
+
+    assert await place_panel(channel, role_with(), archived=False) is Placement.PIN_FAILED
+    channel.send.assert_not_called()
+
+
 async def test_place_panel_withdraws_post_when_pin_fails() -> None:
     # ピン留めされていないパネルは見つけられず、書き換わらないうえに置き直すと重複するため
     channel, posted = channel_to_place()
