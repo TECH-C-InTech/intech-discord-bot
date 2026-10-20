@@ -112,7 +112,8 @@ class ArchiveForm(discord.ui.Modal):
         # フォームの決定ボタンは「送信」で固定なので、押すと何が起きるかを書く
         self.add_item(
             discord.ui.TextDisplay(
-                f"アーカイブ中も、{RESTORE_ON_POST}。\n「送信」を押すとアーカイブします。"
+                "本当にアーカイブしますか？（「送信」を押すとアーカイブします）\n"
+                f"アーカイブ中も、{RESTORE_ON_POST}。"
             )
         )
 
