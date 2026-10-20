@@ -5,6 +5,8 @@ import discord
 from src.utils.records import (
     build_archive_notice_embed,
     build_creation_embed,
+    build_joined_embed,
+    build_left_embed,
     build_members_added_embed,
     build_members_removed_embed,
     build_restored_embed,
@@ -38,7 +40,6 @@ def creation_embed(**overrides: object) -> discord.Embed:
         "role": mentionable("<@&20>"),
         "members": [mentionable("<@1>"), mentionable("<@2>")],
         "failed_members": [],
-        "join_command": "/add_event_role_member",
     }
     kwargs.update(overrides)
     return build_creation_embed(**kwargs)  # type: ignore[arg-type]
@@ -67,13 +68,9 @@ def test_creation_record_lists_members_who_could_not_become_participants() -> No
 def test_creation_record_tells_how_to_join() -> None:
     embed = creation_embed()
 
-    join = field(embed, "参加方法")
-    assert join is not None
-    assert "/add_event_role_member" in join
-    # 置き換える部分をコードの中に書かない（そのまま貼ると実行に失敗するため）
-    assert "@自分" not in join
-    # 参加方法は対象のチャンネルを示す
-    assert "<#10>" in join
+    assert field(embed, "参加方法") == (
+        "<#10> のピン留めにある「参加する」を押すか、このチャンネルで`/intech`を打つ"
+    )
 
 
 def test_members_added_record_includes_actor_role_and_added_members() -> None:
@@ -96,6 +93,20 @@ def test_members_removed_record_includes_actor_role_and_removed_members() -> Non
 
     assert embed.title == "参加者の削除"
     assert embed.description == "<@1> が <@2> を <@&20> から外しました"
+
+
+def test_joined_record_says_who_joined() -> None:
+    embed = build_joined_embed(member=mentionable("<@1>"), role=mentionable("<@&20>"))
+
+    assert embed.title == "参加者の追加"
+    assert embed.description == "<@1> が <@&20> に参加しました"
+
+
+def test_left_record_says_who_left() -> None:
+    embed = build_left_embed(member=mentionable("<@1>"), role=mentionable("<@&20>"))
+
+    assert embed.title == "参加者の削除"
+    assert embed.description == "<@1> が <@&20> から抜けました"
 
 
 def test_archive_notice_says_who_archived_and_how_to_restore() -> None:

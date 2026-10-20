@@ -49,7 +49,7 @@ def test_role_links_to_channel_with_same_number() -> None:
 
     linked = link_role(role, [role], categories({"event": [events]}))
 
-    assert linked == Linked(kind=EVENT, channel=events.text_channels[1], role=role)
+    assert linked == Linked(kind=EVENT, channel=events.text_channels[1], role=role, archived=False)
 
 
 def test_role_links_to_archived_channel() -> None:
@@ -59,7 +59,7 @@ def test_role_links_to_archived_channel() -> None:
 
     linked = link_role(role, [role], categories({"club": [clubs, archived]}))
 
-    assert linked == Linked(kind=CLUB, channel=archived.text_channels[0], role=role)
+    assert linked == Linked(kind=CLUB, channel=archived.text_channels[0], role=role, archived=True)
 
 
 def test_role_without_channel_is_not_linked() -> None:
@@ -112,7 +112,7 @@ def test_channel_links_to_role_with_same_number() -> None:
         channel, [make_role("c001-a"), role], categories({"club": [clubs, archived]})
     )
 
-    assert linked == Linked(kind=CLUB, channel=channel, role=role)
+    assert linked == Linked(kind=CLUB, channel=channel, role=role, archived=True)
 
 
 def test_channel_outside_kind_categories_is_not_linked() -> None:
@@ -185,7 +185,7 @@ def test_roles_outside_the_kind_shape_do_not_count_as_duplicates() -> None:
 
     linked = link_role(role, [role, make_role("c005")], categories({"club": [clubs]}))
 
-    assert linked == Linked(kind=CLUB, channel=clubs.text_channels[0], role=role)
+    assert linked == Linked(kind=CLUB, channel=clubs.text_channels[0], role=role, archived=False)
 
 
 def named_category(category_id: int, name: str) -> MagicMock:

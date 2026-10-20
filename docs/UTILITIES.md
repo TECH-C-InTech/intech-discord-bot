@@ -9,8 +9,10 @@
 3. [チャンネルユーティリティ](#チャンネルユーティリティ)
 4. [作成と上限チェック](#作成と上限チェック)
 5. [記録](#記録)
-6. [コマンドメタデータ](#コマンドメタデータ)
-7. [設定管理](#設定管理)
+6. [操作の本体](#操作の本体)
+7. [パネル](#パネル)
+8. [コマンドメタデータ](#コマンドメタデータ)
+9. [設定管理](#設定管理)
 
 ## バリデーションユーティリティ
 
@@ -275,7 +277,7 @@ if reason is not None:
 
 **場所**: [src/utils/linking.py](../src/utils/linking.py)
 
-番号でチャンネルとロールを結びつける。`categories`は種類ごとの`[通常のカテゴリ, アーカイブカテゴリ]`。結びつけば`Linked(kind, channel, role)`、できなければ本人に見せる理由つきの`NotLinked(reason)`を返す。`locate_channel`はチャンネルの種類とアーカイブ中かどうか（`Located(kind, archived)`）を返す。複数の種類が同じカテゴリを使っている場合は、チャンネル名の頭文字で種類を決める。
+番号でチャンネルとロールを結びつける。`categories`は種類ごとの`[通常のカテゴリ, アーカイブカテゴリ]`。結びつけば`Linked(kind, channel, role, archived)`、できなければ本人に見せる理由つきの`NotLinked(reason)`を返す。`locate_channel`はチャンネルの種類とアーカイブ中かどうか（`Located(kind, archived)`）を返す。複数の種類が同じカテゴリを使っている場合は、チャンネル名の頭文字で種類を決める。
 
 `collect_kind_categories(categories, config.category_names)`はサーバーのカテゴリから`categories`を組み立て、見つからないカテゴリ名も返す。`explain_not_linked(not_linked, missing)`は、カテゴリが見つからないせいで紐づけられなかった可能性を本人への返信に添える。
 
@@ -323,12 +325,33 @@ if reason is not None:
 - `build_archive_notice_embed(...)` - アーカイブ（チャンネル内、移動の前に投稿）
 - `build_restored_embed(...)` - 復元（チャンネル内、移動の後）
 - `build_restored_by_post_embed(...)` - 投稿による自動復元（チャンネル内、移動の後。通知しない）
+- `build_joined_embed(...)` / `build_left_embed(...)` - パネルから参加した・抜けた（チャンネル内。本人の操作なので通知しない）
 
 ### 送信
 
 - `post_channel_record(channel, embed, mention_users=())` - 対象チャンネルへ送る。`mention_users`だけを本文のメンションで通知する。送信したメッセージ（送れなければ`None`）を返す
 
 送信に失敗しても例外は出さず、warningを出す。
+
+## 操作の本体
+
+**場所**: [src/utils/channel_actions.py](../src/utils/channel_actions.py)
+
+`create` / `archive` / `restore` / `add_participants` / `remove_participants` / `join` / `leave`。スラッシュコマンドとパネルの両方から呼ぶ。チャンネル・ロール・メンバーは呼び出し側で決めて渡し（コマンドなら引数の解析、パネルならcustom_idのチャンネルID）、本人への返信・チャンネル内の記録・パネルの書き換えまでをここで行う。
+
+## パネル
+
+**場所**: [src/utils/panel.py](../src/utils/panel.py)、[src/utils/panel\_forms.py](../src/utils/panel_forms.py)
+
+- `channel_panel(channel, members, *, archived)` / `create_panel()` - パネルの中身（Components V2の`LayoutView`）。ピン留めと`/intech`で共通
+- `NO_MENTIONS` - パネルを送る・書き換えるときに渡す。一覧のメンションで鳴らさない
+- `place_panel(channel, role, *, archived, new_channel=False)` - チャンネルにパネルを投稿してピン留めし、結果を`Placement`（`PINNED` / `PIN_FAILED` / `ALREADY_THERE` / `FAILED`）で返す。すでにあれば置かない。botにピン留めの権限がなければ投稿せず、ピン留めに失敗したら投稿を取り下げる。設置できなかったときに本人へ伝える理由と対処は`PLACEMENT_PROBLEMS`（作成と`/setup_panel`で共通）
+- `refresh_panel(channel, role, *, archived, joined=(), left=())` - ピン留めのパネルを書き換え、パネルがあったかを返す（アーカイブの返信で戻し方を変えるため）。`joined`・`left`は直前に付け外しした人（キャッシュに反映される前）
+- `refresh_channel_panel(guild, names_of, channel, *, archived)` - ロールを紐づけてから`refresh_panel`し、パネルがあったかを返す（移動の後など）
+- `find_panel(channel, bot_id)` - ピン留めからbotのチャンネルのパネルを探す
+- `CreateForm` / `ParticipantsForm` - パネルのボタンから開くフォーム
+
+仕組みは [CHANNELS.md](./CHANNELS.md#パネル) を参照。
 
 ## コマンドメタデータ
 

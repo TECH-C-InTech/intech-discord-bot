@@ -1,6 +1,6 @@
 import pytest
 
-from src.utils.kinds import CLUB, EVENT, PROJECT, Kind, kind_of_role_name
+from src.utils.kinds import CLUB, EVENT, PROJECT, Kind, kind_of_key, kind_of_role_name
 
 
 @pytest.mark.parametrize(
@@ -25,3 +25,8 @@ def test_club_role_is_named_after_its_channel() -> None:
 @pytest.mark.parametrize(("kind", "role"), [(EVENT, "e012"), (PROJECT, "p012")])
 def test_event_and_project_roles_are_just_the_number(kind: Kind, role: str) -> None:
     assert kind.role_name(kind.channel_name(12, "おでん-会")) == role
+
+
+def test_kind_is_found_by_key() -> None:
+    assert kind_of_key("event") is EVENT
+    assert kind_of_key("unknown") is None

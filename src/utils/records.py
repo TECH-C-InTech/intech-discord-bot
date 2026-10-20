@@ -53,7 +53,6 @@ def build_creation_embed(
     role: Mentionable,
     members: Sequence[Mentionable],
     failed_members: Sequence[Mentionable],
-    join_command: str,
 ) -> discord.Embed:
     """作成のチャンネル内の記録。あとから来た人のために参加方法を添える"""
     embed = discord.Embed(
@@ -66,7 +65,10 @@ def build_creation_embed(
     _add_mention_fields(embed, "参加者にできなかった人", failed_members)
     embed.add_field(
         name="参加方法",
-        value=f"{channel.mention} で `{join_command}` を実行し、`members` に自分をメンションする",
+        value=(
+            f"{channel.mention} のピン留めにある「参加する」を押すか、"
+            "このチャンネルで`/intech`を打つ"
+        ),
         inline=False,
     )
     return embed
@@ -90,6 +92,24 @@ def build_members_removed_embed(
     return discord.Embed(
         title="参加者の削除",
         description=f"{actor.mention} が {_mentions(members)} を {role.mention} から外しました",
+        color=discord.Color.light_grey(),
+    )
+
+
+def build_joined_embed(*, member: Mentionable, role: Mentionable) -> discord.Embed:
+    """自分で参加したときのチャンネル内の記録（本人の操作なので通知しない）"""
+    return discord.Embed(
+        title="参加者の追加",
+        description=f"{member.mention} が {role.mention} に参加しました",
+        color=discord.Color.green(),
+    )
+
+
+def build_left_embed(*, member: Mentionable, role: Mentionable) -> discord.Embed:
+    """自分で抜けたときのチャンネル内の記録（本人の操作なので通知しない）"""
+    return discord.Embed(
+        title="参加者の削除",
+        description=f"{member.mention} が {role.mention} から抜けました",
         color=discord.Color.light_grey(),
     )
 

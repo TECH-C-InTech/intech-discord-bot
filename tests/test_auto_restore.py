@@ -6,6 +6,7 @@ import pytest
 
 from src.utils.auto_restore import restore_on_post, restore_target
 from src.utils.kinds import CLUB, EVENT, PROJECT, Kind
+from tests.ui_helpers import button_labels
 
 EVENTS_ID, ARCHIVED_ID = 1, 2
 
@@ -253,3 +254,32 @@ async def test_bot_post_is_dropped_without_looking_at_categories() -> None:
     type(message.guild).categories = property(lambda _: pytest.fail("looked at categories"))
 
     await restore_on_post(message, names_of, locks={})
+
+
+async def test_restore_on_post_switches_panel_back_to_archive() -> None:
+    channel = make_channel("e003-おでん会", ARCHIVED_ID)
+    guild = make_guild(channel)
+    guild.categories[1].text_channels = [channel]
+    guild.categories[0].text_channels = []
+    role = MagicMock(spec=discord.Role)
+    role.name = "e003"
+    role.members = []
+    guild.roles = [role]
+    guild.me.id = 900
+    panel = MagicMock(spec=discord.Message)
+    panel.author = MagicMock(id=900)
+    row = MagicMock(spec=discord.ActionRow)
+    row.children = [MagicMock(custom_id="intech:channel:restore:500")]
+    panel.components = [row]
+    panel.edit = AsyncMock()
+
+    async def pins(**_: object):  # type: ignore[no-untyped-def]
+        yield panel
+
+    channel.pins = MagicMock(side_effect=pins)
+    message = make_message(channel)
+    message.guild = guild
+
+    await restore_on_post(message, names_of, locks={})
+
+    assert button_labels(panel.edit.await_args.kwargs["view"])[-1] == "アーカイブ"

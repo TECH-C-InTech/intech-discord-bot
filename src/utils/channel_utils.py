@@ -145,4 +145,4 @@ def thread_target_note(channel: discord.TextChannel, via_thread: bool) -> str:
     """スレッドの親チャンネルを対象にした場合に、本人への返信に添える一文"""
     if not via_thread:
         return ""
-    return f"\n（スレッドから実行したため、親チャンネル {channel.mention} を対象にしました）"
+    return f"\n（スレッドから実行したため、親チャンネル {channel.mention} に対して行いました）"

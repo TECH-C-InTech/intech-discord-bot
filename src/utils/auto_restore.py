@@ -12,6 +12,7 @@ from .channel_utils import resolve_target_text_channel
 from .kinds import Kind
 from .linking import Located, collect_kind_categories, locate_channel
 from .numbering import number_of
+from .panel import refresh_channel_panel
 from .records import build_restored_by_post_embed, post_channel_record
 
 logger = getLogger(__name__)
@@ -110,6 +111,7 @@ async def restore_on_post(
     await post_channel_record(
         channel, build_restored_by_post_embed(author=message.author, restored_to=own.name)
     )
+    await refresh_channel_panel(guild, names_of, channel, archived=False)
 
 
 async def _reply_quietly(message: discord.Message, text: str) -> None:
