@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import discord
 from discord import app_commands
 
-from ..utils.channel_actions import join, leave, restore
+from ..utils.channel_actions import archive, join, leave, restore
 from ..utils.channel_config import ChannelConfig
 from ..utils.channel_utils import get_next_number, resolve_target_text_channel
 from ..utils.command_metadata import command_meta
@@ -36,7 +36,7 @@ from ..utils.panel import (
     set_channel_press_handler,
     set_create_press_handler,
 )
-from ..utils.panel_forms import ArchiveForm, CreateForm, ParticipantsForm
+from ..utils.panel_forms import CreateForm, ParticipantsForm
 from ..utils.validation_utils import validate_role_safety
 
 if TYPE_CHECKING:
@@ -146,19 +146,12 @@ async def handle_channel_press(
             ParticipantsForm(config, linked, removing=action is ChannelAction.REMOVE)
         )
     elif action is ChannelAction.ARCHIVE:
-        await ask_to_archive(ctx, config, linked)
+        # 押した場所に「復元」が出てすぐ戻せるので、確認は挟まない
+        await archive(ctx, config, channel)
     elif action is ChannelAction.RESTORE:
         await restore(ctx, config, channel)
     elif action is ChannelAction.SHOW_ALL:
         await show_all_participants(ctx, linked)
-
-
-async def ask_to_archive(ctx: discord.Interaction, config: ChannelConfig, linked: Linked) -> None:
-    """アーカイブの前に、押した本人にだけフォームで確認する"""
-    if linked.archived:
-        await send_error_message(ctx, f"{linked.channel.mention} は既にアーカイブされています。")
-        return
-    await ctx.response.send_modal(ArchiveForm(config, linked.channel))
 
 
 def all_participants_text(members: Sequence[discord.Member]) -> str:

@@ -315,7 +315,10 @@ async def archive(
         create_success_embed(
             title=f"{kind.label}チャンネルアーカイブ完了",
             description=(
-                f"{channel.mention} をアーカイブしました{thread_target_note(channel, via_thread)}"
+                f"{channel.mention} をアーカイブしました{thread_target_note(channel, via_thread)}\n"
+                # パネルからは確認なしでアーカイブするので、戻し方を添える
+                f"戻すときは、パネルの「復元」を押すか、{channel.mention} に"
+                "メッセージを送ってください。"
             ),
             チャンネル名=channel.name,
         ),

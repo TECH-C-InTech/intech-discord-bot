@@ -226,6 +226,18 @@ async def test_archiving_switches_panel_to_restore() -> None:
     assert button_labels(panel.edit.await_args.kwargs["view"])[-1] == "復元"
 
 
+async def test_archiving_tells_presser_how_to_bring_it_back() -> None:
+    linked = make_linked(panel=make_panel())
+    guild = place_in_guild(linked, archived=False)
+    ctx = ctx_in(guild)
+
+    await archive(ctx, make_config(), linked.channel)
+
+    assert private_text(ctx).endswith(
+        "戻すときは、パネルの「復元」を押すか、<#500> にメッセージを送ってください。"
+    )
+
+
 async def test_restoring_switches_panel_back_to_archive() -> None:
     panel = make_panel()
     linked = make_linked(panel=panel)

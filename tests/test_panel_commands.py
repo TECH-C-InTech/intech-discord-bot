@@ -14,7 +14,6 @@ from src.commands.panel import (
 from src.utils.kinds import EVENT
 from src.utils.linking import Linked, NotLinked
 from src.utils.panel import PIN_FAILED_HELP, ChannelAction, Placement
-from src.utils.panel_forms import ArchiveForm
 
 
 def make_channel(name: str, category_id: int) -> MagicMock:
@@ -129,16 +128,17 @@ def press_setup(monkeypatch: pytest.MonkeyPatch, *, archived: bool) -> tuple[Mag
     return ctx, channel
 
 
-async def test_archive_button_asks_presser_to_confirm_in_form(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_archive_button_archives_without_asking(monkeypatch: pytest.MonkeyPatch) -> None:
+    # 押した場所に「復元」が出てすぐ戻せるので、確認は挟まない
     ctx, channel = press_setup(monkeypatch, archived=False)
+    archive = AsyncMock()
+    monkeypatch.setattr("src.commands.panel.archive", archive)
 
     await handle_channel_press(ctx, ChannelAction.ARCHIVE, 500)
 
-    form = ctx.response.send_modal.await_args.args[0]
-    assert isinstance(form, ArchiveForm)
-    assert form.channel is channel
+    ctx.response.send_modal.assert_not_called()
+    assert archive.await_args is not None
+    assert archive.await_args.args[2] is channel
 
 
 async def test_archive_button_on_archived_channel_says_so(
