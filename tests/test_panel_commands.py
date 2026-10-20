@@ -12,7 +12,7 @@ from src.commands.panel import (
 )
 from src.utils.kinds import EVENT
 from src.utils.linking import Linked, NotLinked
-from src.utils.panel import ChannelAction
+from src.utils.panel import UNPINNED_HELP, ChannelAction, Placement
 
 
 def make_channel(name: str, category_id: int) -> MagicMock:
@@ -229,13 +229,56 @@ async def test_setup_all_places_panel_once_per_channel_in_shared_category(
     ctx = setup_ctx(
         monkeypatch, named(1, "events"), named(3, "projects"), named(2, "archived", event, project)
     )
-    place = AsyncMock(return_value=True)
+    place = AsyncMock(return_value=Placement.PINNED)
     monkeypatch.setattr("src.commands.panel.place_panel", place)
 
     await setup_panel_impl(ctx, "all")
 
     assert sorted(call.args[0].name for call in place.await_args_list) == ["e001-a", "p001-b"]
     assert "2個のチャンネルにパネルを置きました" in ctx.followup.send.await_args.args[0]
+
+
+async def test_setup_all_lists_channels_whose_panel_could_not_be_pinned(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pinned, unpinned = make_channel("e001-a", 1), make_channel("p001-b", 3)
+    ctx = setup_ctx(
+        monkeypatch,
+        named(1, "events", pinned),
+        named(3, "projects", unpinned),
+        named(2, "archived"),
+    )
+    results = {"e001-a": Placement.PINNED, "p001-b": Placement.UNPINNED}
+    monkeypatch.setattr(
+        "src.commands.panel.place_panel",
+        AsyncMock(side_effect=lambda channel, *_, **__: results[channel.name]),
+    )
+
+    await setup_panel_impl(ctx, "all")
+
+    reply = ctx.followup.send.await_args.args[0]
+    assert "2個のチャンネルにパネルを置きました" in reply
+    assert "ピン留めできなかったチャンネル: #p001-b" in reply
+    assert UNPINNED_HELP in reply
+
+
+async def test_setup_here_asks_to_pin_by_hand_when_pin_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    channel = make_channel("e001-a", 1)
+    ctx = setup_ctx(
+        monkeypatch, named(1, "events", channel), named(3, "projects"), named(2, "archived")
+    )
+    ctx.channel = channel
+    monkeypatch.setattr(
+        "src.commands.panel.place_panel", AsyncMock(return_value=Placement.UNPINNED)
+    )
+
+    await setup_panel_impl(ctx, "here")
+
+    reply = ctx.followup.send.await_args.args[0]
+    assert "パネルを置きましたが、ピン留めできませんでした。" in reply
+    assert UNPINNED_HELP in reply
 
 
 async def test_setup_here_outside_kind_channel_explains_why(

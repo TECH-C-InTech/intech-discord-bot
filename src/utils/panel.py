@@ -1,7 +1,7 @@
 """パネル（ボタンとフォームだけで操作できる画面）"""
 
 from collections.abc import Awaitable, Callable, Sequence
-from enum import StrEnum
+from enum import Enum, StrEnum
 from logging import getLogger
 import re
 
@@ -228,6 +228,24 @@ def current_participants(
     return members
 
 
+class Placement(Enum):
+    """パネルを置いた結果"""
+
+    PINNED = "pinned"
+    # 置いたがピン留めできなかった。手でピン留めすれば書き換わるようになる
+    UNPINNED = "unpinned"
+    ALREADY_THERE = "already_there"
+    FAILED = "failed"
+
+
+# ピン留めできなかったときに、操作した本人へ伝えること
+UNPINNED_HELP = (
+    "パネルを手でピン留めしてください。ピン留めされていないパネルは、"
+    "参加者が変わっても書き換わりません。"
+    "あわせて、サーバー管理者にbotのロールの「メッセージをピン留め」権限を確認してもらってください。"
+)
+
+
 async def place_panel(
     channel: discord.TextChannel,
     role: discord.Role,
@@ -235,11 +253,11 @@ async def place_panel(
     archived: bool,
     joined: Sequence[discord.Member] = (),
     new_channel: bool = False,
-) -> bool:
-    """チャンネルにパネルを投稿してピン留めする。置いたらTrue
+) -> Placement:
+    """チャンネルにパネルを投稿してピン留めする
 
-    すでにパネルがあれば置かない。ピン留めできなければ投稿を取り下げる
-    （パネルはピン留めから探すので、ピン留めされていないパネルは書き換えられず、置き直すと重複する）。
+    すでにパネルがあれば置かない。ピン留めできなくても投稿は残す
+    （botの投稿なので、人が手でピン留めすればパネルとして見つかる）。
 
     Args:
         channel: パネルを置くチャンネル
@@ -249,23 +267,19 @@ async def place_panel(
         new_channel: 作ったばかりのチャンネルか（ピン留めがないので探さない）
     """
     if not new_channel and await find_panel(channel, channel.guild.me.id) is not None:
-        return False
+        return Placement.ALREADY_THERE
     view = channel_panel(channel, current_participants(role, joined=joined), archived=archived)
     try:
         message = await channel.send(view=view, allowed_mentions=NO_MENTIONS)
     except discord.HTTPException as e:
         logger.warning(f"Failed to post panel in {channel.name}: {e}")
-        return False
+        return Placement.FAILED
     try:
         await message.pin()
     except discord.HTTPException as e:
         logger.warning(f"Failed to pin panel in {channel.name}: {e}")
-        try:
-            await message.delete()
-        except discord.HTTPException as delete_error:
-            logger.warning(f"Failed to withdraw unpinned panel in {channel.name}: {delete_error}")
-        return False
-    return True
+        return Placement.UNPINNED
+    return Placement.PINNED
 
 
 async def refresh_channel_panel(

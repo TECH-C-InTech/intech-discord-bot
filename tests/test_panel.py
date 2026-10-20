@@ -5,6 +5,7 @@ import discord
 from src.utils.panel import (
     ChannelAction,
     ChannelPanelButton,
+    Placement,
     channel_panel,
     create_panel,
     find_panel,
@@ -241,21 +242,21 @@ async def test_place_panel_posts_and_pins_it() -> None:
 
     placed = await place_panel(channel, role_with(guild_member(1)), archived=False)
 
-    assert placed is True
+    assert placed is Placement.PINNED
     sent = channel.send.await_args.kwargs
     assert texts(sent["view"])[0] == "### #e003-おでん会"
     assert sent["allowed_mentions"].users is False
     posted.pin.assert_awaited_once()
 
 
-async def test_place_panel_withdraws_post_when_pin_fails() -> None:
-    # ピン留めされていないパネルは見つけられず、書き換わらないうえに置き直すと重複するため
+async def test_place_panel_keeps_post_when_pin_fails() -> None:
+    # 手でピン留めすれば、botの投稿なのでパネルとして見つかる
     channel, posted = channel_to_place()
     posted.pin.side_effect = discord.Forbidden(MagicMock(status=403), "Missing Permissions")
     posted.delete = AsyncMock()
 
-    assert await place_panel(channel, role_with(), archived=False) is False
-    posted.delete.assert_awaited_once()
+    assert await place_panel(channel, role_with(), archived=False) is Placement.UNPINNED
+    posted.delete.assert_not_called()
 
 
 async def test_new_channel_gets_panel_without_looking_at_pins() -> None:
@@ -269,15 +270,15 @@ async def test_new_channel_gets_panel_without_looking_at_pins() -> None:
 async def test_place_panel_skips_channel_that_already_has_one() -> None:
     channel, _ = channel_to_place(pinned(BOT_ID, ["intech:channel:join:500"]))
 
-    assert await place_panel(channel, role_with(), archived=False) is False
+    assert await place_panel(channel, role_with(), archived=False) is Placement.ALREADY_THERE
     channel.send.assert_not_called()
 
 
-async def test_place_panel_returns_false_when_post_fails() -> None:
+async def test_place_panel_tells_when_post_fails() -> None:
     channel, _ = channel_to_place()
     channel.send.side_effect = discord.Forbidden(MagicMock(status=403), "Missing Access")
 
-    assert await place_panel(channel, role_with(), archived=False) is False
+    assert await place_panel(channel, role_with(), archived=False) is Placement.FAILED
 
 
 async def test_create_panel_offers_three_kinds_to_anyone() -> None:

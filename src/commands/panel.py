@@ -25,9 +25,11 @@ from ..utils.numbering import NUMBERS_EXHAUSTED, number_of
 from ..utils.panel import (
     NO_MENTIONS,
     RESTORE_ON_POST,
+    UNPINNED_HELP,
     ChannelAction,
     ChannelPanelButton,
     CreatePanelButton,
+    Placement,
     channel_panel,
     create_panel,
     current_participants,
@@ -197,6 +199,16 @@ async def show_all_participants(ctx: discord.Interaction, linked: Linked) -> Non
     )
 
 
+SETUP_HERE_REPLIES = {
+    Placement.PINNED: "パネルを置きました。",
+    Placement.UNPINNED: f"パネルを置きましたが、ピン留めできませんでした。{UNPINNED_HELP}",
+    Placement.ALREADY_THERE: "パネルはすでにあります。",
+    Placement.FAILED: (
+        "パネルを置けませんでした。botがこのチャンネルに送信できるか確認してください。"
+    ),
+}
+
+
 PANEL_CHOICES = [
     app_commands.Choice(name="作るパネル（このチャンネルに置く）", value="create"),
     app_commands.Choice(name="このチャンネルのパネル", value="here"),
@@ -233,16 +245,14 @@ async def setup_panel_impl(ctx: discord.Interaction, panel: str) -> None:
             await send_error_message(ctx, explain_not_linked(linked, missing))
             return
         await ctx.response.defer(ephemeral=True, thinking=True)
-        message = (
-            "パネルを置きました。"
-            if await place_panel(linked.channel, linked.role, archived=linked.archived)
-            else "パネルはすでにあるか、置けませんでした。"
+        placement = await place_panel(linked.channel, linked.role, archived=linked.archived)
+        await ctx.followup.send(
+            f"{linked.channel.mention}: {SETUP_HERE_REPLIES[placement]}", ephemeral=True
         )
-        await ctx.followup.send(f"{linked.channel.mention}: {message}", ephemeral=True)
         return
 
     await ctx.response.defer(ephemeral=True, thinking=True)
-    placed, skipped = 0, []
+    placed, unpinned, skipped = 0, [], []
     # 複数の種類が同じカテゴリを使っていても、1つのチャンネルは1回だけ見る
     unique_categories = {
         category.id: category
@@ -255,9 +265,14 @@ async def setup_panel_impl(ctx: discord.Interaction, panel: str) -> None:
             if isinstance(linked, NotLinked):
                 skipped.append(channel.mention)
                 continue
-            if await place_panel(channel, linked.role, archived=linked.archived):
+            placement = await place_panel(channel, linked.role, archived=linked.archived)
+            if placement in (Placement.PINNED, Placement.UNPINNED):
                 placed += 1
+            if placement is Placement.UNPINNED:
+                unpinned.append(channel.mention)
     message = f"{placed}個のチャンネルにパネルを置きました（すでにあるチャンネルは除く）。"
+    if unpinned:
+        message += f"\nピン留めできなかったチャンネル: {', '.join(unpinned)}\n{UNPINNED_HELP}"
     if skipped:
         message += f"\nロールと紐づかないため置かなかったチャンネル: {', '.join(skipped)}"
     await ctx.followup.send(message[:2000], ephemeral=True)

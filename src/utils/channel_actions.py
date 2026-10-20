@@ -24,6 +24,7 @@ from .linking import (
     locate_channel,
 )
 from .message_utils import (
+    create_error_embed,
     create_success_embed,
     handle_command_error,
     report_creation_problem,
@@ -31,7 +32,7 @@ from .message_utils import (
     send_private_reply,
 )
 from .numbering import NUMBERS_EXHAUSTED
-from .panel import place_panel, refresh_channel_panel, refresh_panel
+from .panel import UNPINNED_HELP, Placement, place_panel, refresh_channel_panel, refresh_panel
 from .records import (
     build_archive_notice_embed,
     build_creation_embed,
@@ -476,4 +477,15 @@ async def create(
         mention_users=grant.granted,
         mention_label="参加者",
     )
-    await place_panel(channel, role, archived=False, joined=grant.granted, new_channel=True)
+    placement = await place_panel(
+        channel, role, archived=False, joined=grant.granted, new_channel=True
+    )
+    if placement is Placement.UNPINNED:
+        await send_private_reply(
+            ctx,
+            create_error_embed(
+                title="パネルのピン留め",
+                description=f"{channel.mention} のパネルをピン留めできませんでした。",
+                help_text=UNPINNED_HELP,
+            ),
+        )
