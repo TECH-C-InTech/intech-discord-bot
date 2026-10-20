@@ -16,7 +16,7 @@ from ..utils.channel_actions import (
 from ..utils.channel_config import ChannelConfig
 from ..utils.channel_utils import resolve_target_text_channel_or_error
 from ..utils.command_metadata import command_meta
-from ..utils.kinds import KINDS, Kind, kind_of_key
+from ..utils.kinds import CREATE_ORDER, Kind, kind_of_key
 from ..utils.linking import (
     Linked,
     NotLinked,
@@ -30,7 +30,7 @@ from ..utils.validation_utils import parse_member_mentions, validate_role_safety
 
 logger = getLogger(__name__)
 
-KIND_CHOICES = [app_commands.Choice(name=kind.label, value=kind.key) for kind in KINDS]
+KIND_CHOICES = [app_commands.Choice(name=kind.label, value=kind.key) for kind in CREATE_ORDER]
 
 
 def _kind_categories(
@@ -207,7 +207,7 @@ async def remove_role_members_impl(
 
 def _kind_of(key: str) -> Kind:
     kind = kind_of_key(key)
-    # 選択肢はKINDSから作っているので、知らないキーは来ない
+    # 選択肢はCREATE_ORDERから作っているので、知らないキーは来ない
     assert kind is not None
     return kind
 

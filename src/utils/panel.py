@@ -7,7 +7,7 @@ import re
 
 import discord
 
-from .kinds import CLUB, EVENT, PROJECT, Kind, kind_of_key
+from .kinds import CREATE_ORDER, Kind, kind_of_key
 from .linking import NotLinked, collect_kind_categories, link_channel
 from .records import Mentionable
 
@@ -337,10 +337,6 @@ class CreatePanelButton(
             logger.warning(f"No handler for create panel button {self.custom_id}")
             return
         await _create_press_handler(interaction, self.kind)
-
-
-# 作るパネルのボタンの並び（KINDSの並びはロールの上下を表すので、別に決める）
-CREATE_ORDER = (EVENT, PROJECT, CLUB)
 
 
 def create_panel() -> discord.ui.LayoutView:

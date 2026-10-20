@@ -36,6 +36,10 @@ PROJECT = Kind(
 
 KINDS = (CLUB, EVENT, PROJECT)
 
+# 作るときに選ばせる並び（作るパネルのボタン、/create_channel の選択肢）。
+# KINDSの並びはロールの上下を表すので、別に決める
+CREATE_ORDER = (EVENT, PROJECT, CLUB)
+
 
 def kind_of_role_name(name: str) -> Kind | None:
     """ロール名の形から種類を返す。どの種類のロールでもなければNone"""
