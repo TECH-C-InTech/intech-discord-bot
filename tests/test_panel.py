@@ -249,14 +249,14 @@ async def test_place_panel_posts_and_pins_it() -> None:
     posted.pin.assert_awaited_once()
 
 
-async def test_place_panel_keeps_post_when_pin_fails() -> None:
-    # 手でピン留めすれば、botの投稿なのでパネルとして見つかる
+async def test_place_panel_withdraws_post_when_pin_fails() -> None:
+    # ピン留めされていないパネルは見つけられず、書き換わらないうえに置き直すと重複するため
     channel, posted = channel_to_place()
     posted.pin.side_effect = discord.Forbidden(MagicMock(status=403), "Missing Permissions")
     posted.delete = AsyncMock()
 
-    assert await place_panel(channel, role_with(), archived=False) is Placement.UNPINNED
-    posted.delete.assert_not_called()
+    assert await place_panel(channel, role_with(), archived=False) is Placement.PIN_FAILED
+    posted.delete.assert_awaited_once()
 
 
 async def test_new_channel_gets_panel_without_looking_at_pins() -> None:

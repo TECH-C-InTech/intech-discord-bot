@@ -345,7 +345,7 @@ if reason is not None:
 
 - `channel_panel(channel, members, *, archived)` / `create_panel()` - パネルの中身（Components V2の`LayoutView`）。ピン留めと`/intech`で共通
 - `NO_MENTIONS` - パネルを送る・書き換えるときに渡す。一覧のメンションで鳴らさない
-- `place_panel(channel, role, *, archived, new_channel=False)` - チャンネルにパネルを投稿してピン留めし、結果を`Placement`（`PINNED` / `UNPINNED` / `ALREADY_THERE` / `FAILED`）で返す。すでにあれば置かない。ピン留めできなくても投稿は残す（呼び出し側が`UNPINNED_HELP`で手でのピン留めを頼む）
+- `place_panel(channel, role, *, archived, new_channel=False)` - チャンネルにパネルを投稿してピン留めし、結果を`Placement`（`PINNED` / `PIN_FAILED` / `ALREADY_THERE` / `FAILED`）で返す。すでにあれば置かない。ピン留めできなければ投稿を取り下げる（呼び出し側が`PIN_FAILED_HELP`で権限の確認と置き直しを頼む）
 - `refresh_panel(channel, role, *, archived, joined=(), left=())` - ピン留めのパネルを書き換える。`joined`・`left`は直前に付け外しした人（キャッシュに反映される前）
 - `refresh_channel_panel(guild, names_of, channel, *, archived)` - ロールを紐づけてから`refresh_panel`する（移動の後など）
 - `find_panel(channel, bot_id)` - ピン留めからbotのチャンネルのパネルを探す

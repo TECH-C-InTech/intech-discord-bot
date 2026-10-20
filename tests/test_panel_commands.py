@@ -12,7 +12,7 @@ from src.commands.panel import (
 )
 from src.utils.kinds import EVENT
 from src.utils.linking import Linked, NotLinked
-from src.utils.panel import UNPINNED_HELP, ChannelAction, Placement
+from src.utils.panel import PIN_FAILED_HELP, ChannelAction, Placement
 
 
 def make_channel(name: str, category_id: int) -> MagicMock:
@@ -248,7 +248,7 @@ async def test_setup_all_lists_channels_whose_panel_could_not_be_pinned(
         named(3, "projects", unpinned),
         named(2, "archived"),
     )
-    results = {"e001-a": Placement.PINNED, "p001-b": Placement.UNPINNED}
+    results = {"e001-a": Placement.PINNED, "p001-b": Placement.PIN_FAILED}
     monkeypatch.setattr(
         "src.commands.panel.place_panel",
         AsyncMock(side_effect=lambda channel, *_, **__: results[channel.name]),
@@ -257,12 +257,12 @@ async def test_setup_all_lists_channels_whose_panel_could_not_be_pinned(
     await setup_panel_impl(ctx, "all")
 
     reply = ctx.followup.send.await_args.args[0]
-    assert "2個のチャンネルにパネルを置きました" in reply
-    assert "ピン留めできなかったチャンネル: #p001-b" in reply
-    assert UNPINNED_HELP in reply
+    assert "1個のチャンネルにパネルを置きました" in reply
+    assert "ピン留めできず置かなかったチャンネル: #p001-b" in reply
+    assert PIN_FAILED_HELP in reply
 
 
-async def test_setup_here_asks_to_pin_by_hand_when_pin_fails(
+async def test_setup_here_asks_to_check_permission_when_pin_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     channel = make_channel("e001-a", 1)
@@ -271,14 +271,14 @@ async def test_setup_here_asks_to_pin_by_hand_when_pin_fails(
     )
     ctx.channel = channel
     monkeypatch.setattr(
-        "src.commands.panel.place_panel", AsyncMock(return_value=Placement.UNPINNED)
+        "src.commands.panel.place_panel", AsyncMock(return_value=Placement.PIN_FAILED)
     )
 
     await setup_panel_impl(ctx, "here")
 
     reply = ctx.followup.send.await_args.args[0]
-    assert "パネルを置きましたが、ピン留めできませんでした。" in reply
-    assert UNPINNED_HELP in reply
+    assert "パネルをピン留めできなかったので、置きませんでした。" in reply
+    assert PIN_FAILED_HELP in reply
 
 
 async def test_setup_here_outside_kind_channel_explains_why(

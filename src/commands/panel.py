@@ -24,8 +24,8 @@ from ..utils.message_utils import send_error_message
 from ..utils.numbering import NUMBERS_EXHAUSTED, number_of
 from ..utils.panel import (
     NO_MENTIONS,
+    PIN_FAILED_HELP,
     RESTORE_ON_POST,
-    UNPINNED_HELP,
     ChannelAction,
     ChannelPanelButton,
     CreatePanelButton,
@@ -201,7 +201,7 @@ async def show_all_participants(ctx: discord.Interaction, linked: Linked) -> Non
 
 SETUP_HERE_REPLIES = {
     Placement.PINNED: "パネルを置きました。",
-    Placement.UNPINNED: f"パネルを置きましたが、ピン留めできませんでした。{UNPINNED_HELP}",
+    Placement.PIN_FAILED: f"パネルをピン留めできなかったので、置きませんでした。{PIN_FAILED_HELP}",
     Placement.ALREADY_THERE: "パネルはすでにあります。",
     Placement.FAILED: (
         "パネルを置けませんでした。botがこのチャンネルに送信できるか確認してください。"
@@ -252,7 +252,7 @@ async def setup_panel_impl(ctx: discord.Interaction, panel: str) -> None:
         return
 
     await ctx.response.defer(ephemeral=True, thinking=True)
-    placed, unpinned, skipped = 0, [], []
+    placed, pin_failed, skipped = 0, [], []
     # 複数の種類が同じカテゴリを使っていても、1つのチャンネルは1回だけ見る
     unique_categories = {
         category.id: category
@@ -266,13 +266,15 @@ async def setup_panel_impl(ctx: discord.Interaction, panel: str) -> None:
                 skipped.append(channel.mention)
                 continue
             placement = await place_panel(channel, linked.role, archived=linked.archived)
-            if placement in (Placement.PINNED, Placement.UNPINNED):
+            if placement is Placement.PINNED:
                 placed += 1
-            if placement is Placement.UNPINNED:
-                unpinned.append(channel.mention)
+            elif placement is Placement.PIN_FAILED:
+                pin_failed.append(channel.mention)
     message = f"{placed}個のチャンネルにパネルを置きました（すでにあるチャンネルは除く）。"
-    if unpinned:
-        message += f"\nピン留めできなかったチャンネル: {', '.join(unpinned)}\n{UNPINNED_HELP}"
+    if pin_failed:
+        message += (
+            f"\nピン留めできず置かなかったチャンネル: {', '.join(pin_failed)}\n{PIN_FAILED_HELP}"
+        )
     if skipped:
         message += f"\nロールと紐づかないため置かなかったチャンネル: {', '.join(skipped)}"
     await ctx.followup.send(message[:2000], ephemeral=True)

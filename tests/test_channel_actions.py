@@ -13,7 +13,7 @@ from src.utils.channel_actions import (
 )
 from src.utils.kinds import EVENT
 from src.utils.linking import Linked
-from src.utils.panel import UNPINNED_HELP
+from src.utils.panel import PIN_FAILED_HELP
 from tests.ui_helpers import button_labels, texts
 
 BOT_ID = 900
@@ -276,7 +276,7 @@ async def test_creation_places_panel_and_tells_how_others_join() -> None:
     )
 
 
-async def test_creation_asks_to_pin_panel_by_hand_when_pin_fails() -> None:
+async def test_creation_asks_to_check_permission_when_panel_pin_fails() -> None:
     guild, channel, _ = guild_to_create_in()
     ctx = ctx_in(guild)
     channel.send.return_value.pin.side_effect = discord.Forbidden(
@@ -285,7 +285,7 @@ async def test_creation_asks_to_pin_panel_by_hand_when_pin_fails() -> None:
 
     await create(ctx, make_config(), EVENT, "おでん会", [])
 
-    channel.send.return_value.delete.assert_not_called()
+    channel.send.return_value.delete.assert_awaited_once()
     warning = ctx.followup.send.await_args_list[-1].kwargs["embed"]
-    assert warning.description == "<#500> のパネルをピン留めできませんでした。"
-    assert warning.fields[0].value == UNPINNED_HELP
+    assert warning.description == "<#500> のパネルをピン留めできなかったので、置きませんでした。"
+    assert warning.fields[0].value == PIN_FAILED_HELP

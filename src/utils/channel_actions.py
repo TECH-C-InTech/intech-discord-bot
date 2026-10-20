@@ -32,7 +32,7 @@ from .message_utils import (
     send_private_reply,
 )
 from .numbering import NUMBERS_EXHAUSTED
-from .panel import UNPINNED_HELP, Placement, place_panel, refresh_channel_panel, refresh_panel
+from .panel import PIN_FAILED_HELP, Placement, place_panel, refresh_channel_panel, refresh_panel
 from .records import (
     build_archive_notice_embed,
     build_creation_embed,
@@ -480,12 +480,14 @@ async def create(
     placement = await place_panel(
         channel, role, archived=False, joined=grant.granted, new_channel=True
     )
-    if placement is Placement.UNPINNED:
+    if placement is Placement.PIN_FAILED:
         await send_private_reply(
             ctx,
             create_error_embed(
                 title="パネルのピン留め",
-                description=f"{channel.mention} のパネルをピン留めできませんでした。",
-                help_text=UNPINNED_HELP,
+                description=(
+                    f"{channel.mention} のパネルをピン留めできなかったので、置きませんでした。"
+                ),
+                help_text=PIN_FAILED_HELP,
             ),
         )

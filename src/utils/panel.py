@@ -232,17 +232,16 @@ class Placement(Enum):
     """パネルを置いた結果"""
 
     PINNED = "pinned"
-    # 置いたがピン留めできなかった。手でピン留めすれば書き換わるようになる
-    UNPINNED = "unpinned"
+    # ピン留めできなかったので、投稿を取り下げた
+    PIN_FAILED = "pin_failed"
     ALREADY_THERE = "already_there"
     FAILED = "failed"
 
 
 # ピン留めできなかったときに、操作した本人へ伝えること
-UNPINNED_HELP = (
-    "パネルを手でピン留めしてください。ピン留めされていないパネルは、"
-    "参加者が変わっても書き換わりません。"
-    "あわせて、サーバー管理者にbotのロールの「メッセージをピン留め」権限を確認してもらってください。"
+PIN_FAILED_HELP = (
+    "サーバー管理者に、botのロールに「メッセージをピン留め」権限があるか確認してもらってください。"
+    "権限を付けたあと、`/setup_panel` で置き直せます。"
 )
 
 
@@ -256,8 +255,8 @@ async def place_panel(
 ) -> Placement:
     """チャンネルにパネルを投稿してピン留めする
 
-    すでにパネルがあれば置かない。ピン留めできなくても投稿は残す
-    （botの投稿なので、人が手でピン留めすればパネルとして見つかる）。
+    すでにパネルがあれば置かない。ピン留めできなければ投稿を取り下げる
+    （パネルはピン留めから探すので、ピン留めされていないパネルは書き換えられず、置き直すと重複する）。
 
     Args:
         channel: パネルを置くチャンネル
@@ -278,7 +277,11 @@ async def place_panel(
         await message.pin()
     except discord.HTTPException as e:
         logger.warning(f"Failed to pin panel in {channel.name}: {e}")
-        return Placement.UNPINNED
+        try:
+            await message.delete()
+        except discord.HTTPException as delete_error:
+            logger.warning(f"Failed to withdraw unpinned panel in {channel.name}: {delete_error}")
+        return Placement.PIN_FAILED
     return Placement.PINNED
 
 
