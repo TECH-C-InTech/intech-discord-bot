@@ -50,7 +50,7 @@ def test_intech_in_kind_channel_shows_its_panel() -> None:
 
     chosen = choose_panel(channel, [role], make_categories(channel))
 
-    assert chosen == Linked(kind=EVENT, channel=channel, role=role)
+    assert chosen == Linked(kind=EVENT, channel=channel, role=role, archived=False)
 
 
 def test_intech_in_thread_of_kind_channel_shows_parents_panel() -> None:

@@ -67,7 +67,7 @@ def make_linked(*members: MagicMock, panel: MagicMock | None = None) -> Linked:
     role.mention = "<@&20>"
     role.name = "e003"
     role.members = list(members)
-    return Linked(kind=EVENT, channel=channel, role=role)
+    return Linked(kind=EVENT, channel=channel, role=role, archived=False)
 
 
 def make_ctx(user: MagicMock) -> MagicMock:

@@ -14,7 +14,7 @@ class Linked:
     kind: Kind
     channel: discord.TextChannel
     role: discord.Role
-    archived: bool = False
+    archived: bool
 
 
 @dataclass(frozen=True)
