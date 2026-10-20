@@ -13,6 +13,7 @@ from .linking import (
     link_channel,
 )
 from .message_utils import send_error_message
+from .validation_utils import validate_role_safety
 
 # 名前の入力欄に、入力前に出す例
 NAME_EXAMPLES = {CLUB.key: "ラーメン", EVENT.key: "おでん会", PROJECT.key: "ハッカソン"}
@@ -85,6 +86,9 @@ class ParticipantsForm(discord.ui.Modal):
         linked = link_channel(self.linked.channel, guild.roles, categories)
         if isinstance(linked, NotLinked):
             await send_error_message(interaction, explain_not_linked(linked, missing))
+            return
+        # 紐づけ直したロールが変わっていることもあるので、安全かも確かめ直す
+        if not await validate_role_safety(interaction, linked.role):
             return
         members = _members(self.people)
         if self.removing:

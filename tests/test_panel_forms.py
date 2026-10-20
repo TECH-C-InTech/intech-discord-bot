@@ -57,7 +57,9 @@ def config_of(names: dict[str, tuple[str, str]]) -> MagicMock:
     return config
 
 
-def guild_where_channel_is_archived() -> tuple[MagicMock, Linked]:
+def guild_where_channel_is_archived(
+    role_permissions: discord.Permissions | None = None,
+) -> tuple[MagicMock, Linked]:
     """フォームを開いたときは通常のカテゴリにあったが、今はアーカイブされているチャンネル"""
     channel = MagicMock(spec=discord.TextChannel)
     channel.name = "e003-おでん会"
@@ -68,6 +70,9 @@ def guild_where_channel_is_archived() -> tuple[MagicMock, Linked]:
     archived.id, archived.name, archived.text_channels = 2, "archived", [channel]
     role = MagicMock(spec=discord.Role)
     role.name = "e003"
+    role.permissions = role_permissions or discord.Permissions.none()
+    role.managed = False
+    role.is_default = MagicMock(return_value=False)
     guild = MagicMock(spec=discord.Guild)
     guild.categories = [events, archived]
     guild.roles = [role]
@@ -109,3 +114,25 @@ async def test_participants_form_uses_channel_state_at_submit(
     _, linked, members = remove.await_args.args
     assert linked.archived is True
     assert members == [member]
+
+
+async def test_participants_form_checks_role_safety_at_submit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # フォームを開いている間に、ロールが管理者権限を持つものに変わっていることがある
+    add = AsyncMock()
+    monkeypatch.setattr("src.utils.panel_forms.add_participants", add)
+    selecting(monkeypatch, MagicMock(spec=discord.Member))
+    guild, opened = guild_where_channel_is_archived(discord.Permissions(administrator=True))
+    config = config_of(
+        {"club": ("c", "ac"), "event": ("events", "archived"), "project": ("p", "ap")}
+    )
+    interaction = MagicMock(spec=discord.Interaction)
+    interaction.guild = guild
+    interaction.response.is_done = MagicMock(return_value=False)
+    interaction.response.send_message = AsyncMock()
+
+    await ParticipantsForm(config, opened, removing=False).on_submit(interaction)
+
+    add.assert_not_called()
+    interaction.response.send_message.assert_awaited_once()
