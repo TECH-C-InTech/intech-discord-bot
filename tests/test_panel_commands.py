@@ -225,8 +225,8 @@ def named(category_id: int, name: str, *channels: MagicMock) -> MagicMock:
 def test_setup_panel_offers_creating_buttons_and_participant_buttons_here() -> None:
     # 一括の設置はしない。新しいチャンネルには自動で置かれ、必要なチャンネルにだけ置く
     assert [choice.name for choice in PANEL_CHOICES] == [
-        "チャンネル作成ボタンパネルを設置（当チャンネル）",
         "参加者用ボタンパネルを設置（当チャンネル）",
+        "チャンネル作成ボタンパネルを設置（当チャンネル）",
     ]
 
 

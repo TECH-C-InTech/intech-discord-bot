@@ -214,8 +214,8 @@ SETUP_HERE_REPLIES = {
 # 一括の設置はしない。新しいチャンネルには自動で置かれ、既存のチャンネルや
 # 置き直しは必要なチャンネルでだけ行う
 PANEL_CHOICES = [
-    app_commands.Choice(name="チャンネル作成ボタンパネルを設置（当チャンネル）", value="create"),
     app_commands.Choice(name="参加者用ボタンパネルを設置（当チャンネル）", value="here"),
+    app_commands.Choice(name="チャンネル作成ボタンパネルを設置（当チャンネル）", value="create"),
 ]
 
 
@@ -284,10 +284,10 @@ def setup(tree: app_commands.CommandTree):
         short_description="ボタンで操作できるパネルを設置する（管理者用）",
         restrictions="• サーバーの管理権限が必要",
         examples=[
-            "`/setup_panel panel:チャンネル作成ボタンパネルを設置（当チャンネル）` "
-            "(案内チャンネルで)",
             "`/setup_panel panel:参加者用ボタンパネルを設置（当チャンネル）` "
             "(クラブ・イベント・プロジェクトのチャンネルで)",
+            "`/setup_panel panel:チャンネル作成ボタンパネルを設置（当チャンネル）` "
+            "(案内チャンネルで)",
         ],
     )
     @tree.command(name="setup_panel", description="ボタンで操作できるパネルの設置")
