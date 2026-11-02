@@ -283,6 +283,19 @@ uv run pytest
 **環境変数**:
 - `FLY_API_TOKEN` - GitHub Secretsに設定
 
+### 依存の更新
+
+**ファイル**: [renovate.json](../renovate.json)
+
+Renovateが毎週月曜の早朝（UTC）に、`pyproject.toml`と`uv.lock`を更新するPRを作ります。
+
+- マイナー・パッチは1つのPRにまとまり、メジャーはパッケージごとに別のPRになります
+- `uv.lock`全体を更新するPR（Lock file maintenance）も週に1つ作られます。`pyproject.toml`の指定は上限のない`>=`なので、このPRにはメジャー更新や間接依存の更新も含まれます
+
+`requires-python`は更新しません。`Dockerfile`とCIのPython 3.11に合わせて手で変えます。
+
+`main`へのマージで本番にデプロイされるため、自動マージはしません。
+
 ## デプロイ
 
 ### Fly.io設定
