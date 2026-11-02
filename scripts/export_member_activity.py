@@ -20,7 +20,7 @@
 書き出し済みのフォルダには書かないので、同じ月に取り直すときは --out で別のフォルダを指定する:
 
     member_activity_data/
-    ├── channel_owners.csv   実行をまたいで共有する。既存の行（手で直したものを含む）を残し、新しいチャンネルだけ追記する
+    ├── channel_owners.csv   実行をまたいで共有する。既存の行を残し、新しいチャンネルだけ追記する
     └── 2026-10/             実行ごとのCSV。--reactors を別の月に実行するときは --out で指定する
 
 CSVの列（BOM付きUTF-8。日時は日本時間）:
@@ -36,7 +36,8 @@ CSVの列（BOM付きUTF-8。日時は日本時間）:
 
     channel_owners.csv: メンバーチャンネルの持ち主。チャンネル名と表示名の一致から推定する
         channel_id, channel_name, owner_user_id, owner_display_name
-        match_status: unique（候補が1人） / ambiguous（複数。;区切り） / none（なし） / manual（手で直したもの）
+        match_status: unique（候補が1人） / ambiguous（複数。;区切り） / none（なし）
+            / manual（手で直したもの）
 
     messages.csv: 期間内のメッセージ。スレッド内と、ボイスとステージのテキストチャットを含む
         message_id
@@ -80,11 +81,18 @@ basicConfig(level="INFO")
 
 JST = timezone(timedelta(hours=9))
 
-DATA_ROOT = Path("member_activity_data")
+# 実データをgitignoreの外に置かないよう、実行した場所によらずリポジトリ直下にする
+DATA_ROOT = Path(__file__).resolve().parent.parent / "member_activity_data"
 
 CHANNELS_HEADER = ["channel_id", "name", "category", "kind", "position", "created_at"]
 MEMBERS_HEADER = ["user_id", "display_name", "username", "joined_at", "is_bot"]
-OWNERS_HEADER = ["channel_id", "channel_name", "owner_user_id", "owner_display_name", "match_status"]
+OWNERS_HEADER = [
+    "channel_id",
+    "channel_name",
+    "owner_user_id",
+    "owner_display_name",
+    "match_status",
+]
 MESSAGES_HEADER = [
     "message_id",
     "channel_id",
@@ -112,10 +120,12 @@ class MemberCategories:
     archived: str
 
 
-def resolve_member_categories(member_args: list[str] | None, archived_arg: str | None) -> MemberCategories:
+def resolve_member_categories(
+    member_args: list[str] | None, archived_arg: str | None
+) -> MemberCategories:
     """引数、環境変数の順にカテゴリ名を決める。どちらもないと全チャンネルがotherになるので止める"""
-    member_names = member_args or os.getenv("MEMBER_CATEGORY_NAMES", "").split(",")
-    archived = (archived_arg or os.getenv("ARCHIVE_MEMBER_CATEGORY_NAME", "")).strip()
+    member_names = member_args or os.environ.get("MEMBER_CATEGORY_NAMES", "").split(",")
+    archived = (archived_arg or os.environ.get("ARCHIVE_MEMBER_CATEGORY_NAME") or "").strip()
     member = frozenset(n.strip() for n in member_names if n.strip())
     if not member or not archived:
         raise SystemExit(
@@ -140,7 +150,7 @@ def category_name(channel: discord.abc.GuildChannel) -> str | None:
 
 
 def normalize(name: str) -> str:
-    """小文字化し、空白（全角含む）とハイフンを取り除く。「山田 太郎」と「山田太郎」「山田-太郎」を同じに扱う"""
+    """小文字化し、空白（全角含む）とハイフンを取り除く。「a b」「ab」「a-b」を同じに扱う"""
     return re.sub(r"[\s\-]+", "", name.lower())
 
 
@@ -196,11 +206,12 @@ def message_row(msg: discord.Message, source: discord.abc.GuildChannel | discord
     # 転送やピン留めの通知にもreferenceが付くので、返信のときだけ返信先を入れる
     ref = msg.reference if msg.type is discord.MessageType.reply else None
     resolved = ref.resolved if ref else None
-    is_thread = isinstance(source, discord.Thread)
+    channel_id = source.parent_id if isinstance(source, discord.Thread) else source.id
+    thread_id = source.id if isinstance(source, discord.Thread) else ""
     return [
         msg.id,
-        source.parent_id if is_thread else source.id,
-        source.id if is_thread else "",
+        channel_id,
+        thread_id,
         msg.author.id,
         msg.author.bot,
         msg.type.name,
@@ -257,26 +268,37 @@ async def collect_threads(guild: discord.Guild) -> list[discord.Thread]:
         *guild.text_channels,
         *guild.forums,
     ]
+    no_private_access = 0
     for parent in parents:
-        # フォーラムには非公開スレッドがない。非公開スレッドを読む権限がなければ公開分だけにする
-        listings = [parent.archived_threads(limit=None)]
-        if isinstance(parent, discord.TextChannel):
-            listings.append(parent.archived_threads(limit=None, private=True))
-        for i, listing in enumerate(listings):
-            try:
-                async for t in listing:
-                    threads[t.id] = t
-            except (discord.Forbidden, discord.NotFound):
-                if i == 0:
-                    logger.warning(f"⚠️ スレッド一覧を読めません: #{parent.name}")
+        try:
+            async for t in parent.archived_threads(limit=None):
+                threads[t.id] = t
+        except (discord.Forbidden, discord.NotFound):
+            logger.warning(f"⚠️ スレッド一覧を読めません: #{parent.name}")
+        # フォーラムには非公開スレッドがない
+        if not isinstance(parent, discord.TextChannel):
+            continue
+        try:
+            async for t in parent.archived_threads(limit=None, private=True):
+                threads[t.id] = t
+        except (discord.Forbidden, discord.NotFound):
+            no_private_access += 1
+    if no_private_access:
+        logger.warning(
+            f"⚠️ {no_private_access} チャンネルのアーカイブ済み非公開スレッドを読めません。"
+            "これらは集計に入りません"
+        )
     return list(threads.values())
 
 
 async def iter_messages(
     guild: discord.Guild, **history_options: Any
 ) -> AsyncIterator[tuple[discord.Message, Any]]:
-    """テキスト、ボイス、ステージの各チャンネルとスレッドの履歴を順に読む。読めないものや、途中で消えたものは飛ばす"""
-    sources = [
+    """テキスト、ボイス、ステージの各チャンネルとスレッドの履歴を順に読む
+
+    読めないものや、途中で消えたものは飛ばす。
+    """
+    sources: list[Any] = [
         *guild.text_channels,
         *guild.voice_channels,
         *guild.stage_channels,
@@ -305,16 +327,27 @@ async def export(
     channels = [
         c
         for c in guild.channels
-        if isinstance(c, discord.TextChannel | discord.ForumChannel | discord.VoiceChannel | discord.StageChannel)
+        if isinstance(
+            c,
+            discord.TextChannel
+            | discord.ForumChannel
+            | discord.VoiceChannel
+            | discord.StageChannel,
+        )
     ]
     # 名前の間違いに、時間のかかる履歴の取得を終えてから気づくことのないよう、先に止める
     if not any(channel_kind(category_name(c), categories) == "member" for c in channels):
-        raise SystemExit(f"❌ メンバーチャンネルが見つかりません。カテゴリ名を確認してください: {sorted(categories.member)}")
+        raise SystemExit(
+            "❌ メンバーチャンネルが見つかりません。"
+            f"カテゴリ名を確認してください: {sorted(categories.member)}"
+        )
 
     out.mkdir(parents=True, exist_ok=True)
     owners_path.parent.mkdir(parents=True, exist_ok=True)
 
-    in_order = sorted(channels, key=lambda c: (c.category.position if c.category else -1, c.position))
+    in_order = sorted(
+        channels, key=lambda c: (c.category.position if c.category else -1, c.position)
+    )
     write_csv(out / "channels.csv", CHANNELS_HEADER, [channel_row(c, categories) for c in in_order])
 
     members = list(guild.members)
@@ -335,10 +368,17 @@ async def export(
     write_csv(out / "messages.csv", MESSAGES_HEADER, messages)
     write_csv(out / "stickers.csv", STICKERS_HEADER, stickers)
     write_csv(out / "emojis.csv", EMOJIS_HEADER, emojis)
+    if messages and not emojis:
+        logger.warning(
+            "⚠️ カスタム絵文字が1件もありません。"
+            "Message Content Intentが無効だと本文が届かないので、開発者ポータルを確認してください"
+        )
     logger.info(f"✅ 書き出しました: {out}")
 
 
-def load_reactors_progress(reactions_path: Path, done_path: Path, expected: dict[str, int]) -> set[str]:
+def load_reactors_progress(
+    reactions_path: Path, done_path: Path, expected: dict[str, int]
+) -> set[str]:
     """前回の進捗を読み、取り直しが要らないメッセージのIDを返す
 
     重複した行を消す。記録済みでも行が足りないメッセージは取り直す。記録の途中で止まった行は消しておく。
@@ -380,7 +420,9 @@ async def export_reactors(client: discord.Client, out: Path) -> None:
             channel_id = int(row["thread_id"] or row["channel_id"])
             try:
                 if channel_id not in channels:
-                    channels[channel_id] = client.get_channel(channel_id) or await client.fetch_channel(channel_id)
+                    channels[channel_id] = client.get_channel(
+                        channel_id
+                    ) or await client.fetch_channel(channel_id)
                 msg = await channels[channel_id].fetch_message(int(row["message_id"]))
                 rows = []
                 for r in msg.reactions:
@@ -394,7 +436,9 @@ async def export_reactors(client: discord.Client, out: Path) -> None:
                 writer.writerows(rows)
             except (discord.NotFound, discord.Forbidden) as e:
                 # 消されたメッセージや読めないチャンネルは飛ばす
-                logger.warning(f"⚠️ 取れませんでした: message {row['message_id']} ({type(e).__name__})")
+                logger.warning(
+                    f"⚠️ 取れませんでした: message {row['message_id']} ({type(e).__name__})"
+                )
             rf.flush()
             df.write(row["message_id"] + "\n")
             df.flush()
@@ -416,7 +460,9 @@ async def run_mode(client: discord.Client, args: argparse.Namespace) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--env", default=".env", help="環境ファイルのパス（デフォルト: .env）")
     parser.add_argument("--guild-id", type=int, required=True, help="対象サーバーのID")
     parser.add_argument("--months", type=int, default=12, help="さかのぼる月数（デフォルト: 12）")
@@ -435,7 +481,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--member-categories",
         nargs="+",
-        help="メンバーチャンネルのカテゴリ名。複数指定できる（デフォルト: 環境変数 MEMBER_CATEGORY_NAMES）",
+        help="メンバーチャンネルのカテゴリ名。複数指定できる（デフォルト: MEMBER_CATEGORY_NAMES）",
     )
     parser.add_argument(
         "--archive-member-category",
@@ -446,7 +492,10 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="書き出し済みのmessages.csvから、誰がリアクションしたかだけを取る（再開できる）",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.months < 1:
+        parser.error("--months は1以上を指定してください")
+    return args
 
 
 def main() -> None:

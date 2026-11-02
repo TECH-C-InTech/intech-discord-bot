@@ -6,7 +6,8 @@ Gatewayには接続せず、REST APIで読むだけ（Botはオンラインに�
 
 emoji_list.csvの列（BOM付きUTF-8）:
 
-    ID: emojis.csvのemoji_id、stickers.csvのsticker_idとつなげる。削除済みのものや他のサーバーのものは載らない
+    ID: emojis.csvのemoji_id、stickers.csvのsticker_idとつなげる
+        削除済みのものや他のサーバーのものは載らない
     コード: 絵文字は :name: 、スタンプは名前
     種類: 絵文字 / アニメ絵文字 / スタンプ（形式）
     画像URL
@@ -33,7 +34,9 @@ STICKER_FORMAT_LABELS = {
 }
 
 
-def emoji_list_rows(emojis: Sequence[discord.Emoji], stickers: Sequence[discord.GuildSticker]) -> list[list]:
+def emoji_list_rows(
+    emojis: Sequence[discord.Emoji], stickers: Sequence[discord.GuildSticker]
+) -> list[list]:
     """絵文字とスタンプの一覧の行を返す。スタンプには :name: のコードがないので名前を入れる"""
     return [
         *([e.id, f":{e.name}:", "アニメ絵文字" if e.animated else "絵文字", e.url] for e in emojis),
@@ -57,7 +60,9 @@ async def run(token: str, guild_id: int, out: Path) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--env", default=".env", help="環境ファイルのパス（デフォルト: .env）")
     parser.add_argument("--guild-id", type=int, required=True, help="対象サーバーのID")
     parser.add_argument(
