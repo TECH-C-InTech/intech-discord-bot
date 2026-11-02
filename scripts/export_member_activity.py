@@ -25,7 +25,7 @@
 
 CSVの列（BOM付きUTF-8。日時は日本時間）:
 
-    channels.csv: テキストチャンネルとフォーラム
+    channels.csv: テキスト、フォーラム、ボイス、ステージの各チャンネル
         channel_id, name, category
         kind: member（メンバーチャンネル） / archived_member（退会者のチャンネル） / other
         position: カテゴリ内の並び順
@@ -38,7 +38,7 @@ CSVの列（BOM付きUTF-8。日時は日本時間）:
         channel_id, channel_name, owner_user_id, owner_display_name
         match_status: unique（候補が1人） / ambiguous（複数。;区切り） / none（なし） / manual（手で直したもの）
 
-    messages.csv: 期間内のメッセージ。スレッド内を含む
+    messages.csv: 期間内のメッセージ。スレッド内と、ボイスとステージのテキストチャットを含む
         message_id
         channel_id: スレッド内なら親チャンネルのID
         thread_id: スレッド内ならスレッドのID。それ以外は空
@@ -56,6 +56,7 @@ CSVの列（BOM付きUTF-8。日時は日本時間）:
 
     reactions.csv: 誰がリアクションしたか（--reactors で作る）
         message_id, emoji, user_id
+        reaction_type: normal（通常） / burst（スーパーリアクション）
 """
 
 import argparse
@@ -98,7 +99,7 @@ MESSAGES_HEADER = [
 ]
 STICKERS_HEADER = ["message_id", "sticker_id", "sticker_name"]
 EMOJIS_HEADER = ["message_id", "emoji_id", "emoji_name"]
-REACTIONS_HEADER = ["message_id", "emoji", "user_id"]
+REACTIONS_HEADER = ["message_id", "emoji", "user_id", "reaction_type"]
 
 CUSTOM_EMOJI = re.compile(r"<a?:([A-Za-z0-9_~\-]+):(\d+)>")
 
@@ -134,7 +135,7 @@ def channel_kind(category_name: str | None, categories: MemberCategories) -> str
     return "other"
 
 
-def category_name(channel: discord.TextChannel | discord.ForumChannel) -> str | None:
+def category_name(channel: discord.abc.GuildChannel) -> str | None:
     return channel.category.name if channel.category else None
 
 
@@ -160,7 +161,7 @@ def jst(dt: datetime | None) -> str:
     return dt.astimezone(JST).isoformat(timespec="seconds") if dt else ""
 
 
-def channel_row(channel: discord.TextChannel | discord.ForumChannel, categories: MemberCategories) -> list:
+def channel_row(channel: discord.abc.GuildChannel, categories: MemberCategories) -> list:
     name = category_name(channel)
     kind = channel_kind(name, categories)
     return [channel.id, channel.name, name or "", kind, channel.position, jst(channel.created_at)]
@@ -170,7 +171,7 @@ def member_row(member: discord.Member) -> list:
     return [member.id, member.display_name, member.name, jst(member.joined_at), member.bot]
 
 
-def owner_row(channel: discord.TextChannel | discord.ForumChannel, members: list[discord.Member]) -> list:
+def owner_row(channel: discord.abc.GuildChannel, members: list[discord.Member]) -> list:
     found = owner_candidates(channel.name, members)
     status = "unique" if len(found) == 1 else "ambiguous" if found else "none"
     return [
@@ -191,7 +192,7 @@ def merge_owner_rows(existing: list[list[str]], found: list[list]) -> list[list]
     return [*existing, *(row for row in found if str(row[0]) not in known)]
 
 
-def message_row(msg: discord.Message, source: discord.TextChannel | discord.Thread) -> list:
+def message_row(msg: discord.Message, source: discord.abc.GuildChannel | discord.Thread) -> list:
     # 転送やピン留めの通知にもreferenceが付くので、返信のときだけ返信先を入れる
     ref = msg.reference if msg.type is discord.MessageType.reply else None
     resolved = ref.resolved if ref else None
@@ -273,9 +274,14 @@ async def collect_threads(guild: discord.Guild) -> list[discord.Thread]:
 
 async def iter_messages(
     guild: discord.Guild, **history_options: Any
-) -> AsyncIterator[tuple[discord.Message, discord.TextChannel | discord.Thread]]:
-    """テキストチャンネルとスレッドの履歴を順に読む。読めないチャンネルや、途中で消えたものは飛ばす"""
-    sources = [*guild.text_channels, *await collect_threads(guild)]
+) -> AsyncIterator[tuple[discord.Message, Any]]:
+    """テキスト、ボイス、ステージの各チャンネルとスレッドの履歴を順に読む。読めないものや、途中で消えたものは飛ばす"""
+    sources = [
+        *guild.text_channels,
+        *guild.voice_channels,
+        *guild.stage_channels,
+        *await collect_threads(guild),
+    ]
     for i, source in enumerate(sources, 1):
         count = 0
         try:
@@ -296,7 +302,11 @@ async def export(
     if (out / "messages.csv").exists():
         raise SystemExit(f"❌ {out} は書き出し済みです。--out で別のフォルダを指定してください")
 
-    channels =[c for c in guild.channels if isinstance(c, discord.TextChannel | discord.ForumChannel)]
+    channels = [
+        c
+        for c in guild.channels
+        if isinstance(c, discord.TextChannel | discord.ForumChannel | discord.VoiceChannel | discord.StageChannel)
+    ]
     # 名前の間違いに、時間のかかる履歴の取得を終えてから気づくことのないよう、先に止める
     if not any(channel_kind(category_name(c), categories) == "member" for c in channels):
         raise SystemExit(f"❌ メンバーチャンネルが見つかりません。カテゴリ名を確認してください: {sorted(categories.member)}")
@@ -337,7 +347,11 @@ def load_reactors_progress(reactions_path: Path, done_path: Path, expected: dict
     existing: dict[tuple[str, ...], None] = {}
     if reactions_path.exists():
         with reactions_path.open(encoding="utf-8-sig", newline="") as f:
-            existing = dict.fromkeys(tuple(r[k] for k in REACTIONS_HEADER) for r in csv.DictReader(f))
+            # reaction_typeがなかったころの行は、通常のリアクションだけが入っている
+            existing = dict.fromkeys(
+                (r["message_id"], r["emoji"], r["user_id"], r.get("reaction_type") or "normal")
+                for r in csv.DictReader(f)
+            )
     counts = Counter(r[0] for r in existing)
     done = {m for m in done if counts[m] >= expected.get(m, 0)}
     write_csv(reactions_path, REACTIONS_HEADER, [list(r) for r in existing if r[0] in done])
@@ -370,8 +384,13 @@ async def export_reactors(client: discord.Client, out: Path) -> None:
                 msg = await channels[channel_id].fetch_message(int(row["message_id"]))
                 rows = []
                 for r in msg.reactions:
-                    async for u in r.users():
-                        rows.append([msg.id, str(r.emoji), u.id])
+                    # typeを省くと通常のリアクションしか返らない
+                    types = [discord.ReactionType.normal]
+                    if r.burst_count:
+                        types.append(discord.ReactionType.burst)
+                    for reaction_type in types:
+                        async for u in r.users(type=reaction_type):
+                            rows.append([msg.id, str(r.emoji), u.id, reaction_type.name])
                 writer.writerows(rows)
             except (discord.NotFound, discord.Forbidden) as e:
                 # 消されたメッセージや読めないチャンネルは飛ばす
