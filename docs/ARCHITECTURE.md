@@ -36,10 +36,7 @@ Botは2つの並列サーバーを実行します:
 async def main():
     async with bot:
         # Discord BotとFastAPIサーバーを並列実行
-        await asyncio.gather(
-            bot.start(token),
-            run_keep_alive()
-        )
+        await asyncio.gather(bot.start(token), run_keep_alive())
 ```
 
 ### ステートレス設計
