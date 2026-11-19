@@ -44,7 +44,7 @@ class CreateForm(discord.ui.Modal):
         self.add_item(
             discord.ui.Label(
                 text=f"{kind.label}名",
-                description=f"番号（{next_number} など）は自動で付きます",
+                description=f"番号（{next_number}- など）は自動で付きます",
                 component=self.name,
             )
         )

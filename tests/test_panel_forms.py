@@ -17,7 +17,7 @@ async def test_create_form_asks_name_and_other_participants() -> None:
 
     assert form.title == "イベントを作る"
     assert fields(form) == [
-        ("イベント名", "番号（e013 など）は自動で付きます"),
+        ("イベント名", "番号（e013- など）は自動で付きます"),
         ("他の参加者（任意）", None),
     ]
     assert form.name.placeholder == "例: おでん会"
