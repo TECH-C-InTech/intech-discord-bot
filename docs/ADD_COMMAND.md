@@ -96,6 +96,7 @@ uv run bot.py
 
    ```python
    from logging import getLogger
+
    logger = getLogger(__name__)
    ```
 
@@ -127,6 +128,7 @@ uv run bot.py
 
 ```python
 from ..utils.command_metadata import command_meta
+
 
 @command_meta(
     category="イベント管理",
@@ -202,10 +204,12 @@ import discord
 
 from ..utils.command_metadata import command_meta
 
+
 async def ping_command(ctx: discord.Interaction):
     """Ping コマンド"""
     latency = round(ctx.client.latency * 1000)
     await ctx.response.send_message(f"🏓 Pong! {latency}ms")
+
 
 async def info_command(ctx: discord.Interaction):
     """サーバー情報コマンド"""
@@ -214,9 +218,10 @@ async def info_command(ctx: discord.Interaction):
     embed.add_field(name="メンバー数", value=guild.member_count)
     await ctx.response.send_message(embed=embed)
 
+
 def setup(tree: app_commands.CommandTree):
     """複数のコマンドを登録"""
-    
+
     @command_meta(
         category="ユーティリティ",
         icon="🔧",
@@ -226,7 +231,7 @@ def setup(tree: app_commands.CommandTree):
     @tree.command(name="ping", description="Botの応答速度を確認")
     async def ping_cmd(ctx: discord.Interaction):
         await ping_command(ctx)
-    
+
     @command_meta(
         category="ユーティリティ",
         icon="🔧",

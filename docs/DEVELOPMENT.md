@@ -143,12 +143,11 @@ git push origin feature/new-command
 ```python
 # ✅ 良い例
 async def create_channel(
-    ctx: discord.Interaction,
-    name: str,
-    members: str | None = None
+    ctx: discord.Interaction, name: str, members: str | None = None
 ) -> discord.TextChannel:
     """チャンネルを作成"""
     pass
+
 
 # ❌ 悪い例
 async def create_channel(ctx, name, members=None):
@@ -160,7 +159,9 @@ async def create_channel(ctx, name, members=None):
 
 ```python
 # ✅ 良い例
-def parse_member_mentions(ctx: discord.Interaction, mention_string: str | None) -> list[discord.Member]:
+def parse_member_mentions(
+    ctx: discord.Interaction, mention_string: str | None
+) -> list[discord.Member]:
     """メンション文字列を解析してMemberオブジェクトのリストに変換
 
     Args:

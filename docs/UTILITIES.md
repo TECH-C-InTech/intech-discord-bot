@@ -64,6 +64,7 @@ async def add_members_command(ctx: discord.Interaction, members: str):
 ```python
 from src.utils.validation_utils import validate_role_safety
 
+
 async def modify_role_command(ctx: discord.Interaction, role: discord.Role):
     if not await validate_role_safety(ctx, role):
         return  # エラーメッセージは既に送信されている
@@ -94,9 +95,7 @@ async def modify_role_command(ctx: discord.Interaction, role: discord.Role):
 from src.utils.message_utils import send_error_message
 
 await send_error_message(
-    ctx,
-    "チャンネルの作成に失敗しました",
-    help_text="チャンネル名は50文字以内で指定してください"
+    ctx, "チャンネルの作成に失敗しました", help_text="チャンネル名は50文字以内で指定してください"
 )
 ```
 
