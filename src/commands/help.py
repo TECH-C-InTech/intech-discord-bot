@@ -73,14 +73,14 @@ def _create_channel_text(guild: discord.Guild | None) -> str:
     return channel.mention if channel else f"#{CREATE_CHANNEL_NAME}"
 
 
-async def help_impl(ctx: discord.Interaction):
-    """ボットの使い方を、やりたいことごとに案内する"""
+def build_help_view(guild: discord.Guild | None) -> discord.ui.LayoutView:
+    """ボットの使い方を、やりたいことごとの項目に分けて組む"""
     # Embedの項目は間に余白を取れず詰まって見えるので、区切り線を挟めるComponents V2で組む
     container: discord.ui.Container[discord.ui.LayoutView] = discord.ui.Container(
         accent_colour=discord.Colour.blue()
     )
     container.add_item(discord.ui.TextDisplay(f"## {HELP_TITLE}\n{HELP_DESCRIPTION}"))
-    create_channel = _create_channel_text(ctx.guild)
+    create_channel = _create_channel_text(guild)
     for name, value in HELP_SECTIONS:
         container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
         container.add_item(
@@ -90,7 +90,12 @@ async def help_impl(ctx: discord.Interaction):
     container.add_item(discord.ui.TextDisplay(f"-# {HELP_FOOTER}"))
     view = discord.ui.LayoutView()
     view.add_item(container)
+    return view
 
+
+async def help_impl(ctx: discord.Interaction):
+    """ボットの使い方を、本人にだけ出す"""
+    view = build_help_view(ctx.guild)
     if ctx.response.is_done():
         await ctx.followup.send(view=view, ephemeral=True)
     else:
