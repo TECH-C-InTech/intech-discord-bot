@@ -5,9 +5,10 @@ import pytest
 
 from src.commands.help import docs_impl, help_impl
 from src.utils.command_metadata import CommandMetadata
+from tests.ui_helpers import texts
 
 
-async def sent_help(guild: discord.Guild | None = None) -> tuple[discord.Embed, dict]:
+async def sent_help(guild: discord.Guild | None = None) -> tuple[discord.ui.LayoutView, dict]:
     interaction = MagicMock(spec=discord.Interaction)
     interaction.guild = guild
     interaction.response.is_done = MagicMock(return_value=False)
@@ -17,22 +18,37 @@ async def sent_help(guild: discord.Guild | None = None) -> tuple[discord.Embed, 
 
     interaction.response.send_message.assert_awaited_once()
     kwargs = interaction.response.send_message.await_args.kwargs
-    return kwargs["embed"], kwargs
+    return kwargs["view"], kwargs
+
+
+def headings(view: discord.ui.LayoutView) -> list[str]:
+    return [text.split("\n")[0] for text in texts(view) if text.startswith("#")]
+
+
+def section_text(view: discord.ui.LayoutView, heading: str) -> str:
+    return next(text for text in texts(view) if text.startswith(f"### {heading}"))
 
 
 async def test_help_guides_by_what_members_want_to_do() -> None:
-    embed, _ = await sent_help()
+    view, _ = await sent_help()
 
-    assert embed.title == "🤖 InTechボットの使い方"
-    assert [field.name for field in embed.fields] == [
-        "🌱 操作可能なチャンネルの種類",
-        "✨ チャンネルを作りたい",
-        "🙋 参加したい・抜けたい",
-        "👥 ほかの人を追加したい・外したい",
-        "📦 終わったので片付けたい",
-        "↩️ アーカイブ後にまた使いたい",
-        "👀 誰が参加しているか見たい",
+    assert headings(view) == [
+        "## 🤖 InTechボットの使い方",
+        "### 🌱 操作可能なチャンネルの種類",
+        "### ✨ チャンネルを作りたい",
+        "### 🙋 参加したい・抜けたい",
+        "### 👥 ほかの人を追加したい・外したい",
+        "### 📦 終わったので片付けたい",
+        "### ↩️ アーカイブ後にまた使いたい",
+        "### 👀 誰が参加しているか見たい",
     ]
+
+
+async def test_help_separates_each_section_with_a_line() -> None:
+    view, _ = await sent_help()
+
+    separators = [item for item in view.walk_children() if isinstance(item, discord.ui.Separator)]
+    assert len(separators) >= len(headings(view)) - 1
 
 
 async def test_help_does_not_list_commands(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -44,24 +60,44 @@ async def test_help_does_not_list_commands(monkeypatch: pytest.MonkeyPatch) -> N
         },
     )
 
-    embed, _ = await sent_help()
+    view, _ = await sent_help()
 
-    shown = "\n".join([embed.description or ""] + [field.value or "" for field in embed.fields])
+    shown = "\n".join(texts(view))
     assert "/setup_panel" not in shown
     assert "/create_channel" not in shown
 
 
-async def test_help_fits_discord_embed_limits() -> None:
-    embed, _ = await sent_help()
+async def test_help_fits_discord_text_limit() -> None:
+    view, _ = await sent_help()
 
-    assert len(embed) <= 6000
-    assert all(len(field.value or "") <= 1024 for field in embed.fields)
+    # Components V2で1つのメッセージに出せる文字は合計4000字まで
+    assert sum(len(text) for text in texts(view)) <= 4000
 
 
 async def test_help_is_shown_only_to_the_member() -> None:
     _, kwargs = await sent_help()
 
     assert kwargs["ephemeral"] is True
+
+
+async def test_help_links_to_create_channel_when_it_exists() -> None:
+    channel = MagicMock(spec=discord.TextChannel)
+    channel.name = "create_channel"
+    channel.mention = "<#123>"
+    guild = MagicMock(spec=discord.Guild)
+    guild.text_channels = [channel]
+
+    view, _ = await sent_help(guild)
+
+    text = section_text(view, "✨ チャンネルを作りたい")
+    assert "<#123>" in text
+    assert "#create_channel" not in text
+
+
+async def test_help_names_create_channel_as_text_outside_a_server() -> None:
+    view, _ = await sent_help(None)
+
+    assert "#create_channel" in section_text(view, "✨ チャンネルを作りたい")
 
 
 async def test_docs_list_shows_short_description_of_each_command(
@@ -79,27 +115,3 @@ async def test_docs_list_shows_short_description_of_each_command(
 
     embed = interaction.response.send_message.await_args.kwargs["embed"]
     assert embed.fields[0].value == "• `/docs command:intech` - パネルを出す"
-
-
-def section_value(embed: discord.Embed, heading: str) -> str:
-    return next(field.value or "" for field in embed.fields if field.name == heading)
-
-
-async def test_help_links_to_create_channel_when_it_exists() -> None:
-    channel = MagicMock(spec=discord.TextChannel)
-    channel.name = "create_channel"
-    channel.mention = "<#123>"
-    guild = MagicMock(spec=discord.Guild)
-    guild.text_channels = [channel]
-
-    embed, _ = await sent_help(guild)
-
-    value = section_value(embed, "✨ チャンネルを作りたい")
-    assert "<#123>" in value
-    assert "#create_channel" not in value
-
-
-async def test_help_names_create_channel_as_text_outside_a_server() -> None:
-    embed, _ = await sent_help(None)
-
-    assert "#create_channel" in section_value(embed, "✨ チャンネルを作りたい")

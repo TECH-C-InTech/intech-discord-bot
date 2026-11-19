@@ -75,20 +75,26 @@ def _create_channel_text(guild: discord.Guild | None) -> str:
 
 async def help_impl(ctx: discord.Interaction):
     """ボットの使い方を、やりたいことごとに案内する"""
-    embed = discord.Embed(
-        title=HELP_TITLE,
-        description=HELP_DESCRIPTION,
-        color=discord.Color.blue(),
+    # Embedの項目は間に余白を取れず詰まって見えるので、区切り線を挟めるComponents V2で組む
+    container: discord.ui.Container[discord.ui.LayoutView] = discord.ui.Container(
+        accent_colour=discord.Colour.blue()
     )
+    container.add_item(discord.ui.TextDisplay(f"## {HELP_TITLE}\n{HELP_DESCRIPTION}"))
     create_channel = _create_channel_text(ctx.guild)
     for name, value in HELP_SECTIONS:
-        embed.add_field(name=name, value=value.format(create_channel=create_channel), inline=False)
-    embed.set_footer(text=HELP_FOOTER)
+        container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
+        container.add_item(
+            discord.ui.TextDisplay(f"### {name}\n{value.format(create_channel=create_channel)}")
+        )
+    container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
+    container.add_item(discord.ui.TextDisplay(f"-# {HELP_FOOTER}"))
+    view = discord.ui.LayoutView()
+    view.add_item(container)
 
     if ctx.response.is_done():
-        await ctx.followup.send(embed=embed, ephemeral=True)
+        await ctx.followup.send(view=view, ephemeral=True)
     else:
-        await ctx.response.send_message(embed=embed, ephemeral=True)
+        await ctx.response.send_message(view=view, ephemeral=True)
     logger.info(f"Help command executed by {ctx.user}")
 
 
