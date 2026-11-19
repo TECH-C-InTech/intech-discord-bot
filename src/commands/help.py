@@ -17,55 +17,89 @@ logger = getLogger(__name__)
 # ==================== コマンド実装関数 ====================
 
 
-async def help_impl(ctx: discord.Interaction):
-    """Botの全コマンドを簡潔に表示する"""
-    embed = discord.Embed(
-        title="🤖 InTech Discord Bot",
-        description="利用可能なコマンド一覧",
-        color=discord.Color.blue(),
-        timestamp=discord.utils.utcnow(),
+HELP_TITLE = "🤖 InTechボットの使い方"
+
+HELP_DESCRIPTION = (
+    "クラブ・イベント・プロジェクトの作成や、参加の切り替えができます。\n"
+    "基本的に操作はボタンで完結します。迷ったら、どこでも`/intech`と打ってください。"
+)
+
+# コマンドではなく、メンバーのやりたいことごとに案内する
+HELP_SECTIONS = [
+    (
+        "🌱 操作可能なチャンネルの種類",
+        "- クラブ：共通の興味でゆるく集まる、常設の趣味部屋\n"
+        "- イベント：一回きりの集まり。「ここ行きたい」くらいの思いつきで作っちゃってOK\n"
+        "- プロジェクト：一定期間続く活動全般",
+    ),
+    (
+        "✨ チャンネルを作りたい",
+        "一番上のINFORMATIONカテゴリにある {create_channel} を開き、"
+        "「イベントを作る」などのボタンを押して、チャンネル名を入れて送信するだけです。\n"
+        "（クラブ・イベント・プロジェクト以外のチャンネルで`/intech`と打っても同じ操作ができます）",
+    ),
+    (
+        "🙋 参加したい・抜けたい",
+        "当該チャンネル右上の📌（ピン留め）にある「参加する」「抜ける」を押します。"
+        "参加すると、そのチャンネルの参加者あてのメンション（@e001など）が届くようになります。",
+    ),
+    (
+        "👥 ほかの人を追加したい・外したい",
+        "ピン留めの「参加者を追加」「参加者を外す」から選びます。",
+    ),
+    (
+        "📦 終わったので片付けたい",
+        "ピン留めの「アーカイブ」を押すと、チャンネルが目立たない場所"
+        "（一番下のアーカイブカテゴリ）へ移ります。チャンネルは消えません。",
+    ),
+    (
+        "↩️ アーカイブ後にまた使いたい",
+        "アーカイブしたチャンネルにメッセージを送るだけで、元のカテゴリに戻ります。",
+    ),
+    (
+        "👀 誰が参加しているか見たい",
+        "ピン留めのパネルから参加者一覧が見られます。",
+    ),
+]
+
+HELP_FOOTER = "コマンドで操作したい人は /docs で使い方を確認してください。"
+
+# 作るパネルを置いている案内チャンネル。見つかればリンクにする
+CREATE_CHANNEL_NAME = "create_channel"
+
+
+def _create_channel_text(guild: discord.Guild | None) -> str:
+    channel = discord.utils.get(guild.text_channels, name=CREATE_CHANNEL_NAME) if guild else None
+    return channel.mention if channel else f"#{CREATE_CHANNEL_NAME}"
+
+
+def build_help_view(guild: discord.Guild | None) -> discord.ui.LayoutView:
+    """ボットの使い方を、やりたいことごとの項目に分けて組む"""
+    # Embedの項目は間に余白を取れず詰まって見えるので、区切り線を挟めるComponents V2で組む
+    container: discord.ui.Container[discord.ui.LayoutView] = discord.ui.Container(
+        accent_colour=discord.Colour.blue()
     )
-
-    # メタデータを取得してカテゴリー別にグループ化
-    all_metadata = get_all_metadata()
-    categories: dict[tuple[str, str], list[tuple[str, str]]] = {}
-
-    for cmd_name, metadata in all_metadata.items():
-        category_key = (metadata.category, metadata.icon)
-        if category_key not in categories:
-            categories[category_key] = []
-        # short_description が None の場合は空文字列を使用
-        short_desc = metadata.short_description or ""
-        categories[category_key].append((cmd_name, short_desc))
-
-    # カテゴリー別に表示
-    for (category_name, icon), commands in sorted(categories.items()):
-        command_list = []
-        for cmd_name, short_desc in sorted(commands):
-            if short_desc:
-                command_list.append(f"`/{cmd_name}` - {short_desc}")
-            else:
-                command_list.append(f"`/{cmd_name}`")
-
-        embed.add_field(
-            name=f"{icon} {category_name}",
-            value="\n".join(command_list),
-            inline=False,
+    container.add_item(discord.ui.TextDisplay(f"## {HELP_TITLE}\n{HELP_DESCRIPTION}"))
+    create_channel = _create_channel_text(guild)
+    for name, value in HELP_SECTIONS:
+        container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
+        container.add_item(
+            discord.ui.TextDisplay(f"### {name}\n{value.format(create_channel=create_channel)}")
         )
+    container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
+    container.add_item(discord.ui.TextDisplay(f"-# {HELP_FOOTER}"))
+    view = discord.ui.LayoutView()
+    view.add_item(container)
+    return view
 
-    # フッター
-    if ctx.client.user:
-        embed.set_footer(
-            text="💡 詳細は /docs コマンドで確認できます",
-            icon_url=ctx.client.user.display_avatar.url,
-        )
-    else:
-        embed.set_footer(text="💡 詳細は /docs コマンドで確認できます")
 
+async def help_impl(ctx: discord.Interaction):
+    """ボットの使い方を、本人にだけ出す"""
+    view = build_help_view(ctx.guild)
     if ctx.response.is_done():
-        await ctx.followup.send(embed=embed, ephemeral=True)
+        await ctx.followup.send(view=view, ephemeral=True)
     else:
-        await ctx.response.send_message(embed=embed, ephemeral=True)
+        await ctx.response.send_message(view=view, ephemeral=True)
     logger.info(f"Help command executed by {ctx.user}")
 
 
@@ -93,10 +127,12 @@ async def docs_impl(
         )
 
         # メタデータが登録されているコマンド一覧
-        metadata_commands = list(get_all_metadata().keys())
-        if metadata_commands:
+        all_metadata = get_all_metadata()
+        if all_metadata:
             available_commands = "\n".join(
-                [f"• `/docs command:{cmd}`" for cmd in sorted(metadata_commands)]
+                f"• `/docs command:{cmd}`"
+                + (f" - {meta.short_description}" if meta.short_description else "")
+                for cmd, meta in sorted(all_metadata.items())
             )
             embed.add_field(
                 name="利用可能なコマンド",
@@ -197,12 +233,12 @@ def setup(tree: app_commands.CommandTree):
     @command_meta(
         category="ヘルプ",
         icon="ℹ️",
-        short_description="利用可能なコマンド一覧を表示",
+        short_description="ボットの使い方を、やりたいことごとに表示",
         examples=["`/help`"],
     )
     @tree.command(
         name="help",
-        description="Botのコマンド一覧を表示します",
+        description="ボットの使い方を表示します",
     )
     async def help(ctx: discord.Interaction):
         await help_impl(ctx)

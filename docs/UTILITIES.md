@@ -359,7 +359,7 @@ if reason is not None:
 
 ### `@command_meta` デコレーター
 
-コマンドのメタデータを登録し、`/help`と`/docs`で自動表示。
+コマンドのメタデータを登録し、`/docs`で自動表示。
 
 **パラメータ**:
 - `category: str` - カテゴリー名（必須）

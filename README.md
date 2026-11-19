@@ -88,7 +88,7 @@ uv run bot.py
 
 | コマンド | 説明 |
 |---------|------|
-| `/help` | コマンド一覧を表示 |
+| `/help` | ボットの使い方を表示 |
 | `/docs [command]` | コマンドの詳細ドキュメントを表示 |
 | `/create_channel <category> <channel_name> [members]` | クラブ・イベント・プロジェクトのチャンネルとロールを作成 |
 | `/archive_channel [channel]` | チャンネルをアーカイブ |
