@@ -240,7 +240,7 @@ def setup(tree: app_commands.CommandTree):
     )
     @app_commands.describe(
         category="作成する種類",
-        channel_name="作成するチャンネル名（番号は自動で付きます）",
+        channel_name="作成するチャンネル名（番号（c013- など）は自動で付きます）",
         members="ロールに追加するメンバー（メンション形式で複数指定可能。例: @user1 @user2）",
     )
     @app_commands.choices(category=KIND_CHOICES)
