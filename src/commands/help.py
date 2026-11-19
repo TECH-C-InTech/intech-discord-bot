@@ -17,50 +17,65 @@ logger = getLogger(__name__)
 # ==================== コマンド実装関数 ====================
 
 
+HELP_TITLE = "🤖 InTechボットの使い方"
+
+HELP_DESCRIPTION = (
+    "クラブ・イベント・プロジェクトの作成や、参加の切り替えができます。\n"
+    "基本的に操作はボタンで完結します。迷ったら、どこでも`/intech`と打ってください。"
+)
+
+# コマンドではなく、メンバーのやりたいことごとに案内する
+HELP_SECTIONS = [
+    (
+        "🌱 操作可能なチャンネルの種類",
+        "- クラブ：共通の興味でゆるく集まる、常設の趣味部屋\n"
+        "- イベント：一回きりの集まり。「ここ行きたい」くらいの思いつきで作っちゃってOK\n"
+        "- プロジェクト：一定期間続く活動全般",
+    ),
+    (
+        "✨ チャンネルを作りたい",
+        "一番上のINFORMATIONカテゴリにある #create_channel チャンネルを開き、"
+        "「イベントを作る」などのボタンを押して、チャンネル名を入れて送信すると、"
+        "チャンネルが作成されます。\n"
+        "（クラブ・イベント・プロジェクト以外のチャンネルで`/intech`と打っても同じ操作ができます）",
+    ),
+    (
+        "🙋 イベント等に参加したい・抜けたい",
+        "当該チャンネルのピン留めにある「参加する」「抜ける」を押します。"
+        "参加すると、そのチャンネルの参加者あてのメンション（@e001など）が届くようになります。",
+    ),
+    (
+        "👥 イベント等にほかの人を追加したい・外したい",
+        "ピン留めの「参加者を追加」「参加者を外す」から選びます。",
+    ),
+    (
+        "📦 イベント等が終了したので片付けたい",
+        "ピン留めの「アーカイブ」を押すと、チャンネルが目立たない場所"
+        "（一番下のアーカイブカテゴリ）へ移ります。チャンネルは消えません。",
+    ),
+    (
+        "↩️ アーカイブ後にまた使いたい",
+        "アーカイブしたチャンネルにメッセージを送るだけで、元のカテゴリに戻ります。",
+    ),
+    (
+        "👀 イベント等に誰が参加しているか見たい",
+        "ピン留めのパネルから参加者一覧が見られます。",
+    ),
+]
+
+HELP_FOOTER = "コマンドで操作したい人は /docs で使い方を確認してください。"
+
+
 async def help_impl(ctx: discord.Interaction):
-    """Botの全コマンドを簡潔に表示する"""
+    """ボットの使い方を、やりたいことごとに案内する"""
     embed = discord.Embed(
-        title="🤖 InTech Discord Bot",
-        description="利用可能なコマンド一覧",
+        title=HELP_TITLE,
+        description=HELP_DESCRIPTION,
         color=discord.Color.blue(),
-        timestamp=discord.utils.utcnow(),
     )
-
-    # メタデータを取得してカテゴリー別にグループ化
-    all_metadata = get_all_metadata()
-    categories: dict[tuple[str, str], list[tuple[str, str]]] = {}
-
-    for cmd_name, metadata in all_metadata.items():
-        category_key = (metadata.category, metadata.icon)
-        if category_key not in categories:
-            categories[category_key] = []
-        # short_description が None の場合は空文字列を使用
-        short_desc = metadata.short_description or ""
-        categories[category_key].append((cmd_name, short_desc))
-
-    # カテゴリー別に表示
-    for (category_name, icon), commands in sorted(categories.items()):
-        command_list = []
-        for cmd_name, short_desc in sorted(commands):
-            if short_desc:
-                command_list.append(f"`/{cmd_name}` - {short_desc}")
-            else:
-                command_list.append(f"`/{cmd_name}`")
-
-        embed.add_field(
-            name=f"{icon} {category_name}",
-            value="\n".join(command_list),
-            inline=False,
-        )
-
-    # フッター
-    if ctx.client.user:
-        embed.set_footer(
-            text="💡 詳細は /docs コマンドで確認できます",
-            icon_url=ctx.client.user.display_avatar.url,
-        )
-    else:
-        embed.set_footer(text="💡 詳細は /docs コマンドで確認できます")
+    for name, value in HELP_SECTIONS:
+        embed.add_field(name=name, value=value, inline=False)
+    embed.set_footer(text=HELP_FOOTER)
 
     if ctx.response.is_done():
         await ctx.followup.send(embed=embed, ephemeral=True)
@@ -93,10 +108,12 @@ async def docs_impl(
         )
 
         # メタデータが登録されているコマンド一覧
-        metadata_commands = list(get_all_metadata().keys())
-        if metadata_commands:
+        all_metadata = get_all_metadata()
+        if all_metadata:
             available_commands = "\n".join(
-                [f"• `/docs command:{cmd}`" for cmd in sorted(metadata_commands)]
+                f"• `/docs command:{cmd}`"
+                + (f" - {meta.short_description}" if meta.short_description else "")
+                for cmd, meta in sorted(all_metadata.items())
             )
             embed.add_field(
                 name="利用可能なコマンド",
@@ -197,12 +214,12 @@ def setup(tree: app_commands.CommandTree):
     @command_meta(
         category="ヘルプ",
         icon="ℹ️",
-        short_description="利用可能なコマンド一覧を表示",
+        short_description="ボットの使い方を、やりたいことごとに表示",
         examples=["`/help`"],
     )
     @tree.command(
         name="help",
-        description="Botのコマンド一覧を表示します",
+        description="ボットの使い方を表示します",
     )
     async def help(ctx: discord.Interaction):
         await help_impl(ctx)

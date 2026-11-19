@@ -95,7 +95,7 @@ def register_commands(tree: app_commands.CommandTree):
 1. `src/commands/` に新しいファイルを作成（例: `my_command.py`）
 2. `setup(tree)` 関数を実装
 3. デコレーターパターンを使用（詳細は[ADD_COMMAND.md](./ADD_COMMAND.md)参照）
-4. コマンドは自動的に `/help` と `/docs` に表示されます
+4. コマンドは自動的に `/docs` に表示されます（`/help` は手書きの案内なので、必要なら `help.py` に書き足す）
 
 **テンプレート**: [src/commands/\_sample.py](../src/commands/_sample.py)を起点として使用
 

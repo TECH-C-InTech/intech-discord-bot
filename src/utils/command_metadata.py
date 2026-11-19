@@ -19,7 +19,7 @@ class CommandMetadata:
         Args:
             category: コマンドのカテゴリー（例: "イベントチャンネル管理"）
             icon: カテゴリーのアイコン（絵文字）
-            short_description: /helpで表示される短い説明
+            short_description: /docsの一覧で表示される短い説明
             restrictions: 実行制限の説明
             examples: 使用例のリスト
             notes: 追加の注意事項
