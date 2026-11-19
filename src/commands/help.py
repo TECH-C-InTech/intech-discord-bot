@@ -34,7 +34,7 @@ HELP_SECTIONS = [
     ),
     (
         "✨ チャンネルを作りたい",
-        "一番上のINFORMATIONカテゴリにある #create_channel チャンネルを開き、"
+        "一番上のINFORMATIONカテゴリにある {create_channel} チャンネルを開き、"
         "「イベントを作る」などのボタンを押して、チャンネル名を入れて送信すると、"
         "チャンネルが作成されます。\n"
         "（クラブ・イベント・プロジェクト以外のチャンネルで`/intech`と打っても同じ操作ができます）",
@@ -65,6 +65,14 @@ HELP_SECTIONS = [
 
 HELP_FOOTER = "コマンドで操作したい人は /docs で使い方を確認してください。"
 
+# 作るパネルを置いている案内チャンネル。見つかればリンクにする
+CREATE_CHANNEL_NAME = "create_channel"
+
+
+def _create_channel_text(guild: discord.Guild | None) -> str:
+    channel = discord.utils.get(guild.text_channels, name=CREATE_CHANNEL_NAME) if guild else None
+    return channel.mention if channel else f"#{CREATE_CHANNEL_NAME}"
+
 
 async def help_impl(ctx: discord.Interaction):
     """ボットの使い方を、やりたいことごとに案内する"""
@@ -73,8 +81,9 @@ async def help_impl(ctx: discord.Interaction):
         description=HELP_DESCRIPTION,
         color=discord.Color.blue(),
     )
+    create_channel = _create_channel_text(ctx.guild)
     for name, value in HELP_SECTIONS:
-        embed.add_field(name=name, value=value, inline=False)
+        embed.add_field(name=name, value=value.format(create_channel=create_channel), inline=False)
     embed.set_footer(text=HELP_FOOTER)
 
     if ctx.response.is_done():
